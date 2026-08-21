@@ -2,7 +2,7 @@ workflows:
   android-release:
     name: My Weather App - Release
     max_build_duration: 30
-    instance_type: mac_mini_m1
+    instance_type: mac_mini_m2
     environment:
       node: 18
     scripts:
