@@ -9,10 +9,11 @@ workflows:
       - name: Install deps
         script: |
           npm install
-      - name: Prepare Android
+      - name: Sync Android Project
         script: |
-          # Эта команда заново генерирует нативные файлы под текущую среду
-          npx expo prebuild --platform android --clean
+          # Вместо полного prebuild, просто синхронизируем зависимости
+          # Это безопаснее и быстрее
+          npx expo install --fix
       - name: Build APK
         script: |
           cd android
