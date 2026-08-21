@@ -1,0 +1,36 @@
+workflows:
+  android-build:
+    name: My Weather App
+    max_build_duration: 30
+    instance_type: mac_mini_m1
+    environment:
+      node: 18
+    scripts:
+      - name: Install deps & Prebuild
+        script: |
+          npm install
+          npx expo install expo-location
+          rm -rf android
+          npx expo prebuild --platform android
+          
+          # Восстанавливаем цвета (это критично!)
+          mkdir -p android/app/src/main/res/values
+          cat > android/app/src/main/res/values/colors.xml << 'COLOREOF'
+          <?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+          <resources>
+            <color name="splashscreen_background">#FFFFFF</color>
+            <color name="iconBackground">#FFFFFF</color>
+            <color name="colorPrimary">#023c69</color>
+            <color name="colorPrimaryDark">#ffffff</color>
+          </resources>
+          COLOREOF
+
+      - name: Bundle JS and Build APK
+        script: |
+          cd android
+          chmod +x gradlew
+          # Эта команда упаковывает JS внутрь APK!
+          ./gradlew bundleDebugJsAndAssets
+          ./gradlew assembleDebug
+    artifacts:
+      - android/app/build/outputs/apk/debug/*.apk
