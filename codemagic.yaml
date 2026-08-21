@@ -9,11 +9,10 @@ workflows:
       - name: Install deps
         script: |
           npm install
-      - name: Sync Android Project
+      - name: Prebuild Android (Update existing)
         script: |
-          # Вместо полного prebuild, просто синхронизируем зависимости
-          # Это безопаснее и быстрее
-          npx expo install --fix
+          # Обновляем нативные файлы, но НЕ удаляем папку android
+          npx expo prebuild --platform android
       - name: Build APK
         script: |
           cd android
