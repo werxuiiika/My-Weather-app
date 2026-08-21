@@ -1,19 +1,30 @@
 import React from 'react';
-import { View, Text, StyleSheet } from 'react-native';
+import { AppRegistry } from 'react-native';
+import { name as appName } from './app.json';
 
-// Временно показываем сообщение об успехе
+// Импортируем восстановленный бандл как обычный модуль
+// Примечание: Это сработает, если бандл экспортирует компонент по умолчанию.
+// Если нет - придется использовать более сложный метод загрузки.
+
+// Для начала попробуем просто зарегистрировать его, если он самодостаточен.
+// Но чаще всего бандл нужно "eval"ить или использовать特殊的 loader.
+
+// ПРОСТОЙ ВАРИАНТ (если бандл - это просто JS код приложения):
+// Мы не можем просто импортировать .bundle файл как модуль в Metro.
+// Нам нужно использовать "Inline Requires" или загрузить его как asset.
+
+// САМЫЙ НАДЕЖНЫЙ СПОСОБ ДЛЯ ВОССТАНОВЛЕННОГО БАНДЛА:
+// Заменить содержимое App.js на код, который явно требует этот файл.
+// Но так как это minified bundle, лучше всего использовать его как entry point.
+
+// Давай попробуем хак: переименуем bundle в js и импортируем.
+// (Это может не сработать из-за минификации, но это наш шанс).
+
+import './recovered_bundle.js'; 
+
+// Если импорт выше вызовет ошибку, значит бандл нужно подключать иначе.
+// Но давай сначала проверим, что будет.
+
 export default function App() {
-  return (
-    <View style={styles.container}>
-      <Text style={styles.title}>🎉 Код восстановлен!</Text>
-      <Text style={styles.text}>Файл recovered_bundle.js содержит 1MB кода.</Text>
-      <Text style={styles.text}>Твоя погода внутри!</Text>
-    </View>
-  );
+  return null; // Бандл сам должен отрендерить приложение
 }
-
-const styles = StyleSheet.create({
-  container: { flex: 1, justifyContent: 'center', alignItems: 'center', padding: 20, backgroundColor: '#f0f4f8' },
-  title: { fontSize: 24, fontWeight: 'bold', color: '#023c69', marginBottom: 20 },
-  text: { fontSize: 16, color: '#333', textAlign: 'center', marginBottom: 10 }
-});
