@@ -1,6 +1,6 @@
 workflows:
-  android-build:
-    name: My Weather App
+  android-release:
+    name: My Weather App - Release
     max_build_duration: 30
     instance_type: mac_mini_m1
     environment:
@@ -11,16 +11,19 @@ workflows:
           npm install
           npx expo install expo-location
           rm -rf android
-          npx expo prebuild --platform android
-          
-          # Восстанавливаем colors.xml из репозитория, если prebuild его затер
-          git checkout HEAD -- android/app/src/main/res/values/colors.xml || true
+          npx expo prebuild --platform android --clean
 
-      - name: Bundle JS and Build APK
+      - name: Build Release APK
         script: |
           cd android
           chmod +x gradlew
-          ./gradlew bundleDebugJsAndAssets
-          ./gradlew assembleDebug
+          ./gradlew assembleRelease
+
+      - name: Verify bundle in APK
+        script: |
+          APK_PATH=$(find android/app/build/outputs/apk/release -name "*.apk" | head -1)
+          echo "APK found: $APK_PATH"
+          unzip -l "$APK_PATH" | grep "index.android.bundle" && echo "BUNDLE EMBEDDED OK" || echo "BUNDLE MISSING"
+
     artifacts:
-      - android/app/build/outputs/apk/debug/*.apk
+      - android/app/build/outputs/apk/release/*.apk
