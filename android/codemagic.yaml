@@ -13,25 +13,14 @@ workflows:
           rm -rf android
           npx expo prebuild --platform android
           
-          # Восстанавливаем цвета (критично для сборки)
-          mkdir -p android/app/src/main/res/values
-          cat > android/app/src/main/res/values/colors.xml << 'COLOREOF'
-<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
-<resources>
-  <color name="splashscreen_background">#FFFFFF</color>
-  <color name="iconBackground">#FFFFFF</color>
-  <color name="colorPrimary">#023c69</color>
-  <color name="colorPrimaryDark">#ffffff</color>
-</resources>
-COLOREOF
+          # Восстанавливаем colors.xml из репозитория, если prebuild его затер
+          git checkout HEAD -- android/app/src/main/res/values/colors.xml || true
 
       - name: Bundle JS and Build APK
         script: |
           cd android
           chmod +x gradlew
-          # ЭТА КОМАНДА УПАКОВЫВАЕТ JS ВНУТРЬ APK!
           ./gradlew bundleDebugJsAndAssets
-          # Теперь собираем сам APK
           ./gradlew assembleDebug
     artifacts:
       - android/app/build/outputs/apk/debug/*.apk
