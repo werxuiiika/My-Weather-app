@@ -1,0 +1,23 @@
+workflows:
+  android-build:
+    name: My Weather App
+    max_build_duration: 30
+    instance_type: mac_mini_m2
+    environment:
+      node: 18
+    scripts:
+      - name: Install deps & Prebuild
+        script: |
+          npm install
+          npx expo install expo-location
+          rm -rf android
+          npx expo prebuild --platform android --clean
+
+      - name: Build APK
+        script: |
+          cd android
+          chmod +x gradlew
+          ./gradlew assembleRelease
+
+    artifacts:
+      - android/app/build/outputs/apk/release/*.apk
