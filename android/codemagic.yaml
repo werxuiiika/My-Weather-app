@@ -13,7 +13,7 @@ workflows:
           rm -rf android
           npx expo prebuild --platform android
           
-          # === ФИКС РЕСУРСОВ (из логов сборки) ===
+          # Восстанавливаем цвета (критично для сборки)
           mkdir -p android/app/src/main/res/values
           cat > android/app/src/main/res/values/colors.xml << 'COLOREOF'
 <?xml version="1.0" encoding="UTF-8" standalone="yes"?>
@@ -29,10 +29,9 @@ COLOREOF
         script: |
           cd android
           chmod +x gradlew
-          # === ФИКС КРАСНОГО ЭКРАНА ===
-          # Эта команда создает index.android.bundle и кладет его в assets
+          # ЭТА КОМАНДА УПАКОВЫВАЕТ JS ВНУТРЬ APK!
           ./gradlew bundleDebugJsAndAssets
-          # Теперь собираем APK, который будет работать офлайн
+          # Теперь собираем сам APK
           ./gradlew assembleDebug
     artifacts:
       - android/app/build/outputs/apk/debug/*.apk
