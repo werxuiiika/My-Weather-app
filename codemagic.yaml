@@ -11,17 +11,8 @@ workflows:
           npm install
           npx expo install expo-location
           rm -rf android
+          # Prebuild теперь сам создаст правильные colors.xml и styles.xml
           npx expo prebuild --platform android
-          
-          # === ВАЖНО: Восстанавливаем colors.xml ПОСЛЕ prebuild ===
-          mkdir -p android/app/src/main/res/values
-          cat > android/app/src/main/res/values/colors.xml << 'COLOREOF'
-          <?xml version="1.0" encoding="UTF-8" standalone="yes"?>
-          <resources>
-            <color name="splashscreen_background">#FFFFFF</color>
-          </resources>
-          COLOREOF
-          
       - name: Build APK
         script: |
           cd android
