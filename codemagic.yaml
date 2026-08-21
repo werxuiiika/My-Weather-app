@@ -6,13 +6,13 @@ workflows:
     environment:
       node: 18
     scripts:
-      - name: Install deps
+      - name: Install deps & Prebuild
         script: |
           npm install
-      - name: Fix native deps
-        script: |
-          # Просто синхронизируем версии, не трогаем файлы android/
-          npx expo install --fix
+          # Удаляем старую папку android, чтобы избежать конфликтов путей
+          rm -rf android
+          # Генерируем новую. Флаг --yes отвечает "да" на все вопросы автоматически
+          npx expo prebuild --platform android --yes
       - name: Build APK
         script: |
           cd android
