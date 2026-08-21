@@ -1,0 +1,28 @@
+[33m0ee15292[m[33m ([m[1;36mHEAD[m[33m -> [m[1;32mmain[m[33m, [m[1;31morigin/main[m[33m)[m Add correct release codemagic yaml to root
+[33m11e76a43[m Update and rename codemagic.yaml to Fix root codemagic.yaml to realese
+[33m7bcc32e0[m Fix: keep old workflow name for Codemagic cache but use assembleRelease
+[33m19671b63[m Trigger Codemagic refresh
+[33m7e3afc3a[m Fix: move codemagic.yaml to root, switch to Release build
+[33md88b3271[m Switch to Release build - embed JS bundle in APK
+[33m959734f1[m Fix resources permanently via repo file and bundle JS
+[33mdef64da6[m Add bundleDebugJsAndAssets to fix red screen error
+[33mc3775cb0[m Fix resources and bundle JS into APK to fix red screen
+[33mb610b1ac[m Add bundleDebugJsAndAssets step to fix offline loading
+[33m4e6e94fa[m Define explicit theme colors in app.config to fix resource linking
+[33maab8dd6d[m Restore full colors.xml with primary colors and splash background
+[33ma866a26c[m Restore colors.xml after prebuild to fix resource linking
+[33m46c4b0a0[m Fix splashscreen color resource definitively
+[33m228f98d1[m Add missing asset files for prebuild
+[33maf7c00af[m Explicitly install expo-location before prebuild
+[33m33bb3b76[m Add app.config.js with explicit package name
+[33me8fc2585[m Remove invalid --yes flag from prebuild
+[33m233fd913[m Force clean prebuild with --yes flag
+[33m0cf5496b[m Remove prebuild step, use expo install fix only
+[33m55a7cdb3[m Use expo prebuild without clean flag
+[33m41ddac3e[m Switch to expo install fix instead of full prebuild
+[33me4706ae2[m Add expo prebuild step to fix plugin error
+[33m028ac351[m Fix YAML syntax strictly
+[33m71bbb074[m Fix gradle path and switch to debug build
+[33m5ff2fa28[m Add Codemagic config for free builds
+[33m11942625[m Add android folder for Codemagic
+[33m60b37d10[m Initial commit
