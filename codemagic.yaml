@@ -2,9 +2,9 @@ workflows:
   android-build:
     name: My Weather App
     max_build_duration: 30
-    instance_type: mac_mini_m2 # Исправлено на M2, так как M1 больше нет
+    instance_type: mac_mini_m2
     environment:
-      node: 18
+      node: 20 # ВАЖНО: Обновляем Node.js до версии 20 для совместимости с RN 0.81
     scripts:
       - name: Install dependencies and prebuild
         script: |
@@ -16,12 +16,12 @@ workflows:
           
           git checkout HEAD -- android/app/src/main/res/values/colors.xml || true
 
-      - name: Build Android APK (Manual Bundle Copy)
+      - name: Build Android APK (Manual Bundle with Node 20)
         script: |
-          # 1. Генерируем бандл через expo export (это надежно работает на сервере)
+          # 1. Генерируем бандл через expo export (теперь это работает на Node 20)
           npx expo export --platform android --output-dir dist
           
-          # 2. ВАЖНО: Явно копируем бандл в папку assets Android-проекта
+          # 2. Явно копируем бандл в папку assets Android-проекта
           mkdir -p android/app/src/main/assets
           cp dist/bundles/index.android.bundle android/app/src/main/assets/index.android.bundle
           
