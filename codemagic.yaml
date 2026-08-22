@@ -16,20 +16,35 @@ workflows:
           
           git checkout HEAD -- android/app/src/main/res/values/colors.xml || true
 
-      - name: Build Android APK (Safe Bundle)
+      - name: Build Android APK (Disabled Auto-Bundle)
         script: |
-          # 1. Генерируем бандл через expo export (это надежно работает на сервере)
+          # 1. Генерируем бандл ЧЕРЕЗ EXPO (это работает на сервере)
           npx expo export --platform android --output-dir dist
           
-          # 2. Копируем готовый бандл в папку assets Android-проекта
+          # 2. Кладем его в assets
           mkdir -p android/app/src/main/assets
           cp dist/bundles/index.android.bundle android/app/src/main/assets/index.android.bundle
           
-          # 3. Собираем APK. 
-          # Мы НЕ используем флаг -x, так как задачи нет.
-          # Gradle увидит файл в assets и просто упакует его.
-          cd android
+          # 3. ВАЖНО: Внедряем патч в build.gradle, чтобы ОТКЛЮЧИТЬ авто-бандлинг
+          # Мы добавляем задачу, которая ничего не делает, но имеет имя, которое ищет Gradle
+          # Или просто удаляем зависимость от bundleDebugJsAndAssets
+          cd android/app
+          
+          # Проверяем, есть ли уже патч, чтобы не дублировать
+          if ! grep -q "task disableBundling" build.gradle; then
+            echo "" >> build.gradle
+            echo "// PATCH: Disable automatic JS bundling for offline build" >> build.gradle
+            echo "tasks.whenTaskAdded { task ->" >> build.gradle
+            echo "    if (task.name == 'bundleDebugJsAndAssets' || task.name == 'bundleReleaseJsAndAssets') {" >> build.gradle
+            echo "        task.enabled = false" >> build.gradle
+            echo "    }" >> build.gradle
+            echo "}" >> build.gradle
+          fi
+          
+          cd ..
           chmod +x gradlew
+          
+          # 4. Собираем APK. Теперь Gradle НЕ будет трогать JS.
           ./gradlew assembleDebug
     artifacts:
       - android/app/build/outputs/apk/debug/*.apk
