@@ -22,7 +22,6 @@ export default {
         foregroundImage: "./assets/adaptive-icon.png",
         backgroundColor: "#ffffff"
       },
-      // === ВАЖНО: Явно задаем цвета темы здесь ===
       colors: {
         primary: "#023c69",
         primaryDark: "#ffffff",
@@ -40,9 +39,14 @@ export default {
       [
         "expo-location",
         {
-          locationAlwaysAndWhenInUsePermission: "Приложению 'Моя погода' требуется доступ к геолокации для определения погоды в вашем регионе."
+          locationAlwaysAndWhenInUsePermission: "Приложению 'Моя погода' требуется доступ к геолокации для определения погоды."
         }
       ]
-    ]
+    ],
+    extra: {
+      eas: {
+        projectId: "2b5d5c39-a1c2-4959-ad98-da372592df88"
+      }
+    }
   }
 };
