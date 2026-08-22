@@ -16,33 +16,23 @@ workflows:
           
           git checkout HEAD -- android/app/src/main/res/values/colors.xml || true
 
-      - name: Build Android APK (Patched Gradle)
+      - name: Build Android APK (Manual Bundle Copy)
         script: |
-          # 1. Генерируем бандл через expo export
+          # 1. Генерируем бандл через expo export (это надежно работает на сервере)
           npx expo export --platform android --output-dir dist
           
-          # 2. Кладем его в assets
+          # 2. ВАЖНО: Явно копируем бандл в папку assets Android-проекта
           mkdir -p android/app/src/main/assets
           cp dist/bundles/index.android.bundle android/app/src/main/assets/index.android.bundle
           
-          # 3. ВАЖНО: Внедряем патч в build.gradle, чтобы ОТКЛЮЧИТЬ авто-бандлинг
-          cd android/app
+          # Проверяем, что файл действительно скопировался и имеет размер > 0
+          ls -lh android/app/src/main/assets/index.android.bundle
           
-          # Добавляем блок отключения авто-бандлинга, если его еще нет
-          if ! grep -q "disableAutoBundling" build.gradle; then
-            echo "" >> build.gradle
-            echo "// PATCH: Disable automatic JS bundling for offline build" >> build.gradle
-            echo "tasks.whenTaskAdded { task ->" >> build.gradle
-            echo "    if (task.name == 'bundleDebugJsAndAssets' || task.name == 'bundleReleaseJsAndAssets') {" >> build.gradle
-            echo "        task.enabled = false" >> build.gradle
-            echo "    }" >> build.gradle
-            echo "}" >> build.gradle
-          fi
-          
-          cd ..
+          # 3. Собираем APK. 
+          # Мы НЕ используем флаг -x, так как задачи bundleDebugJsAndAssets нет в SDK 54.
+          # Gradle увидит файл в assets и просто упакует его в APK.
+          cd android
           chmod +x gradlew
-          
-          # 4. Собираем APK. Патч заблокирует попытку Gradle перезаписать бандл.
           ./gradlew assembleDebug
     artifacts:
       - android/app/build/outputs/apk/debug/*.apk
