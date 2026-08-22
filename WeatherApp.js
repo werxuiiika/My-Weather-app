@@ -22,7 +22,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 
 const BASE_URL = 'https://api.open-meteo.com/v1/forecast';
 const TIMEOUT_MS = 10000;
-const SCREEN_HEIGHT = Dimensions.get('window').height;
+const SCREEN_WIDTH = Dimensions.get('window').width;
 const NETWORK_ERROR =
   'Нет подключения к интернету. Проверьте настройки сети.';
 const TIMEOUT_ERROR =
@@ -245,7 +245,7 @@ export default function App() {
   const sunScale = useRef(new Animated.Value(1)).current;
   const sunRotate = useRef(new Animated.Value(0)).current;
   const settingsOverlayOpacity = useRef(new Animated.Value(0)).current;
-  const settingsSheetY = useRef(new Animated.Value(SCREEN_HEIGHT)).current;
+  const settingsScreenX = useRef(new Animated.Value(SCREEN_WIDTH)).current;
 
   useEffect(() => {
     const spin = Animated.loop(
@@ -341,14 +341,14 @@ export default function App() {
     Animated.parallel([
       Animated.timing(settingsOverlayOpacity, {
         toValue: 1,
-        duration: 320,
+        duration: 300,
         easing: Easing.out(Easing.quad),
         useNativeDriver: true,
       }),
-      Animated.timing(settingsSheetY, {
+      Animated.timing(settingsScreenX, {
         toValue: 0,
-        duration: 380,
-        easing: Easing.bezier(0.34, 1.56, 0.64, 1),
+        duration: 300,
+        easing: Easing.out(Easing.cubic),
         useNativeDriver: true,
       }),
     ]).start();
@@ -366,10 +366,10 @@ export default function App() {
         easing: Easing.in(Easing.quad),
         useNativeDriver: true,
       }),
-      Animated.timing(settingsSheetY, {
-        toValue: SCREEN_HEIGHT,
-        duration: 300,
-        easing: Easing.in(Easing.back(1.4)),
+      Animated.timing(settingsScreenX, {
+        toValue: SCREEN_WIDTH,
+        duration: 280,
+        easing: Easing.in(Easing.cubic),
         useNativeDriver: true,
       }),
     ]).start(({ finished }) => {
@@ -839,45 +839,59 @@ export default function App() {
       )}
 
       {settingsOpen && (
-        <Animated.View
-          style={[styles.settingsOverlay, { opacity: settingsOverlayOpacity }]}
-        >
-          <TouchableOpacity
-            style={styles.settingsBackdrop}
-            activeOpacity={1}
-            onPress={closeSettings}
+        <View style={styles.settingsLayer} pointerEvents="box-none">
+          <Animated.View
+            style={[
+              styles.settingsDim,
+              { opacity: settingsOverlayOpacity },
+            ]}
           />
           <Animated.View
             style={[
-              styles.settingsSheet,
-              { transform: [{ translateY: settingsSheetY }] },
+              styles.settingsScreen,
+              { transform: [{ translateX: settingsScreenX }] },
             ]}
           >
-            <View style={styles.settingsHandle} />
-            <Text style={styles.settingsTitle}>Настройки</Text>
+            <SafeAreaView style={styles.settingsSafe}>
+              <View style={styles.settingsHeader}>
+                <TouchableOpacity
+                  style={styles.settingsBackButton}
+                  onPress={closeSettings}
+                  activeOpacity={0.7}
+                >
+                  <Text style={styles.settingsBackIcon}>←</Text>
+                </TouchableOpacity>
+                <Text style={styles.settingsHeaderTitle}>Настройки</Text>
+              </View>
 
-            <View style={styles.settingCard}>
-              <Text style={styles.settingLabel}>
-                Запоминать последний город
-              </Text>
-              <Switch
-                value={rememberCity}
-                onValueChange={toggleRemember}
-                trackColor={{ false: '#3a4560', true: '#38b06b' }}
-                thumbColor="#ffffff"
-                ios_backgroundColor="#3a4560"
-              />
-            </View>
-
-            <TouchableOpacity
-              style={styles.settingsDoneButton}
-              onPress={closeSettings}
-              activeOpacity={0.7}
-            >
-              <Text style={styles.settingsDoneText}>Готово</Text>
-            </TouchableOpacity>
+              <ScrollView
+                style={styles.settingsBody}
+                contentContainerStyle={styles.settingsBodyContent}
+              >
+                <Text style={styles.settingsSectionTitle}>Общее</Text>
+                <View style={styles.settingsGroup}>
+                  <View style={styles.settingsRow}>
+                    <View style={styles.settingsRowTextWrap}>
+                      <Text style={styles.settingsRowTitle}>
+                        Запоминать последний город
+                      </Text>
+                      <Text style={styles.settingsRowSubtitle}>
+                        При запуске автоматически открывать сохранённый город
+                      </Text>
+                    </View>
+                    <Switch
+                      value={rememberCity}
+                      onValueChange={toggleRemember}
+                      trackColor={{ false: '#3a4560', true: '#38b06b' }}
+                      thumbColor="#ffffff"
+                      ios_backgroundColor="#3a4560"
+                    />
+                  </View>
+                </View>
+              </ScrollView>
+            </SafeAreaView>
           </Animated.View>
-        </Animated.View>
+        </View>
       )}
     </SafeAreaView>
   );
@@ -1142,68 +1156,96 @@ const styles = StyleSheet.create({
     fontSize: 15,
     fontWeight: '600',
   },
-  settingsOverlay: {
+  settingsLayer: {
     position: 'absolute',
     top: 0,
     left: 0,
     right: 0,
     bottom: 0,
-    backgroundColor: 'rgba(10, 13, 24, 0.7)',
-    justifyContent: 'flex-end',
-    paddingHorizontal: 14,
-    paddingBottom: 26,
+    zIndex: 100,
   },
-  settingsBackdrop: {
+  settingsDim: {
     ...StyleSheet.absoluteFillObject,
+    backgroundColor: 'rgba(8, 11, 20, 0.5)',
   },
-  settingsSheet: {
+  settingsScreen: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    backgroundColor: '#1c2333',
+  },
+  settingsSafe: {
+    flex: 1,
+  },
+  settingsHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 16,
+    paddingTop: 14,
+    paddingBottom: 12,
+    borderBottomWidth: 1,
+    borderBottomColor: '#262e45',
+  },
+  settingsBackButton: {
+    width: 40,
+    height: 40,
+    borderRadius: 12,
     backgroundColor: '#232b40',
-    borderRadius: 24,
-    paddingHorizontal: 22,
-    paddingTop: 12,
-    paddingBottom: 28,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: 10,
   },
-  settingsHandle: {
-    alignSelf: 'center',
-    width: 44,
-    height: 4,
-    borderRadius: 2,
-    backgroundColor: '#3a4560',
-    marginBottom: 18,
+  settingsBackIcon: {
+    fontSize: 22,
+    color: '#cfe0ff',
   },
-  settingsTitle: {
+  settingsHeaderTitle: {
     fontSize: 22,
     fontWeight: '700',
     color: '#fff',
-    textAlign: 'center',
-    marginBottom: 22,
   },
-  settingCard: {
+  settingsBody: {
+    flex: 1,
+  },
+  settingsBodyContent: {
+    paddingHorizontal: 16,
+    paddingTop: 18,
+    paddingBottom: 30,
+  },
+  settingsSectionTitle: {
+    fontSize: 13,
+    fontWeight: '700',
+    color: '#7f8db0',
+    letterSpacing: 0.6,
+    marginBottom: 10,
+    marginTop: 6,
+  },
+  settingsGroup: {
+    backgroundColor: '#232b40',
+    borderRadius: 14,
+    overflow: 'hidden',
+  },
+  settingsRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'space-between',
-    backgroundColor: '#2a3248',
-    borderRadius: 14,
-    paddingVertical: 18,
+    paddingVertical: 14,
     paddingHorizontal: 16,
-    marginBottom: 22,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderBottomColor: '#2a3248',
   },
-  settingLabel: {
+  settingsRowTextWrap: {
     flex: 1,
-    color: '#cfe0ff',
-    fontSize: 16,
     marginRight: 12,
   },
-  settingsDoneButton: {
-    height: 48,
-    backgroundColor: '#4a90d9',
-    borderRadius: 10,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  settingsDoneText: {
-    color: '#fff',
+  settingsRowTitle: {
     fontSize: 16,
-    fontWeight: '600',
+    color: '#eaf0fc',
+  },
+  settingsRowSubtitle: {
+    fontSize: 13,
+    color: '#7f8db0',
+    marginTop: 3,
   },
 });
