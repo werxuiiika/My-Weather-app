@@ -6,44 +6,28 @@ workflows:
     environment:
       node: 18
     scripts:
-      - name: Install dependencies and prebuild
+      - name: Install deps & Prebuild
         script: |
           npm install
-          npx expo install expo-location @react-native-community/netinfo
-          
+          npx expo install expo-location
           rm -rf android
-          npx expo prebuild --platform android --clean
+          npx expo prebuild --platform android
           
+          # Восстанавливаем colors.xml ИЗ GIT после prebuild
           git checkout HEAD -- android/app/src/main/res/values/colors.xml || true
 
-      - name: Build Android APK (Patched Gradle)
+      - name: Build APK with Original Bundle
         script: |
-          # 1. Генерируем бандл через expo export
-          npx expo export --platform android --output-dir dist
-          
-          # 2. Кладем его в assets
-          mkdir -p android/app/src/main/assets
-          cp dist/bundles/index.android.bundle android/app/src/main/assets/index.android.bundle
-          
-          # 3. Внедряем патч в build.gradle ЧЕРЕЗ ECHO (это безопасно для bash)
-          cd android/app
-          
-          # Добавляем блок отключения авто-бандлинга, если его еще нет
-          if ! grep -q "disableAutoBundling" build.gradle; then
-            echo "" >> build.gradle
-            echo "// PATCH: Disable automatic JS bundling" >> build.gradle
-            echo "tasks.whenTaskAdded { task ->" >> build.gradle
-            echo "    if (task.name == 'bundleDebugJsAndAssets' || task.name == 'bundleReleaseJsAndAssets') {" >> build.gradle
-            echo "        task.enabled = false" >> build.gradle
-            echo "    }" >> build.gradle
-            echo "}" >> build.gradle
-          fi
-          
-          cd ../..
-          chmod +x android/gradlew
-          
-          # 4. Собираем APK. Патч заблокирует попытку Gradle перезаписать бандл.
           cd android
+          chmod +x gradlew
+          
+          # Создаем папку assets и копируем туда ОРИГИНАЛЬНЫЙ бандл
+          mkdir -p app/src/main/assets
+          cp ../original_bundle.js app/src/main/assets/index.android.bundle
+          
+          # Собираем APK. 
+          # Мы НЕ используем bundleDebugJsAndAssets, так как бандл уже готов.
+          # Gradle просто упакует файл из assets в APK.
           ./gradlew assembleDebug
     artifacts:
       - android/app/build/outputs/apk/debug/*.apk

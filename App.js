@@ -1,12 +1,6 @@
-    import React from 'react';
-    import WeatherApp from './WeatherApp'; // <-- Теперь запускаем новый текстовый файл
+import React from 'react';
+import WeatherApp from './WeatherApp';
 
-    export default function App() {
-      return <WeatherApp />;
-    }
-    EOF
-
-
-
-
-
+export default function App() {
+  return <WeatherApp />;
+}
