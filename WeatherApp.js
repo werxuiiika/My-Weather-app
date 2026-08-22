@@ -13,6 +13,7 @@ import {
   Alert,
   Animated,
 } from 'react-native';
+import Svg, { Circle, G, Line, Path, Rect } from 'react-native-svg';
 
 const BASE_URL = 'https://api.open-meteo.com/v1/forecast';
 const TIMEOUT_MS = 10000;
@@ -42,6 +43,139 @@ const fetchJson = async (url) => {
     clearTimeout(timer);
   }
 };
+
+const ICON_COLORS = {
+  sun: '#ffd166',
+  moon: '#eaf0fc',
+  cloudLight: '#c3cee6',
+  cloudDark: '#9fb0d6',
+  drop: '#5b9bd5',
+  snow: '#f2f7ff',
+  fog: '#aab6cf',
+};
+
+function CloudShape({ x = 0, y = 0, s = 1, fill }) {
+  return (
+    <G transform={`translate(${x} ${y}) scale(${s})`}>
+      <Circle cx={21} cy={33} r={9} fill={fill} />
+      <Circle cx={32} cy={27} r={11.5} fill={fill} />
+      <Circle cx={43} cy={34} r={8} fill={fill} />
+      <Rect x={12} y={37} width={40} height={9} rx={4.5} fill={fill} />
+    </G>
+  );
+}
+
+function SunCore({ x = 0, y = 0, s = 1 }) {
+  const rays = [];
+  for (let i = 0; i < 8; i++) {
+    const a = (i * Math.PI) / 4;
+    rays.push(
+      <Line
+        key={i}
+        x1={x + Math.cos(a) * 13 * s}
+        y1={y + Math.sin(a) * 13 * s}
+        x2={x + Math.cos(a) * 18 * s}
+        y2={y + Math.sin(a) * 18 * s}
+        stroke={ICON_COLORS.sun}
+        strokeWidth={3 * s}
+        strokeLinecap="round"
+      />
+    );
+  }
+  return (
+    <G>
+      {rays}
+      <Circle cx={x} cy={y} r={9 * s} fill={ICON_COLORS.sun} />
+    </G>
+  );
+}
+
+function MoonCrescent({ transform }) {
+  return (
+    <Path
+      d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"
+      fill={ICON_COLORS.moon}
+      transform={transform}
+    />
+  );
+}
+
+function WeatherIcon({ type = 'clear', isNight = false, size = 96 }) {
+  let content = null;
+
+  if (type === 'clear') {
+    content = isNight ? (
+      <MoonCrescent transform="translate(8 8) scale(2)" />
+    ) : (
+      <SunCore x={32} y={32} s={1.25} />
+    );
+  } else if (type === 'partly') {
+    content = isNight ? (
+      <G>
+        <MoonCrescent transform="translate(20 0) scale(1.5)" />
+        <CloudShape fill={ICON_COLORS.cloudDark} />
+      </G>
+    ) : (
+      <G>
+        <SunCore x={22} y={20} s={0.85} />
+        <CloudShape x={10} y={16} s={0.85} fill={ICON_COLORS.cloudDark} />
+      </G>
+    );
+  } else if (type === 'fog') {
+    content = (
+      <G>
+        <CloudShape y={-6} fill={ICON_COLORS.cloudDark} />
+        <Line x1={14} y1={53} x2={50} y2={53} stroke={ICON_COLORS.fog} strokeWidth={3.5} strokeLinecap="round" />
+        <Line x1={20} y1={59} x2={44} y2={59} stroke={ICON_COLORS.fog} strokeWidth={3.5} strokeLinecap="round" />
+      </G>
+    );
+  } else if (type === 'snow') {
+    content = (
+      <G>
+        <CloudShape y={-2} fill={ICON_COLORS.cloudDark} />
+        <Circle cx={22} cy={53} r={2.6} fill={ICON_COLORS.snow} />
+        <Circle cx={33} cy={58} r={2.6} fill={ICON_COLORS.snow} />
+        <Circle cx={43} cy={52} r={2.6} fill={ICON_COLORS.snow} />
+      </G>
+    );
+  } else if (type === 'thunder') {
+    content = (
+      <G>
+        <CloudShape y={-2} fill={ICON_COLORS.cloudDark} />
+        <Path d="M34 42 L26 55 h5 l-2 8 10 -13 h-6 l4 -8 z" fill={ICON_COLORS.sun} />
+      </G>
+    );
+  } else {
+    const heavy = type === 'showers';
+    content = (
+      <G>
+        <CloudShape y={-2} fill={heavy ? ICON_COLORS.cloudDark : ICON_COLORS.cloudLight} />
+        <Line x1={23} y1={49} x2={20} y2={57} stroke={ICON_COLORS.drop} strokeWidth={3.5} strokeLinecap="round" />
+        <Line x1={33} y1={51} x2={30} y2={59} stroke={ICON_COLORS.drop} strokeWidth={3.5} strokeLinecap="round" />
+        <Line x1={43} y1={49} x2={40} y2={57} stroke={ICON_COLORS.drop} strokeWidth={3.5} strokeLinecap="round" />
+        {heavy && (
+          <Line x1={28} y1={60} x2={26} y2={64} stroke={ICON_COLORS.drop} strokeWidth={3} strokeLinecap="round" />
+        )}
+      </G>
+    );
+  }
+
+  return (
+    <Svg width={size} height={size} viewBox="0 0 64 64">
+      {content}
+    </Svg>
+  );
+}
+
+function weathercodeToType(code) {
+  if (code === 0) return 'clear';
+  if (code <= 3) return 'partly';
+  if (code <= 48) return 'fog';
+  if (code <= 67) return 'rain';
+  if (code <= 77) return 'snow';
+  if (code <= 86) return 'showers';
+  return 'thunder';
+}
 
 export default function App() {
   const [isConnected, setIsConnected] = useState(null);
@@ -354,16 +488,6 @@ export default function App() {
     return () => clearInterval(timer);
   }, [weather]);
 
-  const iconFor = (code, night = false) => {
-    if (code === 0) return night ? '🌙' : '☀️';
-    if (code <= 3) return night ? '🌙☁️' : '🌤️';
-    if (code <= 48) return '🌫️';
-    if (code <= 67) return '🌧️';
-    if (code <= 77) return '🌨️';
-    if (code <= 86) return '🌧️';
-    return '⛈️';
-  };
-
   const currentIsNight =
     weather &&
     weather.data &&
@@ -371,6 +495,10 @@ export default function App() {
     typeof weather.data.current_weather.is_day === 'number'
       ? weather.data.current_weather.is_day === 0
       : skyIsNight;
+
+  const currentType = weather
+    ? weathercodeToType(weather.data.current_weather.weathercode)
+    : 'clear';
 
   const conditionFor = (code) => {
     if (code === 0) return 'Ясно';
@@ -451,9 +579,9 @@ export default function App() {
 
         {(loading || locating) && (
           <View style={styles.center}>
-            <Animated.Text
+            <Animated.View
               style={[
-                styles.skyIcon,
+                styles.skyIconWrap,
                 {
                   transform: [
                     { scale: sunScale },
@@ -462,8 +590,8 @@ export default function App() {
                 },
               ]}
             >
-              {skyIsNight ? '🌙' : '☀️'}
-            </Animated.Text>
+              <WeatherIcon type="clear" isNight={skyIsNight} size={72} />
+            </Animated.View>
             <ActivityIndicator size="large" color="#4a90d9" />
             <Text style={styles.loadingText}>
               {locating ? 'Определение местоположения...' : 'Загрузка...'}
@@ -485,12 +613,13 @@ export default function App() {
               <Text style={styles.cityTime}>Местное время: {cityTime}</Text>
             )}
 
-            <Text style={styles.bigIcon}>
-              {iconFor(
-                weather.data.current_weather.weathercode,
-                currentIsNight
-              )}
-            </Text>
+            <View style={styles.bigIconWrap}>
+              <WeatherIcon
+                type={currentType}
+                isNight={currentIsNight}
+                size={100}
+              />
+            </View>
             <Text style={styles.temperature}>
               {Math.round(weather.data.current_weather.temperature)}°
             </Text>
@@ -517,9 +646,13 @@ export default function App() {
             {weather.data.daily.time.map((day, i) => (
               <View key={day} style={styles.forecastRow}>
                 <Text style={styles.forecastDay}>{formatDay(day)}</Text>
-                <Text style={styles.forecastIcon}>
-                  {iconFor(weather.data.daily.weathercode[i])}
-                </Text>
+                <View style={styles.forecastIconCell}>
+                  <WeatherIcon
+                    type={weathercodeToType(weather.data.daily.weathercode[i])}
+                    isNight={false}
+                    size={26}
+                  />
+                </View>
                 <Text style={styles.forecastTemp}>
                   {Math.round(weather.data.daily.temperature_2m_min[i])}° /{' '}
                   {Math.round(weather.data.daily.temperature_2m_max[i])}°
@@ -543,9 +676,9 @@ export default function App() {
           style={[styles.splash, { opacity: splashOpacity }]}
           pointerEvents={isSplashVisible ? 'auto' : 'none'}
         >
-          <Animated.Text
+          <Animated.View
             style={[
-              styles.splashIcon,
+              styles.splashIconWrap,
               {
                 transform: [
                   { scale: sunScale },
@@ -554,8 +687,8 @@ export default function App() {
               },
             ]}
           >
-            {skyIsNight ? '🌙' : '☀️'}
-          </Animated.Text>
+            <WeatherIcon type="clear" isNight={skyIsNight} size={120} />
+          </Animated.View>
           <Text style={styles.splashText}>Определяем погоду...</Text>
         </Animated.View>
       )}
@@ -598,8 +731,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-  splashIcon: {
-    fontSize: 96,
+  splashIconWrap: {
     marginBottom: 24,
   },
   splashText: {
@@ -702,8 +834,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     flex: 1,
   },
-  skyIcon: {
-    fontSize: 64,
+  skyIconWrap: {
     marginBottom: 16,
   },
   loadingText: {
@@ -740,9 +871,8 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     marginTop: 4,
   },
-  bigIcon: {
-    fontSize: 80,
-    textAlign: 'center',
+  bigIconWrap: {
+    alignItems: 'center',
     marginTop: 20,
   },
   temperature: {
@@ -801,9 +931,10 @@ const styles = StyleSheet.create({
     fontSize: 15,
     flex: 1,
   },
-  forecastIcon: {
-    fontSize: 20,
-    marginRight: 16,
+  forecastIconCell: {
+    width: 32,
+    alignItems: 'center',
+    marginRight: 12,
   },
   forecastTemp: {
     color: '#fff',
