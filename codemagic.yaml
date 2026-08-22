@@ -11,7 +11,7 @@ workflows:
           npm install
           npx expo install expo-location
           
-          # УДАЛЯЕМ ПРОБЛЕМНЫЙ ФАЙЛ ПЕРЕД PREBUILD
+          # УДАЛЯЕМ ПРОБЛЕМНЫЙ ФАЙЛ ПЕРЕД PREBUILD (на всякий случай)
           rm -f recovered_bundle.js
           
           rm -rf android
@@ -29,7 +29,11 @@ workflows:
           mkdir -p app/src/main/assets
           cp ../safe_bundle.js app/src/main/assets/index.android.bundle
           
-          # Собираем APK БЕЗ Metro (флаг -x отключает задачу бандлинга)
-          ./gradlew assembleDebug -x bundleReleaseJsAndAssets -x createBundleReleaseJsAndAssets
+          # Собираем APK. 
+          # Мы НЕ используем флаг -x, так как задачи нет.
+          # Мы полагаемся на то, что Metro не найдет исходников в корне 
+          # (так как App.js теперь пустой/заглушка) и возьмет готовый бандл из assets.
+          # Если Metro все же запустится и упадет - мы добавим .babelrc для игнора.
+          ./gradlew assembleDebug
     artifacts:
       - android/app/build/outputs/apk/debug/*.apk
