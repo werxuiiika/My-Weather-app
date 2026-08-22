@@ -9,6 +9,7 @@ import {
   TextInput,
   ActivityIndicator,
   ScrollView,
+  RefreshControl,
   SafeAreaView,
   Alert,
   Animated,
@@ -189,6 +190,7 @@ export default function App() {
   const [city, setCity] = useState('');
   const [loading, setLoading] = useState(false);
   const [locating, setLocating] = useState(false);
+  const [refreshing, setRefreshing] = useState(false);
   const [weather, setWeather] = useState(null);
   const [error, setError] = useState(null);
   const [hostUnreachable, setHostUnreachable] = useState(false);
@@ -324,8 +326,8 @@ export default function App() {
     return data;
   };
 
-  const loadByCoords = async (lat, lon) => {
-    setLoading(true);
+  const loadByCoords = async (lat, lon, silent = false) => {
+    if (!silent) setLoading(true);
     setError(null);
     try {
       const [place, data] = await Promise.all([
@@ -343,7 +345,7 @@ export default function App() {
       } else {
         setError(e.message || 'Не удалось получить погоду');
       }
-      setWeather(null);
+      if (!silent) setWeather(null);
     } finally {
       setLoading(false);
     }
@@ -374,8 +376,8 @@ export default function App() {
     }
   };
 
-  const doSearch = async (query) => {
-    setLoading(true);
+  const doSearch = async (query, silent = false) => {
+    if (!silent) setLoading(true);
     setError(null);
     try {
       const place = await geocode(query);
@@ -391,7 +393,7 @@ export default function App() {
       } else {
         setError(e.message || 'Не удалось получить погоду');
       }
-      setWeather(null);
+      if (!silent) setWeather(null);
     } finally {
       setLoading(false);
     }
@@ -424,6 +426,23 @@ export default function App() {
       }
     } finally {
       setRetrying(false);
+    }
+  };
+
+  const onRefresh = async () => {
+    if (refreshing) return;
+    setRefreshing(true);
+    try {
+      const last = lastRequest.current;
+      if (!last) {
+        await detectMyLocation();
+      } else if (last.type === 'coords') {
+        await loadByCoords(last.lat, last.lon, true);
+      } else {
+        await doSearch(last.query, true);
+      }
+    } finally {
+      setRefreshing(false);
     }
   };
 
@@ -603,6 +622,16 @@ export default function App() {
           <ScrollView
             style={styles.result}
             contentContainerStyle={styles.resultContent}
+            refreshControl={
+              <RefreshControl
+                refreshing={refreshing}
+                onRefresh={onRefresh}
+                tintColor="#4a90e2"
+                colors={['#4a90e2', '#38b06b']}
+                progressBackgroundColor="#2a3248"
+                titleColor="#cfe0ff"
+              />
+            }
           >
             <Text style={styles.cityName}>{weather.place.name}</Text>
             <Text style={styles.subLabel}>
