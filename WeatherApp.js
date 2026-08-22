@@ -13,6 +13,8 @@ import {
   SafeAreaView,
   Alert,
   Animated,
+  Modal,
+  Switch,
 } from 'react-native';
 import Svg, { Circle, G, Line, Path, Rect } from 'react-native-svg';
 import AsyncStorage from '@react-native-async-storage/async-storage';
@@ -57,6 +59,21 @@ const loadLastCity = async () => {
 const saveLastCity = async (name) => {
   try {
     await AsyncStorage.setItem('lastCity', name);
+  } catch (e) {}
+};
+
+const loadRememberCity = async () => {
+  try {
+    const v = await AsyncStorage.getItem('rememberCity');
+    return v === null ? true : v === 'true';
+  } catch (e) {
+    return true;
+  }
+};
+
+const saveRememberCity = async (value) => {
+  try {
+    await AsyncStorage.setItem('rememberCity', value ? 'true' : 'false');
   } catch (e) {}
 };
 
@@ -215,8 +232,11 @@ export default function App() {
   const [isSplashVisible, setIsSplashVisible] = useState(true);
   const [isContentVisible, setIsContentVisible] = useState(false);
   const [splashRendered, setSplashRendered] = useState(true);
+  const [settingsVisible, setSettingsVisible] = useState(false);
+  const [rememberCity, setRememberCity] = useState(true);
 
   const lastRequest = useRef(null);
+  const rememberRef = useRef(true);
 
   const splashOpacity = useRef(new Animated.Value(1)).current;
   const contentOpacity = useRef(new Animated.Value(0)).current;
@@ -286,14 +306,18 @@ export default function App() {
       const state = await NetInfo.fetch();
       if (!active) return;
       updateConnection(!!state.isConnected);
-      const saved = await loadLastCity();
+      const remember = await loadRememberCity();
       if (!active) return;
-      if (saved) {
-        setCity(saved);
-        doSearch(saved);
-      } else {
-        detectMyLocation();
+      rememberRef.current = remember;
+      setRememberCity(remember);
+      if (!remember) return;
+      const saved = await loadLastCity();
+      if (!active || !saved) {
+        if (active && !saved) detectMyLocation();
+        return;
       }
+      setCity(saved);
+      doSearch(saved);
     };
     init();
     const unsubscribe = NetInfo.addEventListener((state) => {
@@ -307,6 +331,12 @@ export default function App() {
       unsubscribe();
     };
   }, []);
+
+  const toggleRemember = async (value) => {
+    setRememberCity(value);
+    rememberRef.current = value;
+    await saveRememberCity(value);
+  };
 
   const geocode = async (query) => {
     const data = await fetchJson(
@@ -358,7 +388,11 @@ export default function App() {
       ]);
       setWeather({ place, data });
       lastRequest.current = { type: 'coords', lat, lon };
-      if (place.name && place.name !== 'Текущее местоположение') {
+      if (
+        rememberRef.current &&
+        place.name &&
+        place.name !== 'Текущее местоположение'
+      ) {
         await saveLastCity(place.name);
       }
     } catch (e) {
@@ -409,7 +443,9 @@ export default function App() {
       const data = await fetchWeather(place.latitude, place.longitude);
       setWeather({ place, data });
       lastRequest.current = { type: 'city', query };
-      await saveLastCity(place.name);
+      if (rememberRef.current) {
+        await saveLastCity(place.name);
+      }
     } catch (e) {
       if (isConnectedRef.current === false) {
         setError(NETWORK_ERROR);
@@ -558,7 +594,16 @@ export default function App() {
   return (
     <SafeAreaView style={styles.safe}>
       <Animated.View style={[styles.container, { opacity: contentOpacity }]}>
-        <Text style={styles.title}>Погода</Text>
+        <View style={styles.titleRow}>
+          <Text style={styles.title}>Погода</Text>
+          <TouchableOpacity
+            style={styles.gearButton}
+            onPress={() => setSettingsVisible(true)}
+            activeOpacity={0.7}
+          >
+            <Text style={styles.gearIcon}>⚙️</Text>
+          </TouchableOpacity>
+        </View>
 
         <View style={styles.searchRow}>
           <TextInput
@@ -726,6 +771,40 @@ export default function App() {
         )}
       </Animated.View>
 
+      <Modal
+        visible={settingsVisible}
+        transparent
+        animationType="slide"
+        onRequestClose={() => setSettingsVisible(false)}
+      >
+        <View style={styles.settingsOverlay}>
+          <View style={styles.settingsSheet}>
+            <Text style={styles.settingsTitle}>Настройки</Text>
+
+            <View style={styles.settingCard}>
+              <Text style={styles.settingLabel}>
+                Запоминать последний город
+              </Text>
+              <Switch
+                value={rememberCity}
+                onValueChange={toggleRemember}
+                trackColor={{ false: '#3a4560', true: '#38b06b' }}
+                thumbColor="#ffffff"
+                ios_backgroundColor="#3a4560"
+              />
+            </View>
+
+            <TouchableOpacity
+              style={styles.settingsDoneButton}
+              onPress={() => setSettingsVisible(false)}
+              activeOpacity={0.7}
+            >
+              <Text style={styles.settingsDoneText}>Готово</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
+
       {splashRendered && (
         <Animated.View
           style={[styles.splash, { opacity: splashOpacity }]}
@@ -798,12 +877,26 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
     paddingTop: 20,
   },
+  titleRow: {
+    position: 'relative',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 20,
+  },
   title: {
     fontSize: 32,
     fontWeight: '700',
     color: '#fff',
     textAlign: 'center',
-    marginBottom: 20,
+  },
+  gearButton: {
+    position: 'absolute',
+    right: 0,
+    top: -6,
+    padding: 6,
+  },
+  gearIcon: {
+    fontSize: 26,
   },
   searchRow: {
     flexDirection: 'row',
@@ -996,5 +1089,52 @@ const styles = StyleSheet.create({
     fontSize: 15,
     fontWeight: '600',
   },
+  settingsOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(12, 16, 28, 0.75)',
+    justifyContent: 'flex-end',
+  },
+  settingsSheet: {
+    backgroundColor: '#232b40',
+    borderTopLeftRadius: 20,
+    borderTopRightRadius: 20,
+    paddingHorizontal: 20,
+    paddingTop: 22,
+    paddingBottom: 30,
+  },
+  settingsTitle: {
+    fontSize: 22,
+    fontWeight: '700',
+    color: '#fff',
+    textAlign: 'center',
+    marginBottom: 20,
+  },
+  settingCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    backgroundColor: '#2a3248',
+    borderRadius: 12,
+    paddingVertical: 16,
+    paddingHorizontal: 16,
+    marginBottom: 20,
+  },
+  settingLabel: {
+    flex: 1,
+    color: '#cfe0ff',
+    fontSize: 16,
+    marginRight: 12,
+  },
+  settingsDoneButton: {
+    height: 48,
+    backgroundColor: '#4a90d9',
+    borderRadius: 10,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  settingsDoneText: {
+    color: '#fff',
+    fontSize: 16,
+    fontWeight: '600',
+  },
 });
-
