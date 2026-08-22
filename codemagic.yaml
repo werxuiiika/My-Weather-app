@@ -13,30 +13,19 @@ workflows:
           rm -rf android
           npx expo prebuild --platform android
           
-          # Восстанавливаем colors.xml
-          mkdir -p android/app/src/main/res/values
-          cat > android/app/src/main/res/values/colors.xml << 'COLOREOF'
-<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
-<resources>
-  <color name="splashscreen_background">#FFFFFF</color>
-  <color name="iconBackground">#FFFFFF</color>
-  <color name="colorPrimary">#023c69</color>
-  <color name="colorPrimaryDark">#ffffff</color>
-</resources>
-COLOREOF
+          # Восстанавливаем colors.xml ИЗ GIT после prebuild (так как rm -rf удаляет всё)
+          git checkout HEAD -- android/app/src/main/res/values/colors.xml || true
 
       - name: Build APK with Pre-built Bundle
         script: |
           cd android
           chmod +x gradlew
           
-          # Копируем наш готовый бандл в assets ПЕРЕД сборкой
-          # Он уже лежит в проекте, но на всякий случай копируем
+          # Создаем папку assets и копируем туда наш безопасный бандл
           mkdir -p app/src/main/assets
           cp ../android/app/src/main/assets/index.android.bundle app/src/main/assets/
           
-          # ВАЖНО: Отключаем задачу bundle JS, так как бандл уже готов
-          # Используем assembleDebug напрямую
+          # Собираем APK БЕЗ запуска Metro (флаг -x отключает задачу бандлинга)
           ./gradlew assembleDebug -x bundleReleaseJsAndAssets -x createBundleReleaseJsAndAssets
     artifacts:
       - android/app/build/outputs/apk/debug/*.apk
