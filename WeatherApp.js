@@ -14,7 +14,6 @@ import {
   Alert,
   Animated,
   Easing,
-  Modal,
   Switch,
   Dimensions,
 } from 'react-native';
@@ -235,7 +234,7 @@ export default function App() {
   const [isSplashVisible, setIsSplashVisible] = useState(true);
   const [isContentVisible, setIsContentVisible] = useState(false);
   const [splashRendered, setSplashRendered] = useState(true);
-  const [settingsVisible, setSettingsVisible] = useState(false);
+  const [settingsOpen, setSettingsOpen] = useState(false);
   const [rememberCity, setRememberCity] = useState(true);
 
   const lastRequest = useRef(null);
@@ -338,43 +337,43 @@ export default function App() {
   }, []);
 
   useEffect(() => {
-    if (!settingsVisible) return;
-    settingsSheetY.setValue(SCREEN_HEIGHT);
-    settingsOverlayOpacity.setValue(0);
+    if (!settingsOpen) return;
     Animated.parallel([
       Animated.timing(settingsOverlayOpacity, {
         toValue: 1,
-        duration: 300,
+        duration: 320,
+        easing: Easing.out(Easing.quad),
         useNativeDriver: true,
       }),
       Animated.timing(settingsSheetY, {
         toValue: 0,
         duration: 380,
-        easing: Easing.out(Easing.back(1.4)),
+        easing: Easing.bezier(0.34, 1.56, 0.64, 1),
         useNativeDriver: true,
       }),
     ]).start();
-  }, [settingsVisible]);
+  }, [settingsOpen]);
 
   const openSettings = () => {
-    setSettingsVisible(true);
+    setSettingsOpen(true);
   };
 
   const closeSettings = () => {
     Animated.parallel([
       Animated.timing(settingsOverlayOpacity, {
         toValue: 0,
-        duration: 220,
+        duration: 240,
+        easing: Easing.in(Easing.quad),
         useNativeDriver: true,
       }),
       Animated.timing(settingsSheetY, {
         toValue: SCREEN_HEIGHT,
         duration: 300,
-        easing: Easing.in(Easing.cubic),
+        easing: Easing.in(Easing.back(1.4)),
         useNativeDriver: true,
       }),
     ]).start(({ finished }) => {
-      if (finished) setSettingsVisible(false);
+      if (finished) setSettingsOpen(false);
     });
   };
 
@@ -817,7 +816,29 @@ export default function App() {
         )}
       </Animated.View>
 
-      <Modal visible={settingsVisible} transparent onRequestClose={closeSettings}>
+      {splashRendered && (
+        <Animated.View
+          style={[styles.splash, { opacity: splashOpacity }]}
+          pointerEvents={isSplashVisible ? 'auto' : 'none'}
+        >
+          <Animated.View
+            style={[
+              styles.splashIconWrap,
+              {
+                transform: [
+                  { scale: sunScale },
+                  { rotate: spinInterpolate },
+                ],
+              },
+            ]}
+          >
+            <WeatherIcon type="clear" isNight={skyIsNight} size={120} />
+          </Animated.View>
+          <Text style={styles.splashText}>Определяем погоду...</Text>
+        </Animated.View>
+      )}
+
+      {settingsOpen && (
         <Animated.View
           style={[styles.settingsOverlay, { opacity: settingsOverlayOpacity }]}
         >
@@ -856,28 +877,6 @@ export default function App() {
               <Text style={styles.settingsDoneText}>Готово</Text>
             </TouchableOpacity>
           </Animated.View>
-        </Animated.View>
-      </Modal>
-
-      {splashRendered && (
-        <Animated.View
-          style={[styles.splash, { opacity: splashOpacity }]}
-          pointerEvents={isSplashVisible ? 'auto' : 'none'}
-        >
-          <Animated.View
-            style={[
-              styles.splashIconWrap,
-              {
-                transform: [
-                  { scale: sunScale },
-                  { rotate: spinInterpolate },
-                ],
-              },
-            ]}
-          >
-            <WeatherIcon type="clear" isNight={skyIsNight} size={120} />
-          </Animated.View>
-          <Text style={styles.splashText}>Определяем погоду...</Text>
         </Animated.View>
       )}
     </SafeAreaView>
@@ -1144,7 +1143,11 @@ const styles = StyleSheet.create({
     fontWeight: '600',
   },
   settingsOverlay: {
-    flex: 1,
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
     backgroundColor: 'rgba(10, 13, 24, 0.7)',
     justifyContent: 'flex-end',
     paddingHorizontal: 14,
