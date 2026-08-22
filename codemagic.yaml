@@ -2,32 +2,37 @@ workflows:
   android-build:
     name: My Weather App
     max_build_duration: 30
-    instance_type: mac_mini_m1
+    instance_type: mac_mini_m2 # Исправлено на M2, так как M1 больше нет
     environment:
       node: 18
     scripts:
-      - name: Install deps & Prebuild
+      - name: Install dependencies and prebuild
         script: |
           npm install
-          npx expo install expo-location
-          rm -rf android
-          npx expo prebuild --platform android
+          npx expo install expo-location @react-native-community/netinfo
           
-          # Восстанавливаем colors.xml ИЗ GIT после prebuild
+          rm -rf android
+          npx expo prebuild --platform android --clean
+          
           git checkout HEAD -- android/app/src/main/res/values/colors.xml || true
 
-      - name: Build APK with Original Bundle
+      - name: Build Android APK (Manual Bundle Copy)
         script: |
+          # 1. Генерируем бандл через expo export (это надежно работает на сервере)
+          npx expo export --platform android --output-dir dist
+          
+          # 2. ВАЖНО: Явно копируем бандл в папку assets Android-проекта
+          mkdir -p android/app/src/main/assets
+          cp dist/bundles/index.android.bundle android/app/src/main/assets/index.android.bundle
+          
+          # Проверяем, что файл действительно скопировался и имеет размер > 0
+          ls -lh android/app/src/main/assets/index.android.bundle
+          
+          # 3. Собираем APK. 
+          # Мы НЕ используем флаг -x, так как задачи bundleDebugJsAndAssets нет в SDK 54.
+          # Gradle увидит файл в assets и просто упакует его в APK.
           cd android
           chmod +x gradlew
-          
-          # Создаем папку assets и копируем туда ОРИГИНАЛЬНЫЙ бандл
-          mkdir -p app/src/main/assets
-          cp ../original_bundle.js app/src/main/assets/index.android.bundle
-          
-          # Собираем APK. 
-          # Мы НЕ используем bundleDebugJsAndAssets, так как бандл уже готов.
-          # Gradle просто упакует файл из assets в APK.
           ./gradlew assembleDebug
     artifacts:
       - android/app/build/outputs/apk/debug/*.apk
