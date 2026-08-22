@@ -15,24 +15,28 @@ workflows:
           rm -rf android
           npx expo prebuild --platform android --clean
           
-          # Восстанавливаем кастомные цвета (если они есть в git)
+          # Восстанавливаем кастомные цвета
           git checkout HEAD -- android/app/src/main/res/values/colors.xml || true
 
-      - name: Build Android APK
+      - name: Build Android APK (Force Bundle)
         script: |
           cd android
           chmod +x gradlew
           
-          # 1. Создаем JS-бандл правильно через Expo CLI
-          # Это создаст файл в папке dist/bundles/
+          # Создаем папку assets, если её нет
+          mkdir -p app/src/main/assets
+          
+          # ГЕНЕРИРУЕМ БАНДЛ ПРЯМО СЮДА через react-native CLI
+          # Это гарантированно создаст правильный index.android.bundle
           cd ..
-          npx expo export --platform android --output-dir dist
+          npx react-native bundle \
+            --platform android \
+            --dev false \
+            --entry-file index.js \
+            --bundle-output android/app/src/main/assets/index.android.bundle \
+            --assets-dest android/app/src/main/res
           
-          # Копируем созданный бандл в папку assets проекта Android
-          mkdir -p android/app/src/main/assets
-          cp dist/bundles/index.android.bundle android/app/src/main/assets/index.android.bundle
-          
-          # 2. Собираем APK. Теперь бандл уже лежит в assets, Gradle просто упакует его.
+          # Теперь собираем APK. Бандл уже лежит где надо.
           cd android
           ./gradlew assembleDebug
     artifacts:
