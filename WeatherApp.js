@@ -15,6 +15,7 @@ import {
   Animated,
 } from 'react-native';
 import Svg, { Circle, G, Line, Path, Rect } from 'react-native-svg';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 const BASE_URL = 'https://api.open-meteo.com/v1/forecast';
 const TIMEOUT_MS = 10000;
@@ -43,6 +44,20 @@ const fetchJson = async (url) => {
   } finally {
     clearTimeout(timer);
   }
+};
+
+const loadLastCity = async () => {
+  try {
+    return await AsyncStorage.getItem('lastCity');
+  } catch (e) {
+    return null;
+  }
+};
+
+const saveLastCity = async (name) => {
+  try {
+    await AsyncStorage.setItem('lastCity', name);
+  } catch (e) {}
 };
 
 const ICON_COLORS = {
@@ -271,7 +286,14 @@ export default function App() {
       const state = await NetInfo.fetch();
       if (!active) return;
       updateConnection(!!state.isConnected);
-      detectMyLocation();
+      const saved = await loadLastCity();
+      if (!active) return;
+      if (saved) {
+        setCity(saved);
+        doSearch(saved);
+      } else {
+        detectMyLocation();
+      }
     };
     init();
     const unsubscribe = NetInfo.addEventListener((state) => {
@@ -336,6 +358,9 @@ export default function App() {
       ]);
       setWeather({ place, data });
       lastRequest.current = { type: 'coords', lat, lon };
+      if (place.name && place.name !== 'Текущее местоположение') {
+        await saveLastCity(place.name);
+      }
     } catch (e) {
       if (isConnectedRef.current === false) {
         setError(NETWORK_ERROR);
@@ -384,6 +409,7 @@ export default function App() {
       const data = await fetchWeather(place.latitude, place.longitude);
       setWeather({ place, data });
       lastRequest.current = { type: 'city', query };
+      await saveLastCity(place.name);
     } catch (e) {
       if (isConnectedRef.current === false) {
         setError(NETWORK_ERROR);
@@ -971,3 +997,4 @@ const styles = StyleSheet.create({
     fontWeight: '600',
   },
 });
+
