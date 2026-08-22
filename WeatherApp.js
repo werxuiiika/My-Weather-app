@@ -60,6 +60,7 @@ export default function App() {
   const [hostUnreachable, setHostUnreachable] = useState(false);
   const [retrying, setRetrying] = useState(false);
   const [dismissedMsg, setDismissedMsg] = useState(null);
+  const [cityTime, setCityTime] = useState(null);
   const [isSplashVisible, setIsSplashVisible] = useState(true);
   const [isContentVisible, setIsContentVisible] = useState(false);
   const [splashRendered, setSplashRendered] = useState(true);
@@ -342,6 +343,17 @@ export default function App() {
     }
   }, [bannerType, bannerMessage]);
 
+  useEffect(() => {
+    if (!weather || !weather.data) {
+      setCityTime(null);
+      return;
+    }
+    const tick = () => setCityTime(computeCityClock(weather.data));
+    tick();
+    const timer = setInterval(tick, 30000);
+    return () => clearInterval(timer);
+  }, [weather]);
+
   const iconFor = (code) => {
     if (code === 0) return '☀️';
     if (code <= 3) return '🌤️';
@@ -461,6 +473,9 @@ export default function App() {
               {weather.place.country} · {weather.place.latitude.toFixed(2)},
               {weather.place.longitude.toFixed(2)}
             </Text>
+            {cityTime && (
+              <Text style={styles.cityTime}>Местное время: {cityTime}</Text>
+            )}
 
             <Text style={styles.bigIcon}>
               {iconFor(weather.data.current_weather.weathercode)}
@@ -540,6 +555,21 @@ export default function App() {
 function formatDay(iso) {
   const d = new Date(iso + 'T00:00:00');
   return d.toLocaleDateString('ru-RU', { weekday: 'short', day: 'numeric' });
+}
+
+function computeCityClock(data) {
+  if (!data || typeof data.utc_offset_seconds !== 'number') return null;
+  const now = new Date();
+  const cityMs =
+    now.getTime() +
+    now.getTimezoneOffset() * 60000 +
+    data.utc_offset_seconds * 1000;
+  const d = new Date(cityMs);
+  return (
+    String(d.getHours()).padStart(2, '0') +
+    ':' +
+    String(d.getMinutes()).padStart(2, '0')
+  );
 }
 
 const styles = StyleSheet.create({
@@ -692,6 +722,12 @@ const styles = StyleSheet.create({
     color: '#aab',
     textAlign: 'center',
     marginTop: 2,
+  },
+  cityTime: {
+    fontSize: 14,
+    color: '#cfe0ff',
+    textAlign: 'center',
+    marginTop: 4,
   },
   bigIcon: {
     fontSize: 80,
