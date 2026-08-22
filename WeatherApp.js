@@ -354,15 +354,23 @@ export default function App() {
     return () => clearInterval(timer);
   }, [weather]);
 
-  const iconFor = (code) => {
-    if (code === 0) return '☀️';
-    if (code <= 3) return '🌤️';
+  const iconFor = (code, night = false) => {
+    if (code === 0) return night ? '🌙' : '☀️';
+    if (code <= 3) return night ? '🌙☁️' : '🌤️';
     if (code <= 48) return '🌫️';
     if (code <= 67) return '🌧️';
     if (code <= 77) return '🌨️';
     if (code <= 86) return '🌧️';
     return '⛈️';
   };
+
+  const currentIsNight =
+    weather &&
+    weather.data &&
+    weather.data.current_weather &&
+    typeof weather.data.current_weather.is_day === 'number'
+      ? weather.data.current_weather.is_day === 0
+      : skyIsNight;
 
   const conditionFor = (code) => {
     if (code === 0) return 'Ясно';
@@ -478,7 +486,10 @@ export default function App() {
             )}
 
             <Text style={styles.bigIcon}>
-              {iconFor(weather.data.current_weather.weathercode)}
+              {iconFor(
+                weather.data.current_weather.weathercode,
+                currentIsNight
+              )}
             </Text>
             <Text style={styles.temperature}>
               {Math.round(weather.data.current_weather.temperature)}°
