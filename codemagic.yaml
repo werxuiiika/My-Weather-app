@@ -6,28 +6,34 @@ workflows:
     environment:
       node: 18
     scripts:
-      - name: Install deps & Prebuild
+      - name: Install dependencies and prebuild
         script: |
           npm install
-          npx expo install expo-location
-          rm -rf android
-          npx expo prebuild --platform android
+          npx expo install expo-location @react-native-community/netinfo
           
-          # Восстанавливаем colors.xml ИЗ GIT после prebuild
+          # Очищаем и генерируем нативный код заново
+          rm -rf android
+          npx expo prebuild --platform android --clean
+          
+          # Восстанавливаем кастомные цвета (если они есть в git)
           git checkout HEAD -- android/app/src/main/res/values/colors.xml || true
 
-      - name: Build APK with Original Bundle
+      - name: Build Android APK
         script: |
           cd android
           chmod +x gradlew
           
-          # Создаем папку assets и копируем туда ОРИГИНАЛЬНЫЙ бандл
-          mkdir -p app/src/main/assets
-          cp ../original_bundle.js app/src/main/assets/index.android.bundle
+          # 1. Создаем JS-бандл правильно через Expo CLI
+          # Это создаст файл в папке dist/bundles/
+          cd ..
+          npx expo export --platform android --output-dir dist
           
-          # Собираем APK. 
-          # Мы НЕ используем bundleDebugJsAndAssets, так как бандл уже готов.
-          # Gradle просто упакует файл из assets в APK.
+          # Копируем созданный бандл в папку assets проекта Android
+          mkdir -p android/app/src/main/assets
+          cp dist/bundles/index.android.bundle android/app/src/main/assets/index.android.bundle
+          
+          # 2. Собираем APK. Теперь бандл уже лежит в assets, Gradle просто упакует его.
+          cd android
           ./gradlew assembleDebug
     artifacts:
       - android/app/build/outputs/apk/debug/*.apk
