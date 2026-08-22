@@ -2,7 +2,7 @@ workflows:
   android-build:
     name: My Weather App
     max_build_duration: 30
-    instance_type: mac_mini_m2
+    instance_type: mac_mini_m1
     environment:
       node: 18
     scripts:
@@ -11,13 +11,32 @@ workflows:
           npm install
           npx expo install expo-location
           rm -rf android
-          npx expo prebuild --platform android --clean
+          npx expo prebuild --platform android
+          
+          # Восстанавливаем colors.xml
+          mkdir -p android/app/src/main/res/values
+          cat > android/app/src/main/res/values/colors.xml << 'COLOREOF'
+<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<resources>
+  <color name="splashscreen_background">#FFFFFF</color>
+  <color name="iconBackground">#FFFFFF</color>
+  <color name="colorPrimary">#023c69</color>
+  <color name="colorPrimaryDark">#ffffff</color>
+</resources>
+COLOREOF
 
-      - name: Build APK
+      - name: Build APK with Pre-built Bundle
         script: |
           cd android
           chmod +x gradlew
-          ./gradlew assembleRelease
-
+          
+          # Копируем наш готовый бандл в assets ПЕРЕД сборкой
+          # Он уже лежит в проекте, но на всякий случай копируем
+          mkdir -p app/src/main/assets
+          cp ../android/app/src/main/assets/index.android.bundle app/src/main/assets/
+          
+          # ВАЖНО: Отключаем задачу bundle JS, так как бандл уже готов
+          # Используем assembleDebug напрямую
+          ./gradlew assembleDebug -x bundleReleaseJsAndAssets -x createBundleReleaseJsAndAssets
     artifacts:
-      - android/app/build/outputs/apk/release/*.apk
+      - android/app/build/outputs/apk/debug/*.apk
