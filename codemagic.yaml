@@ -10,30 +10,24 @@ workflows:
         script: |
           npm install
           npx expo install expo-location
-          
-          # УДАЛЯЕМ ПРОБЛЕМНЫЙ ФАЙЛ ПЕРЕД PREBUILD (на всякий случай)
-          rm -f recovered_bundle.js
-          
           rm -rf android
           npx expo prebuild --platform android
           
           # Восстанавливаем colors.xml ИЗ GIT после prebuild
           git checkout HEAD -- android/app/src/main/res/values/colors.xml || true
 
-      - name: Build APK with Safe Bundle
+      - name: Build APK with Original Bundle
         script: |
           cd android
           chmod +x gradlew
           
-          # Создаем папку assets и копируем туда БЕЗОПАСНЫЙ бандл
+          # Создаем папку assets и копируем туда ОРИГИНАЛЬНЫЙ бандл
           mkdir -p app/src/main/assets
-          cp ../safe_bundle.js app/src/main/assets/index.android.bundle
+          cp ../original_bundle.js app/src/main/assets/index.android.bundle
           
           # Собираем APK. 
-          # Мы НЕ используем флаг -x, так как задачи нет.
-          # Мы полагаемся на то, что Metro не найдет исходников в корне 
-          # (так как App.js теперь пустой/заглушка) и возьмет готовый бандл из assets.
-          # Если Metro все же запустится и упадет - мы добавим .babelrc для игнора.
+          # Мы НЕ используем bundleDebugJsAndAssets, так как бандл уже готов.
+          # Gradle просто упакует файл из assets в APK.
           ./gradlew assembleDebug
     artifacts:
       - android/app/build/outputs/apk/debug/*.apk
