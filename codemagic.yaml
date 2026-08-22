@@ -16,23 +16,20 @@ workflows:
           
           git checkout HEAD -- android/app/src/main/res/values/colors.xml || true
 
-      - name: Build Android APK (Manual Bundle)
+      - name: Build Android APK (Safe Bundle)
         script: |
-          # 1. Создаем папку assets
+          # 1. Генерируем бандл через expo export (это надежно работает на сервере)
+          npx expo export --platform android --output-dir dist
+          
+          # 2. Копируем готовый бандл в папку assets Android-проекта
           mkdir -p android/app/src/main/assets
+          cp dist/bundles/index.android.bundle android/app/src/main/assets/index.android.bundle
           
-          # 2. ГЕНЕРИРУЕМ БАНДЛ ВРУЧНУЮ
-          # Используем стандартную точку входа Expo
-          npx react-native bundle \
-            --platform android \
-            --dev false \
-            --entry-file node_modules/expo/AppEntry.js \
-            --bundle-output android/app/src/main/assets/index.android.bundle \
-            --assets-dest android/app/src/main/res
-          
-          # 3. Собираем APK, ОТКЛЮЧИВ задачу бандлинга в Gradle
+          # 3. Собираем APK. 
+          # Мы НЕ используем флаг -x, так как задачи нет.
+          # Gradle увидит файл в assets и просто упакует его.
           cd android
           chmod +x gradlew
-          ./gradlew assembleDebug -x bundleDebugJsAndAssets
+          ./gradlew assembleDebug
     artifacts:
       - android/app/build/outputs/apk/debug/*.apk
