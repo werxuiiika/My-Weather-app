@@ -13,14 +13,17 @@ import {
   SafeAreaView,
   Alert,
   Animated,
+  Easing,
   Modal,
   Switch,
+  Dimensions,
 } from 'react-native';
 import Svg, { Circle, G, Line, Path, Rect } from 'react-native-svg';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
 const BASE_URL = 'https://api.open-meteo.com/v1/forecast';
 const TIMEOUT_MS = 10000;
+const SCREEN_HEIGHT = Dimensions.get('window').height;
 const NETWORK_ERROR =
   'Нет подключения к интернету. Проверьте настройки сети.';
 const TIMEOUT_ERROR =
@@ -242,6 +245,8 @@ export default function App() {
   const contentOpacity = useRef(new Animated.Value(0)).current;
   const sunScale = useRef(new Animated.Value(1)).current;
   const sunRotate = useRef(new Animated.Value(0)).current;
+  const settingsOverlayOpacity = useRef(new Animated.Value(0)).current;
+  const settingsSheetY = useRef(new Animated.Value(SCREEN_HEIGHT)).current;
 
   useEffect(() => {
     const spin = Animated.loop(
@@ -331,6 +336,47 @@ export default function App() {
       unsubscribe();
     };
   }, []);
+
+  useEffect(() => {
+    if (!settingsVisible) return;
+    settingsSheetY.setValue(SCREEN_HEIGHT);
+    settingsOverlayOpacity.setValue(0);
+    Animated.parallel([
+      Animated.timing(settingsOverlayOpacity, {
+        toValue: 1,
+        duration: 300,
+        useNativeDriver: true,
+      }),
+      Animated.timing(settingsSheetY, {
+        toValue: 0,
+        duration: 380,
+        easing: Easing.out(Easing.back(1.4)),
+        useNativeDriver: true,
+      }),
+    ]).start();
+  }, [settingsVisible]);
+
+  const openSettings = () => {
+    setSettingsVisible(true);
+  };
+
+  const closeSettings = () => {
+    Animated.parallel([
+      Animated.timing(settingsOverlayOpacity, {
+        toValue: 0,
+        duration: 220,
+        useNativeDriver: true,
+      }),
+      Animated.timing(settingsSheetY, {
+        toValue: SCREEN_HEIGHT,
+        duration: 300,
+        easing: Easing.in(Easing.cubic),
+        useNativeDriver: true,
+      }),
+    ]).start(({ finished }) => {
+      if (finished) setSettingsVisible(false);
+    });
+  };
 
   const toggleRemember = async (value) => {
     setRememberCity(value);
@@ -598,7 +644,7 @@ export default function App() {
           <Text style={styles.title}>Погода</Text>
           <TouchableOpacity
             style={styles.gearButton}
-            onPress={() => setSettingsVisible(true)}
+            onPress={openSettings}
             activeOpacity={0.7}
           >
             <Text style={styles.gearIcon}>⚙️</Text>
@@ -771,14 +817,22 @@ export default function App() {
         )}
       </Animated.View>
 
-      <Modal
-        visible={settingsVisible}
-        transparent
-        animationType="slide"
-        onRequestClose={() => setSettingsVisible(false)}
-      >
-        <View style={styles.settingsOverlay}>
-          <View style={styles.settingsSheet}>
+      <Modal visible={settingsVisible} transparent onRequestClose={closeSettings}>
+        <Animated.View
+          style={[styles.settingsOverlay, { opacity: settingsOverlayOpacity }]}
+        >
+          <TouchableOpacity
+            style={styles.settingsBackdrop}
+            activeOpacity={1}
+            onPress={closeSettings}
+          />
+          <Animated.View
+            style={[
+              styles.settingsSheet,
+              { transform: [{ translateY: settingsSheetY }] },
+            ]}
+          >
+            <View style={styles.settingsHandle} />
             <Text style={styles.settingsTitle}>Настройки</Text>
 
             <View style={styles.settingCard}>
@@ -796,13 +850,13 @@ export default function App() {
 
             <TouchableOpacity
               style={styles.settingsDoneButton}
-              onPress={() => setSettingsVisible(false)}
+              onPress={closeSettings}
               activeOpacity={0.7}
             >
               <Text style={styles.settingsDoneText}>Готово</Text>
             </TouchableOpacity>
-          </View>
-        </View>
+          </Animated.View>
+        </Animated.View>
       </Modal>
 
       {splashRendered && (
@@ -1091,33 +1145,45 @@ const styles = StyleSheet.create({
   },
   settingsOverlay: {
     flex: 1,
-    backgroundColor: 'rgba(12, 16, 28, 0.75)',
+    backgroundColor: 'rgba(10, 13, 24, 0.7)',
     justifyContent: 'flex-end',
+    paddingHorizontal: 14,
+    paddingBottom: 26,
+  },
+  settingsBackdrop: {
+    ...StyleSheet.absoluteFillObject,
   },
   settingsSheet: {
     backgroundColor: '#232b40',
-    borderTopLeftRadius: 20,
-    borderTopRightRadius: 20,
-    paddingHorizontal: 20,
-    paddingTop: 22,
-    paddingBottom: 30,
+    borderRadius: 24,
+    paddingHorizontal: 22,
+    paddingTop: 12,
+    paddingBottom: 28,
+  },
+  settingsHandle: {
+    alignSelf: 'center',
+    width: 44,
+    height: 4,
+    borderRadius: 2,
+    backgroundColor: '#3a4560',
+    marginBottom: 18,
   },
   settingsTitle: {
     fontSize: 22,
     fontWeight: '700',
     color: '#fff',
     textAlign: 'center',
-    marginBottom: 20,
+    marginBottom: 22,
   },
   settingCard: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
     backgroundColor: '#2a3248',
-    borderRadius: 12,
-    paddingVertical: 16,
+    borderRadius: 14,
+    paddingVertical: 18,
     paddingHorizontal: 16,
-    marginBottom: 20,
+    marginBottom: 22,
   },
   settingLabel: {
     flex: 1,
