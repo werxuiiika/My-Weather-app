@@ -304,7 +304,63 @@ function DriftCloud({ size, fill, offsetX = 0, offsetY = 0, s = 1 }) {
   );
 }
 
+function ThunderWeather({ size }) {
+  const [lit, setLit] = useState(false);
+  const flash = useRef(new Animated.Value(0)).current;
+  const animRef = useRef(null);
+  useEffect(() => {
+    let timer;
+    let cancelled = false;
+    const schedule = (ms) => {
+      timer = setTimeout(() => {
+        if (cancelled) return;
+        setLit(true);
+        animRef.current = Animated.sequence([
+          Animated.timing(flash, {
+            toValue: 0.7,
+            duration: 70,
+            easing: Easing.out(Easing.quad),
+            useNativeDriver: true,
+          }),
+          Animated.timing(flash, { toValue: 0.15, duration: 90, useNativeDriver: true }),
+          Animated.timing(flash, { toValue: 0.6, duration: 60, useNativeDriver: true }),
+          Animated.timing(flash, { toValue: 0, duration: 150, useNativeDriver: true }),
+        ]);
+        animRef.current.start(({ finished }) => {
+          setLit(false);
+          if (!cancelled && finished) {
+            schedule(2000 + Math.random() * 3000);
+          }
+        });
+      }, ms);
+    };
+    schedule(1200 + Math.random() * 1500);
+    return () => {
+      cancelled = true;
+      clearTimeout(timer);
+      if (animRef.current) animRef.current.stop();
+    };
+  }, []);
+  return (
+    <View style={{ width: size, height: size, overflow: 'hidden' }}>
+      <Svg width={size} height={size} viewBox="0 0 64 64">
+        <G>
+          <CloudShape y={-2} fill={lit ? '#cbd6ec' : ICON_COLORS.cloudDark} />
+          <Path d="M34 42 L26 55 h5 l-2 8 10 -13 h-6 l4 -8 z" fill={ICON_COLORS.sun} />
+        </G>
+      </Svg>
+      <Animated.View
+        pointerEvents="none"
+        style={[StyleSheet.absoluteFill, { backgroundColor: '#fff9c4', opacity: flash }]}
+      />
+    </View>
+  );
+}
+
 function WeatherIcon({ type = 'clear', isNight = false, size = 96 }) {
+  if (type === 'thunder') {
+    return <ThunderWeather size={size} />;
+  }
   const isRain = type === 'rain' || type === 'showers';
   const isSnow = type === 'snow';
   let content = null;
@@ -330,13 +386,6 @@ function WeatherIcon({ type = 'clear', isNight = false, size = 96 }) {
     driftingCloud = { fill: ICON_COLORS.cloudDark, offsetY: -6 };
   } else if (type === 'snow') {
     content = <CloudShape y={-2} fill={ICON_COLORS.cloudDark} />;
-  } else if (type === 'thunder') {
-    content = (
-      <G>
-        <CloudShape y={-2} fill={ICON_COLORS.cloudDark} />
-        <Path d="M34 42 L26 55 h5 l-2 8 10 -13 h-6 l4 -8 z" fill={ICON_COLORS.sun} />
-      </G>
-    );
   } else {
     content = (
       <CloudShape y={-2} fill={type === 'showers' ? ICON_COLORS.cloudDark : ICON_COLORS.cloudLight} />
@@ -1130,7 +1179,7 @@ const buildStyles = (t) =>
     locButton: { backgroundColor: t.accent2, marginBottom: 16 },
     buttonDisabled: { opacity: 0.5 },
     buttonText: { color: t.onAccent, fontSize: 16, fontWeight: '600' },
-    infoBanner: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#fff3cd', borderRadius: 10, paddingVertical: 10, paddingHorizontal: 12, marginBottom: 16 },
+    infoBanner: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#fff9c4', borderRadius: 10, paddingVertical: 10, paddingHorizontal: 12, marginBottom: 16 },
     infoBannerVpn: { backgroundColor: '#ffe0b2' },
     infoBannerOffline: { backgroundColor: '#fdecea' },
     infoBannerText: { flex: 1, color: '#4a3000', fontSize: 13, fontWeight: '600', marginRight: 8 },
