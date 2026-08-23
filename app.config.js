@@ -2,7 +2,7 @@ export default {
   expo: {
     name: "Моя погода",
     slug: "my-app-final",
-    version: "1.0.6",
+    version: "1.0.7",
     orientation: "portrait",
     icon: "./assets/icon.png",
     userInterfaceStyle: "light",
