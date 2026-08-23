@@ -1,7 +1,4 @@
-import { Platform, PlatformColor } from 'react-native';
-
 export const APP_THEME_KEY = 'appTheme';
-export const MATERIAL_YOU_KEY = 'useMaterialYou';
 
 export const THEME_MODES = [
   { value: 'author', label: 'Оригинальная', desc: 'Тема, созданная разработчиком' },
@@ -36,55 +33,8 @@ export const lightTheme = {
   dim: 'rgba(15, 22, 40, 0.35)',
 };
 
-function mc(name) {
-  return PlatformColor('@android:color/' + name);
-}
-
-export function buildMaterialYouTokens(isDarkMode) {
-  if (Platform.OS !== 'android') return null;
-  const api = parseInt(Platform.Version, 10);
-  if (Number.isNaN(api) || api < 31) return null;
-  if (isDarkMode) {
-    return {
-      key: 'material-dark', mode: 'dark',
-      background: mc('system_neutral1_10'),
-      surface: mc('system_neutral2_200'),
-      surfaceAlt: mc('system_neutral1_100'),
-      surfaceRaised: mc('system_neutral2_300'),
-      border: mc('system_neutral2_400'),
-      text: mc('system_neutral1_900'),
-      textSecondary: mc('system_neutral1_800'),
-      textMuted: mc('system_neutral1_700'),
-      accent: mc('system_accent1_200'),
-      accent2: mc('system_accent2_200'),
-      onAccent: '#ffffff',
-      dim: 'rgba(0, 0, 0, 0.55)',
-    };
-  }
-  return {
-    key: 'material-light', mode: 'light',
-    background: mc('system_neutral1_900'),
-    surface: mc('system_neutral1_1000'),
-    surfaceAlt: mc('system_neutral2_800'),
-    surfaceRaised: mc('system_neutral1_1000'),
-    border: mc('system_neutral2_300'),
-    text: mc('system_neutral1_100'),
-    textSecondary: mc('system_neutral1_300'),
-    textMuted: mc('system_neutral2_400'),
-    accent: mc('system_accent1_700'),
-    accent2: mc('system_accent2_700'),
-    onAccent: '#ffffff',
-    dim: 'rgba(15, 22, 40, 0.35)',
-  };
-}
-
-export function resolveTheme(mode, systemScheme, useMaterialYou) {
-  let base;
-  if (mode === 'light') base = lightTheme;
-  else if (mode === 'dark') base = graphiteTheme;
-  else base = authorTheme;
-  if (!useMaterialYou) return base;
-  const dyn = buildMaterialYouTokens(base.mode === 'dark');
-  if (!dyn) return base;
-  return dyn;
+export function resolveTheme(mode) {
+  if (mode === 'light') return lightTheme;
+  if (mode === 'dark') return graphiteTheme;
+  return authorTheme;
 }

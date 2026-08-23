@@ -23,7 +23,6 @@ import Svg, { Circle, G, Line, Path, Rect } from 'react-native-svg';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import {
   APP_THEME_KEY,
-  MATERIAL_YOU_KEY,
   THEME_MODES,
   resolveTheme,
   authorTheme,
@@ -56,8 +55,6 @@ const loadAppTheme = async () => {
   }
 };
 const saveAppTheme = async (value) => { try { await AsyncStorage.setItem(APP_THEME_KEY, value); } catch (e) {} };
-const loadMaterialYou = async () => { try { const v = await AsyncStorage.getItem(MATERIAL_YOU_KEY); return v === 'true'; } catch (e) { return false; } };
-const saveMaterialYou = async (value) => { try { await AsyncStorage.setItem(MATERIAL_YOU_KEY, value ? 'true' : 'false'); } catch (e) {} };
 
 const fetchJson = async (url) => {
   const controller = new AbortController();
@@ -130,17 +127,6 @@ function GithubIcon({ size = 22, color = '#eaf0fc' }) {
       <Path fillRule="evenodd" clipRule="evenodd"
         d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27s1.36.09 2 .27c1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.01 8.01 0 0 0 16 8c0-4.42-3.58-8-8-8z"
         fill={color} />
-    </Svg>
-  );
-}
-
-function PaletteIcon({ size = 20, color = '#eaf0fc' }) {
-  return (
-    <Svg width={size} height={size} viewBox="0 0 24 24">
-      <Path
-        fill={color}
-        d="M12 3c-4.97 0-9 4.03-9 9s4.03 9 9 9c.83 0 1.5-.67 1.5-1.5 0-.39-.15-.74-.39-1.01-.23-.26-.38-.61-.38-.99 0-.83.67-1.5 1.5-1.5H16c2.76 0 5-2.24 5-5 0-4.42-4.03-8-9-8zM6.5 12c-.83 0-1.5-.67-1.5-1.5S5.67 9 6.5 9 8 9.67 8 10.5 7.33 12 6.5 12zm3-4C8.67 8 8 7.33 8 6.5S8.67 5 9.5 5s1.5.67 1.5 1.5S10.33 8 9.5 8zm5 0c-.83 0-1.5-.67-1.5-1.5S13.67 5 14.5 5s1.5.67 1.5 1.5S15.33 8 14.5 8zm3 4c-.83 0-1.5-.67-1.5-1.5S16.67 9 17.5 9s1.5.67 1.5 1.5-.67 1.5-1.5 1.5z"
-      />
     </Svg>
   );
 }
@@ -241,7 +227,6 @@ export default function App() {
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [rememberCity, setRememberCity] = useState(true);
   const [appThemeMode, setAppThemeMode] = useState('author');
-  const [useMaterialYou, setUseMaterialYou] = useState(false);
   const [themeLoaded, setThemeLoaded] = useState(false);
   const [themePickerVisible, setThemePickerVisible] = useState(false);
   const lastRequest = useRef(null);
@@ -253,10 +238,7 @@ export default function App() {
   const settingsOverlayOpacity = useRef(new Animated.Value(0)).current;
   const settingsScreenX = useRef(new Animated.Value(SCREEN_WIDTH)).current;
   const pickerAnim = useRef(new Animated.Value(0)).current;
-  const t = useMemo(
-    () => resolveTheme(appThemeMode, null, useMaterialYou),
-    [appThemeMode, useMaterialYou]
-  );
+  const t = useMemo(() => resolveTheme(appThemeMode), [appThemeMode]);
   const styles = useMemo(() => buildStyles(t), [t]);
   const currentThemeLabel = useMemo(() => {
     const found = THEME_MODES.find((m) => m.value === appThemeMode);
@@ -290,10 +272,9 @@ export default function App() {
   useEffect(() => {
     let active = true;
     const init = async () => {
-      const [savedMode, savedMy] = await Promise.all([loadAppTheme(), loadMaterialYou()]);
+      const savedMode = await loadAppTheme();
       if (!active) return;
       setAppThemeMode(savedMode);
-      setUseMaterialYou(savedMy);
       setThemeLoaded(true);
       const state = await NetInfo.fetch();
       if (!active) return;
@@ -408,10 +389,6 @@ export default function App() {
     setRememberCity(value);
     rememberRef.current = value;
     await saveRememberCity(value);
-  };
-  const toggleMaterialYou = async (value) => {
-    setUseMaterialYou(value);
-    await saveMaterialYou(value);
   };
   const openGitHub = async () => {
     try {
@@ -870,24 +847,6 @@ export default function App() {
                       </View>
                       <Text style={styles.settingsChevron}>›</Text>
                     </TouchableOpacity>
-                    <View style={styles.aboutCard}>
-                      <View style={styles.interfaceIconWrap}>
-                        <PaletteIcon size={20} color={t.text} />
-                      </View>
-                      <View style={styles.aboutCardTextWrap}>
-                        <Text style={styles.aboutCardTitle}>Material You</Text>
-                        <Text style={styles.aboutCardDesc}>
-                          Цвета системы во всём приложении на Android 12+
-                        </Text>
-                      </View>
-                      <Switch
-                        value={useMaterialYou}
-                        onValueChange={toggleMaterialYou}
-                        trackColor={{ false: switchTrackOff, true: t.accent }}
-                        thumbColor="#ffffff"
-                        ios_backgroundColor={switchTrackOff}
-                      />
-                    </View>
                   </View>
                   <Text style={styles.settingsSectionTitle}>О проекте</Text>
                   <View style={styles.cardStack}>
