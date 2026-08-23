@@ -190,6 +190,71 @@ function RainLayer({ size, heavy }) {
   );
 }
 
+function SnowLayer({ size }) {
+  const t = useContext(ThemeContext);
+  const scale = size / 64;
+  const fill = t.mode === 'light' ? '#8fa4c9' : ICON_COLORS.snow;
+  const flakesRef = useRef(null);
+  if (flakesRef.current === null) {
+    flakesRef.current = Array.from({ length: 10 }, (_, i) => ({
+      v: new Animated.Value(0),
+      left: 15 + ((i * 29) % 33),
+      dia: 3 + ((i * 7) % 7) * 0.5,
+      cycle: 1600 + ((i * 173) % 1300),
+      amp: 1.5 + (i % 3),
+    }));
+  }
+  const flakes = flakesRef.current;
+  useEffect(() => {
+    const loops = flakes.map((f) =>
+      Animated.loop(
+        Animated.timing(f.v, {
+          toValue: 1,
+          duration: f.cycle,
+          easing: Easing.linear,
+          useNativeDriver: true,
+        })
+      )
+    );
+    loops.forEach((l) => l.start());
+    return () => loops.forEach((l) => l.stop());
+  }, []);
+  return (
+    <View pointerEvents="none" style={StyleSheet.absoluteFill}>
+      {flakes.map((f, i) => (
+        <Animated.View
+          key={i}
+          pointerEvents="none"
+          style={{
+            position: 'absolute',
+            left: f.left * scale,
+            top: 42 * scale,
+            width: Math.max(2, f.dia * scale),
+            height: Math.max(2, f.dia * scale),
+            borderRadius: Math.max(1, (f.dia * scale) / 2),
+            backgroundColor: fill,
+            opacity: 0.9,
+            transform: [
+              {
+                translateX: f.v.interpolate({
+                  inputRange: [0, 0.25, 0.5, 0.75, 1],
+                  outputRange: [0, f.amp * scale, 0, -f.amp * scale, 0],
+                }),
+              },
+              {
+                translateY: f.v.interpolate({
+                  inputRange: [0, 0.12, 0.82, 1],
+                  outputRange: [-8 * scale, -8 * scale, 24 * scale, 24 * scale],
+                }),
+              },
+            ],
+          }}
+        />
+      ))}
+    </View>
+  );
+}
+
 function DriftCloud({ size, fill, offsetX = 0, offsetY = 0, s = 1 }) {
   const scale = size / 64;
   const u = (v) => v * scale * s;
@@ -241,6 +306,7 @@ function DriftCloud({ size, fill, offsetX = 0, offsetY = 0, s = 1 }) {
 
 function WeatherIcon({ type = 'clear', isNight = false, size = 96 }) {
   const isRain = type === 'rain' || type === 'showers';
+  const isSnow = type === 'snow';
   let content = null;
   let driftingCloud = null;
   if (type === 'clear') {
@@ -263,14 +329,7 @@ function WeatherIcon({ type = 'clear', isNight = false, size = 96 }) {
     );
     driftingCloud = { fill: ICON_COLORS.cloudDark, offsetY: -6 };
   } else if (type === 'snow') {
-    content = (
-      <G>
-        <CloudShape y={-2} fill={ICON_COLORS.cloudDark} />
-        <Circle cx={22} cy={53} r={2.6} fill={ICON_COLORS.snow} />
-        <Circle cx={33} cy={58} r={2.6} fill={ICON_COLORS.snow} />
-        <Circle cx={43} cy={52} r={2.6} fill={ICON_COLORS.snow} />
-      </G>
-    );
+    content = <CloudShape y={-2} fill={ICON_COLORS.cloudDark} />;
   } else if (type === 'thunder') {
     content = (
       <G>
@@ -286,6 +345,7 @@ function WeatherIcon({ type = 'clear', isNight = false, size = 96 }) {
   return (
     <View style={{ width: size, height: size, overflow: 'hidden' }}>
       {isRain && <RainLayer size={size} heavy={type === 'showers'} />}
+      {isSnow && <SnowLayer size={size} />}
       <Svg width={size} height={size} viewBox="0 0 64 64">
         {content}
       </Svg>
