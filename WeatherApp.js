@@ -17,6 +17,7 @@ import {
   Switch,
   Dimensions,
   Linking,
+  Image,
 } from 'react-native';
 import Svg, { Circle, G, Line, Path, Rect } from 'react-native-svg';
 import AsyncStorage from '@react-native-async-storage/async-storage';
@@ -25,6 +26,7 @@ const BASE_URL = 'https://api.open-meteo.com/v1/forecast';
 const TIMEOUT_MS = 10000;
 const SCREEN_WIDTH = Dimensions.get('window').width;
 const APP_VERSION = require('./package.json').version;
+const APP_ICON_SOURCE = require('./assets/icon.png');
 const GITHUB_URL = 'https://github.com/werxuiiika/My-Weather-app';
 const NETWORK_ERROR =
   'Нет подключения к интернету. Проверьте настройки сети.';
@@ -891,9 +893,11 @@ export default function App() {
                 contentContainerStyle={styles.settingsBodyContent}
               >
                 <View style={styles.settingsHero}>
-                  <View style={styles.heroIconWrap}>
-                    <WeatherIcon type="partly" isNight={false} size={84} />
-                  </View>
+                  <Image
+                    source={APP_ICON_SOURCE}
+                    style={styles.heroAppIcon}
+                    resizeMode="cover"
+                  />
                   <Text style={styles.heroTitle}>Погода</Text>
                   <Text style={styles.heroAuthor}>от werxuiiika</Text>
                   <Text style={styles.heroVersion}>Версия {APP_VERSION}</Text>
@@ -1265,15 +1269,13 @@ const styles = StyleSheet.create({
     paddingBottom: 10,
     marginBottom: 22,
   },
-  heroIconWrap: {
+  heroAppIcon: {
     width: 124,
     height: 124,
-    borderRadius: 30,
+    borderRadius: 28,
     backgroundColor: '#232b40',
     borderWidth: 1,
     borderColor: '#2a3248',
-    alignItems: 'center',
-    justifyContent: 'center',
     marginBottom: 18,
   },
   heroTitle: {
