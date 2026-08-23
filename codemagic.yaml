@@ -1,37 +1,29 @@
-
 workflows:
   android-build:
     name: My Weather App
     max_build_duration: 30
     instance_type: mac_mini_m2
     environment:
-      node: 20 # ВАЖНО: Обновляем до Node 20 для совместимости с RN 0.81
+      node: 20
     scripts:
       - name: Install dependencies and prebuild
         script: |
           npm install
-          npx expo install expo-location @react-native-community/netinfo
-          
+          npx expo install expo-location @react-native-community/netinfo react-native-svg @react-native-async-storage/async-storage
           rm -rf android
           npx expo prebuild --platform android --clean
-          
-          git checkout HEAD -- android/app/src/main/res/values/colors.xml || true
-
-
+      
       - name: Build Android Release APK
         script: |
           cd android
           chmod +x gradlew
-          
-          # В режиме Release Metro автоматически создаст бандл и упакует его в APK.
-          # Нам не нужны никакие ручные команды или флаги -x.
           ./gradlew assembleRelease
     artifacts:
       - android/app/build/outputs/apk/release/*.apk
-
-triggers:
-  push:
-    - branch_patterns:
-        - pattern: main
-          source: true
+    triggering:
+      events:
+        - push
+      branch_patterns:
+        - pattern: 'main'
           include: true
+          source: true
