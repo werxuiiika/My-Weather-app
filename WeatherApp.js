@@ -24,6 +24,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 const BASE_URL = 'https://api.open-meteo.com/v1/forecast';
 const TIMEOUT_MS = 10000;
 const SCREEN_WIDTH = Dimensions.get('window').width;
+const APP_VERSION = '1.0.0';
 const GITHUB_URL = 'https://github.com/werxuiiika/My-Weather-app';
 const NETWORK_ERROR =
   'Нет подключения к интернету. Проверьте настройки сети.';
@@ -869,55 +870,56 @@ export default function App() {
                 >
                   <Text style={styles.settingsBackIcon}>←</Text>
                 </TouchableOpacity>
-                <Text style={styles.settingsHeaderTitle}>Настройки</Text>
+                <Text style={styles.settingsHeaderTitle}>О приложении</Text>
               </View>
 
               <ScrollView
                 style={styles.settingsBody}
                 contentContainerStyle={styles.settingsBodyContent}
               >
-                <Text style={styles.settingsSectionTitle}>Общее</Text>
-                <View style={styles.settingsGroup}>
-                  <View style={styles.settingsRow}>
-                    <View style={styles.settingsRowTextWrap}>
-                      <Text style={styles.settingsRowTitle}>
-                        Запоминать последний город
-                      </Text>
-                      <Text style={styles.settingsRowSubtitle}>
-                        При запуске автоматически открывать сохранённый город
-                      </Text>
-                    </View>
-                    <Switch
-                      value={rememberCity}
-                      onValueChange={toggleRemember}
-                      trackColor={{ false: '#3a4560', true: '#38b06b' }}
-                      thumbColor="#ffffff"
-                      ios_backgroundColor="#3a4560"
-                    />
+                <View style={styles.settingsHero}>
+                  <View style={styles.heroIconWrap}>
+                    <WeatherIcon type="clear" isNight={skyIsNight} size={76} />
                   </View>
+                  <Text style={styles.heroTitle}>Погода</Text>
+                  <Text style={styles.heroAuthor}>от werxuiiika</Text>
+                  <Text style={styles.heroVersion}>Версия {APP_VERSION}</Text>
                 </View>
 
-                <Text style={styles.settingsSectionTitle}>О приложении</Text>
-                <View style={styles.settingsGroup}>
-                  <TouchableOpacity
-                    style={styles.settingsRow}
-                    onPress={openGitHub}
-                    activeOpacity={0.6}
-                  >
-                    <View style={styles.settingsLinkIcon}>
-                      <Text style={styles.settingsLinkIconText}>🐙</Text>
-                    </View>
-                    <View style={styles.settingsRowTextWrap}>
-                      <Text style={styles.settingsRowTitle}>
-                        Исходный код на GitHub
-                      </Text>
-                      <Text style={styles.settingsRowSubtitle}>
-                        werxuiiika/My-Weather-app
-                      </Text>
-                    </View>
-                    <Text style={styles.settingsChevron}>›</Text>
-                  </TouchableOpacity>
+                <Text style={styles.settingsSectionTitle}>Настройки</Text>
+                <View style={styles.aboutCard}>
+                  <View style={styles.aboutCardTextWrap}>
+                    <Text style={styles.aboutCardTitle}>Запоминать город</Text>
+                    <Text style={styles.aboutCardDesc}>
+                      Автоматически открывать сохранённый город при запуске
+                    </Text>
+                  </View>
+                  <Switch
+                    value={rememberCity}
+                    onValueChange={toggleRemember}
+                    trackColor={{ false: '#3a4560', true: '#38b06b' }}
+                    thumbColor="#ffffff"
+                    ios_backgroundColor="#3a4560"
+                  />
                 </View>
+
+                <Text style={styles.settingsSectionTitle}>О проекте</Text>
+                <TouchableOpacity
+                  style={styles.aboutCard}
+                  onPress={openGitHub}
+                  activeOpacity={0.6}
+                >
+                  <View style={styles.githubIconWrap}>
+                    <Text style={styles.githubIconText}>🐙</Text>
+                  </View>
+                  <View style={styles.aboutCardTextWrap}>
+                    <Text style={styles.aboutCardTitle}>Исходный код</Text>
+                    <Text style={styles.aboutCardDesc}>
+                      Баги, предложения и код на GitHub
+                    </Text>
+                  </View>
+                  <Text style={styles.settingsChevron}>›</Text>
+                </TouchableOpacity>
               </ScrollView>
             </SafeAreaView>
           </Animated.View>
@@ -1240,57 +1242,88 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   settingsBodyContent: {
-    paddingHorizontal: 16,
-    paddingTop: 18,
-    paddingBottom: 30,
+    paddingHorizontal: 20,
+    paddingTop: 8,
+    paddingBottom: 34,
+  },
+  settingsHero: {
+    alignItems: 'center',
+    paddingTop: 26,
+    paddingBottom: 10,
+    marginBottom: 22,
+  },
+  heroIconWrap: {
+    width: 118,
+    height: 118,
+    borderRadius: 32,
+    backgroundColor: '#232b40',
+    borderWidth: 1,
+    borderColor: '#2a3248',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 18,
+  },
+  heroTitle: {
+    fontSize: 30,
+    fontWeight: '700',
+    color: '#fff',
+  },
+  heroAuthor: {
+    fontSize: 14,
+    color: '#7f8db0',
+    marginTop: 6,
+  },
+  heroVersion: {
+    fontSize: 12,
+    color: '#66718f',
+    marginTop: 3,
   },
   settingsSectionTitle: {
     fontSize: 13,
     fontWeight: '700',
     color: '#7f8db0',
-    letterSpacing: 0.6,
+    letterSpacing: 0.8,
     marginBottom: 10,
-    marginTop: 6,
+    marginTop: 22,
   },
-  settingsGroup: {
-    backgroundColor: '#232b40',
-    borderRadius: 14,
-    overflow: 'hidden',
-  },
-  settingsRow: {
+  aboutCard: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingVertical: 14,
+    backgroundColor: '#2a3248',
+    borderRadius: 16,
     paddingHorizontal: 16,
+    paddingVertical: 14,
   },
-  settingsRowTextWrap: {
+  aboutCardTextWrap: {
     flex: 1,
     marginRight: 12,
   },
-  settingsRowTitle: {
+  aboutCardTitle: {
     fontSize: 16,
+    fontWeight: '600',
     color: '#eaf0fc',
   },
-  settingsRowSubtitle: {
+  aboutCardDesc: {
     fontSize: 13,
     color: '#7f8db0',
-    marginTop: 3,
+    marginTop: 4,
+    lineHeight: 18,
   },
-  settingsLinkIcon: {
-    width: 36,
-    height: 36,
-    borderRadius: 10,
+  githubIconWrap: {
+    width: 42,
+    height: 42,
+    borderRadius: 12,
     backgroundColor: '#1c2333',
     alignItems: 'center',
     justifyContent: 'center',
     marginRight: 12,
   },
-  settingsLinkIconText: {
-    fontSize: 18,
+  githubIconText: {
+    fontSize: 20,
   },
   settingsChevron: {
     fontSize: 24,
     color: '#7f8db0',
-    marginLeft: 4,
+    marginLeft: 6,
   },
 });
