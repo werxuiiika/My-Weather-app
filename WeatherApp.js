@@ -16,6 +16,7 @@ import {
   Easing,
   Switch,
   Dimensions,
+  Linking,
 } from 'react-native';
 import Svg, { Circle, G, Line, Path, Rect } from 'react-native-svg';
 import AsyncStorage from '@react-native-async-storage/async-storage';
@@ -23,6 +24,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 const BASE_URL = 'https://api.open-meteo.com/v1/forecast';
 const TIMEOUT_MS = 10000;
 const SCREEN_WIDTH = Dimensions.get('window').width;
+const GITHUB_URL = 'https://github.com/werxuiiika/My-Weather-app';
 const NETWORK_ERROR =
   'Нет подключения к интернету. Проверьте настройки сети.';
 const TIMEOUT_ERROR =
@@ -381,6 +383,12 @@ export default function App() {
     setRememberCity(value);
     rememberRef.current = value;
     await saveRememberCity(value);
+  };
+
+  const openGitHub = async () => {
+    try {
+      await Linking.openURL(GITHUB_URL);
+    } catch (e) {}
   };
 
   const geocode = async (query) => {
@@ -888,6 +896,28 @@ export default function App() {
                     />
                   </View>
                 </View>
+
+                <Text style={styles.settingsSectionTitle}>О приложении</Text>
+                <View style={styles.settingsGroup}>
+                  <TouchableOpacity
+                    style={styles.settingsRow}
+                    onPress={openGitHub}
+                    activeOpacity={0.6}
+                  >
+                    <View style={styles.settingsLinkIcon}>
+                      <Text style={styles.settingsLinkIconText}>🐙</Text>
+                    </View>
+                    <View style={styles.settingsRowTextWrap}>
+                      <Text style={styles.settingsRowTitle}>
+                        Исходный код на GitHub
+                      </Text>
+                      <Text style={styles.settingsRowSubtitle}>
+                        werxuiiika/My-Weather-app
+                      </Text>
+                    </View>
+                    <Text style={styles.settingsChevron}>›</Text>
+                  </TouchableOpacity>
+                </View>
               </ScrollView>
             </SafeAreaView>
           </Animated.View>
@@ -1232,8 +1262,6 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     paddingVertical: 14,
     paddingHorizontal: 16,
-    borderBottomWidth: StyleSheet.hairlineWidth,
-    borderBottomColor: '#2a3248',
   },
   settingsRowTextWrap: {
     flex: 1,
@@ -1247,5 +1275,22 @@ const styles = StyleSheet.create({
     fontSize: 13,
     color: '#7f8db0',
     marginTop: 3,
+  },
+  settingsLinkIcon: {
+    width: 36,
+    height: 36,
+    borderRadius: 10,
+    backgroundColor: '#1c2333',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: 12,
+  },
+  settingsLinkIconText: {
+    fontSize: 18,
+  },
+  settingsChevron: {
+    fontSize: 24,
+    color: '#7f8db0',
+    marginLeft: 4,
   },
 });
