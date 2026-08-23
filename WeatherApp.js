@@ -24,7 +24,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 const BASE_URL = 'https://api.open-meteo.com/v1/forecast';
 const TIMEOUT_MS = 10000;
 const SCREEN_WIDTH = Dimensions.get('window').width;
-const APP_VERSION = '1.0.0';
+const APP_VERSION = require('./package.json').version;
 const GITHUB_URL = 'https://github.com/werxuiiika/My-Weather-app';
 const NETWORK_ERROR =
   'Нет подключения к интернету. Проверьте настройки сети.';
@@ -135,6 +135,19 @@ function MoonCrescent({ transform }) {
       fill={ICON_COLORS.moon}
       transform={transform}
     />
+  );
+}
+
+function GithubIcon({ size = 22, color = '#eaf0fc' }) {
+  return (
+    <Svg width={size} height={size} viewBox="0 0 16 16">
+      <Path
+        fillRule="evenodd"
+        clipRule="evenodd"
+        d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27s1.36.09 2 .27c1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.01 8.01 0 0 0 16 8c0-4.42-3.58-8-8-8z"
+        fill={color}
+      />
+    </Svg>
   );
 }
 
@@ -879,7 +892,7 @@ export default function App() {
               >
                 <View style={styles.settingsHero}>
                   <View style={styles.heroIconWrap}>
-                    <WeatherIcon type="clear" isNight={skyIsNight} size={76} />
+                    <WeatherIcon type="partly" isNight={false} size={84} />
                   </View>
                   <Text style={styles.heroTitle}>Погода</Text>
                   <Text style={styles.heroAuthor}>от werxuiiika</Text>
@@ -910,7 +923,7 @@ export default function App() {
                   activeOpacity={0.6}
                 >
                   <View style={styles.githubIconWrap}>
-                    <Text style={styles.githubIconText}>🐙</Text>
+                    <GithubIcon size={22} color="#eaf0fc" />
                   </View>
                   <View style={styles.aboutCardTextWrap}>
                     <Text style={styles.aboutCardTitle}>Исходный код</Text>
@@ -1253,9 +1266,9 @@ const styles = StyleSheet.create({
     marginBottom: 22,
   },
   heroIconWrap: {
-    width: 118,
-    height: 118,
-    borderRadius: 32,
+    width: 124,
+    height: 124,
+    borderRadius: 30,
     backgroundColor: '#232b40',
     borderWidth: 1,
     borderColor: '#2a3248',
@@ -1317,9 +1330,6 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     marginRight: 12,
-  },
-  githubIconText: {
-    fontSize: 20,
   },
   settingsChevron: {
     fontSize: 24,
