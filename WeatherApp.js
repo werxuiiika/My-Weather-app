@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, useMemo, createContext } from 'react';
+import { useState, useEffect, useRef, useMemo, createContext, useContext } from 'react';
 import NetInfo from '@react-native-community/netinfo';
 import * as Location from 'expo-location';
 import {
@@ -115,9 +115,11 @@ function SunCore({ x = 0, y = 0, s = 1 }) {
 }
 
 function MoonCrescent({ transform }) {
+  const t = useContext(ThemeContext);
+  const fill = t.mode === 'light' ? '#6b7c9e' : '#eaf0fc';
   return (
     <Path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"
-      fill={ICON_COLORS.moon} transform={transform} />
+      fill={fill} transform={transform} />
   );
 }
 
