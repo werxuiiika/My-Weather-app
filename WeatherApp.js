@@ -84,17 +84,6 @@ const ICON_COLORS = {
   fog: '#aab6cf',
 };
 
-function CloudShape({ x = 0, y = 0, s = 1, fill }) {
-  return (
-    <G transform={`translate(${x} ${y}) scale(${s})`}>
-      <Circle cx={21} cy={33} r={9} fill={fill} />
-      <Circle cx={32} cy={27} r={11.5} fill={fill} />
-      <Circle cx={43} cy={34} r={8} fill={fill} />
-      <Rect x={12} y={37} width={40} height={9} rx={4.5} fill={fill} />
-    </G>
-  );
-}
-
 function SunCore({ x = 0, y = 0, s = 1 }) {
   const rays = [];
   for (let i = 0; i < 8; i++) {
@@ -190,69 +179,106 @@ function RainLayer({ size, heavy }) {
   );
 }
 
+function DriftCloud({ size, fill, offsetX = 0, offsetY = 0, s = 1 }) {
+  const scale = size / 64;
+  const u = (v) => v * scale * s;
+  const x = useRef(new Animated.Value(0)).current;
+  useEffect(() => {
+    const loop = Animated.loop(
+      Animated.sequence([
+        Animated.timing(x, {
+          toValue: 1,
+          duration: 6000,
+          easing: Easing.linear,
+          useNativeDriver: true,
+        }),
+        Animated.timing(x, {
+          toValue: 0,
+          duration: 6000,
+          easing: Easing.linear,
+          useNativeDriver: true,
+        }),
+      ])
+    );
+    loop.start();
+    return () => loop.stop();
+  }, []);
+  const translateX = x.interpolate({
+    inputRange: [0, 1],
+    outputRange: [-3 * scale, 3 * scale],
+  });
+  return (
+    <View pointerEvents="none" style={StyleSheet.absoluteFill}>
+      <Animated.View
+        style={{
+          position: 'absolute',
+          left: offsetX * scale,
+          top: offsetY * scale,
+          width: 64 * scale * s,
+          height: 64 * scale * s,
+          transform: [{ translateX }],
+        }}
+      >
+        <View style={{ position: 'absolute', left: u(12), top: u(24), width: u(18), height: u(18), borderRadius: u(9), backgroundColor: fill }} />
+        <View style={{ position: 'absolute', left: u(20.5), top: u(15.5), width: u(23), height: u(23), borderRadius: u(11.5), backgroundColor: fill }} />
+        <View style={{ position: 'absolute', left: u(35), top: u(26), width: u(16), height: u(16), borderRadius: u(8), backgroundColor: fill }} />
+        <View style={{ position: 'absolute', left: u(12), top: u(37), width: u(40), height: u(9), borderRadius: u(4.5), backgroundColor: fill }} />
+      </Animated.View>
+    </View>
+  );
+}
+
 function WeatherIcon({ type = 'clear', isNight = false, size = 96 }) {
   const isRain = type === 'rain' || type === 'showers';
   let content = null;
+  let cloud = null;
   if (type === 'clear') {
     content = isNight
       ? <MoonCrescent transform="translate(8 8) scale(2)" />
       : <SunCore x={32} y={32} s={1.25} />;
   } else if (type === 'partly') {
     content = isNight ? (
-      <G>
-        <MoonCrescent transform="translate(20 0) scale(1.5)" />
-        <CloudShape fill={ICON_COLORS.cloudDark} />
-      </G>
+      <MoonCrescent transform="translate(20 0) scale(1.5)" />
     ) : (
-      <G>
-        <SunCore x={22} y={20} s={0.85} />
-        <CloudShape x={10} y={16} s={0.85} fill={ICON_COLORS.cloudDark} />
-      </G>
+      <SunCore x={22} y={20} s={0.85} />
     );
+    cloud = { fill: ICON_COLORS.cloudDark, offsetX: 10, offsetY: 16, s: 0.85 };
   } else if (type === 'fog') {
     content = (
       <G>
-        <CloudShape y={-6} fill={ICON_COLORS.cloudDark} />
         <Line x1={14} y1={53} x2={50} y2={53} stroke={ICON_COLORS.fog} strokeWidth={3.5} strokeLinecap="round" />
         <Line x1={20} y1={59} x2={44} y2={59} stroke={ICON_COLORS.fog} strokeWidth={3.5} strokeLinecap="round" />
       </G>
     );
+    cloud = { fill: ICON_COLORS.cloudDark, offsetY: -6 };
   } else if (type === 'snow') {
     content = (
       <G>
-        <CloudShape y={-2} fill={ICON_COLORS.cloudDark} />
         <Circle cx={22} cy={53} r={2.6} fill={ICON_COLORS.snow} />
         <Circle cx={33} cy={58} r={2.6} fill={ICON_COLORS.snow} />
         <Circle cx={43} cy={52} r={2.6} fill={ICON_COLORS.snow} />
       </G>
     );
+    cloud = { fill: ICON_COLORS.cloudDark, offsetY: -2 };
   } else if (type === 'thunder') {
     content = (
-      <G>
-        <CloudShape y={-2} fill={ICON_COLORS.cloudDark} />
-        <Path d="M34 42 L26 55 h5 l-2 8 10 -13 h-6 l4 -8 z" fill={ICON_COLORS.sun} />
-      </G>
+      <Path d="M34 42 L26 55 h5 l-2 8 10 -13 h-6 l4 -8 z" fill={ICON_COLORS.sun} />
     );
+    cloud = { fill: ICON_COLORS.cloudDark, offsetY: -2 };
   } else {
-    const heavy = type === 'showers';
-    content = (
-      <CloudShape y={-2} fill={heavy ? ICON_COLORS.cloudDark : ICON_COLORS.cloudLight} />
-    );
-  }
-  if (isRain) {
-    return (
-      <View style={{ width: size, height: size, overflow: 'hidden' }}>
-        <RainLayer size={size} heavy={type === 'showers'} />
-        <Svg width={size} height={size} viewBox="0 0 64 64">
-          {content}
-        </Svg>
-      </View>
-    );
+    cloud = {
+      fill: type === 'showers' ? ICON_COLORS.cloudDark : ICON_COLORS.cloudLight,
+      offsetY: -2,
+    };
   }
   return (
-    <Svg width={size} height={size} viewBox="0 0 64 64">
-      {content}
-    </Svg>
+    <View style={{ width: size, height: size, overflow: 'hidden' }}>
+      {isRain && <RainLayer size={size} heavy={type === 'showers'} />}
+      <Svg width={size} height={size} viewBox="0 0 64 64">
+        {content}
+      </Svg>
+      {cloud && <DriftCloud size={size} {...cloud} />}
+    </View>
   );
 }
 
