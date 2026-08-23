@@ -141,8 +141,7 @@ function RainLayer({ size, heavy }) {
     dropsRef.current = Array.from({ length: count }, (_, i) => ({
       v: new Animated.Value(0),
       left: 19 + ((i * 47) % 27),
-      delay: i * 190 + (i % 2) * 60,
-      duration: 850 + (i % 3) * 160,
+      cycle: 900 + ((i * 137) % 420),
       len: heavy && i % 2 === 0 ? 11 : 8,
     }));
   }
@@ -150,16 +149,12 @@ function RainLayer({ size, heavy }) {
   useEffect(() => {
     const loops = drops.map((d) =>
       Animated.loop(
-        Animated.sequence([
-          Animated.delay(d.delay),
-          Animated.timing(d.v, {
-            toValue: 1,
-            duration: d.duration,
-            easing: Easing.in(Easing.quad),
-            useNativeDriver: true,
-          }),
-          Animated.delay(120),
-        ])
+        Animated.timing(d.v, {
+          toValue: 1,
+          duration: d.cycle,
+          easing: Easing.linear,
+          useNativeDriver: true,
+        })
       )
     );
     loops.forEach((l) => l.start());
@@ -183,8 +178,8 @@ function RainLayer({ size, heavy }) {
             transform: [
               {
                 translateY: d.v.interpolate({
-                  inputRange: [0, 1],
-                  outputRange: [-4 * scale, 24 * scale],
+                  inputRange: [0, 0.18, 0.8, 1],
+                  outputRange: [-6 * scale, -6 * scale, 24 * scale, 24 * scale],
                 }),
               },
             ],
