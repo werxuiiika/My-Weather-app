@@ -133,7 +133,70 @@ function GithubIcon({ size = 22, color = '#eaf0fc' }) {
   );
 }
 
+function RainLayer({ size, heavy }) {
+  const scale = size / 64;
+  const dropsRef = useRef(null);
+  if (dropsRef.current === null) {
+    const count = heavy ? 7 : 5;
+    dropsRef.current = Array.from({ length: count }, (_, i) => ({
+      v: new Animated.Value(0),
+      left: 19 + ((i * 47) % 27),
+      delay: i * 190 + (i % 2) * 60,
+      duration: 850 + (i % 3) * 160,
+      len: heavy && i % 2 === 0 ? 11 : 8,
+    }));
+  }
+  const drops = dropsRef.current;
+  useEffect(() => {
+    const loops = drops.map((d) =>
+      Animated.loop(
+        Animated.sequence([
+          Animated.delay(d.delay),
+          Animated.timing(d.v, {
+            toValue: 1,
+            duration: d.duration,
+            easing: Easing.in(Easing.quad),
+            useNativeDriver: true,
+          }),
+          Animated.delay(120),
+        ])
+      )
+    );
+    loops.forEach((l) => l.start());
+    return () => loops.forEach((l) => l.stop());
+  }, []);
+  return (
+    <View pointerEvents="none" style={StyleSheet.absoluteFill}>
+      {drops.map((d, i) => (
+        <Animated.View
+          key={i}
+          pointerEvents="none"
+          style={{
+            position: 'absolute',
+            left: d.left * scale,
+            top: 44 * scale,
+            width: Math.max(2, 3 * scale),
+            height: d.len * scale,
+            borderRadius: Math.max(1, 1.5 * scale),
+            backgroundColor: ICON_COLORS.drop,
+            opacity: 0.85,
+            transform: [
+              {
+                translateY: d.v.interpolate({
+                  inputRange: [0, 1],
+                  outputRange: [-4 * scale, 24 * scale],
+                }),
+              },
+            ],
+          }}
+        />
+      ))}
+    </View>
+  );
+}
+
 function WeatherIcon({ type = 'clear', isNight = false, size = 96 }) {
+  const isRain = type === 'rain' || type === 'showers';
   let content = null;
   if (type === 'clear') {
     content = isNight
@@ -178,15 +241,17 @@ function WeatherIcon({ type = 'clear', isNight = false, size = 96 }) {
   } else {
     const heavy = type === 'showers';
     content = (
-      <G>
-        <CloudShape y={-2} fill={heavy ? ICON_COLORS.cloudDark : ICON_COLORS.cloudLight} />
-        <Line x1={23} y1={49} x2={20} y2={57} stroke={ICON_COLORS.drop} strokeWidth={3.5} strokeLinecap="round" />
-        <Line x1={33} y1={51} x2={30} y2={59} stroke={ICON_COLORS.drop} strokeWidth={3.5} strokeLinecap="round" />
-        <Line x1={43} y1={49} x2={40} y2={57} stroke={ICON_COLORS.drop} strokeWidth={3.5} strokeLinecap="round" />
-        {heavy && (
-          <Line x1={28} y1={60} x2={26} y2={64} stroke={ICON_COLORS.drop} strokeWidth={3} strokeLinecap="round" />
-        )}
-      </G>
+      <CloudShape y={-2} fill={heavy ? ICON_COLORS.cloudDark : ICON_COLORS.cloudLight} />
+    );
+  }
+  if (isRain) {
+    return (
+      <View style={{ width: size, height: size, overflow: 'hidden' }}>
+        <RainLayer size={size} heavy={type === 'showers'} />
+        <Svg width={size} height={size} viewBox="0 0 64 64">
+          {content}
+        </Svg>
+      </View>
     );
   }
   return (
