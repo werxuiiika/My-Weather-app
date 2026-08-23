@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useMemo, createContext } from 'react';
 import NetInfo from '@react-native-community/netinfo';
 import * as Location from 'expo-location';
 import {
@@ -18,9 +18,18 @@ import {
   Dimensions,
   Linking,
   Image,
+  Appearance,
 } from 'react-native';
 import Svg, { Circle, G, Line, Path, Rect } from 'react-native-svg';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import {
+  APP_THEME_KEY,
+  MATERIAL_YOU_KEY,
+  THEME_MODES,
+  resolveTheme,
+  detectSystemScheme,
+  authorTheme,
+} from './themes';
 
 const BASE_URL = 'https://api.open-meteo.com/v1/forecast';
 const TIMEOUT_MS = 10000;
@@ -28,12 +37,21 @@ const SCREEN_WIDTH = Dimensions.get('window').width;
 const APP_VERSION = require('./package.json').version;
 const APP_ICON_SOURCE = require('./assets/icon.png');
 const GITHUB_URL = 'https://github.com/werxuiiika/My-Weather-app';
-const NETWORK_ERROR =
-  'Нет подключения к интернету. Проверьте настройки сети.';
-const TIMEOUT_ERROR =
-  'Сервер не отвечает. Проверьте подключение или отключите VPN.';
-const VPN_WARNING =
-  'VPN может блокировать подключение. Попробуйте отключить его.';
+const NETWORK_ERROR = 'Нет подключения к интернету. Проверьте настройки сети.';
+const TIMEOUT_ERROR = 'Сервер не отвечает. Проверьте подключение или отключите VPN.';
+const VPN_WARNING = 'VPN может блокировать подключение. Попробуйте отключить его.';
+const VALID_THEME_MODES = ['auto', 'author', 'dark', 'light'];
+
+const ThemeContext = createContext(authorTheme);
+
+const loadLastCity = async () => { try { return await AsyncStorage.getItem('lastCity'); } catch (e) { return null; } };
+const saveLastCity = async (name) => { try { await AsyncStorage.setItem('lastCity', name); } catch (e) {} };
+const loadRememberCity = async () => { try { const v = await AsyncStorage.getItem('rememberCity'); return v === null ? true : v === 'true'; } catch (e) { return true; } };
+const saveRememberCity = async (value) => { try { await AsyncStorage.setItem('rememberCity', value ? 'true' : 'false'); } catch (e) {} };
+const loadAppTheme = async () => { try { const v = await AsyncStorage.getItem(APP_THEME_KEY); return VALID_THEME_MODES.includes(v) ? v : 'author'; } catch (e) { return 'author'; } };
+const saveAppTheme = async (value) => { try { await AsyncStorage.setItem(APP_THEME_KEY, value); } catch (e) {} };
+const loadMaterialYou = async () => { try { const v = await AsyncStorage.getItem(MATERIAL_YOU_KEY); return v === 'true'; } catch (e) { return false; } };
+const saveMaterialYou = async (value) => { try { await AsyncStorage.setItem(MATERIAL_YOU_KEY, value ? 'true' : 'false'); } catch (e) {} };
 
 const fetchJson = async (url) => {
   const controller = new AbortController();
@@ -43,9 +61,7 @@ const fetchJson = async (url) => {
     return await res.json();
   } catch (e) {
     if (e instanceof TypeError || (e && e.name === 'AbortError')) {
-      const err = new Error(
-        e instanceof TypeError ? NETWORK_ERROR : TIMEOUT_ERROR
-      );
+      const err = new Error(e instanceof TypeError ? NETWORK_ERROR : TIMEOUT_ERROR);
       err.kind = 'network';
       throw err;
     }
@@ -53,35 +69,6 @@ const fetchJson = async (url) => {
   } finally {
     clearTimeout(timer);
   }
-};
-
-const loadLastCity = async () => {
-  try {
-    return await AsyncStorage.getItem('lastCity');
-  } catch (e) {
-    return null;
-  }
-};
-
-const saveLastCity = async (name) => {
-  try {
-    await AsyncStorage.setItem('lastCity', name);
-  } catch (e) {}
-};
-
-const loadRememberCity = async () => {
-  try {
-    const v = await AsyncStorage.getItem('rememberCity');
-    return v === null ? true : v === 'true';
-  } catch (e) {
-    return true;
-  }
-};
-
-const saveRememberCity = async (value) => {
-  try {
-    await AsyncStorage.setItem('rememberCity', value ? 'true' : 'false');
-  } catch (e) {}
 };
 
 const ICON_COLORS = {
@@ -110,16 +97,10 @@ function SunCore({ x = 0, y = 0, s = 1 }) {
   for (let i = 0; i < 8; i++) {
     const a = (i * Math.PI) / 4;
     rays.push(
-      <Line
-        key={i}
-        x1={x + Math.cos(a) * 13 * s}
-        y1={y + Math.sin(a) * 13 * s}
-        x2={x + Math.cos(a) * 18 * s}
-        y2={y + Math.sin(a) * 18 * s}
-        stroke={ICON_COLORS.sun}
-        strokeWidth={3 * s}
-        strokeLinecap="round"
-      />
+      <Line key={i}
+        x1={x + Math.cos(a) * 13 * s} y1={y + Math.sin(a) * 13 * s}
+        x2={x + Math.cos(a) * 18 * s} y2={y + Math.sin(a) * 18 * s}
+        stroke={ICON_COLORS.sun} strokeWidth={3 * s} strokeLinecap="round" />
     );
   }
   return (
@@ -132,36 +113,27 @@ function SunCore({ x = 0, y = 0, s = 1 }) {
 
 function MoonCrescent({ transform }) {
   return (
-    <Path
-      d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"
-      fill={ICON_COLORS.moon}
-      transform={transform}
-    />
+    <Path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"
+      fill={ICON_COLORS.moon} transform={transform} />
   );
 }
 
 function GithubIcon({ size = 22, color = '#eaf0fc' }) {
   return (
     <Svg width={size} height={size} viewBox="0 0 16 16">
-      <Path
-        fillRule="evenodd"
-        clipRule="evenodd"
+      <Path fillRule="evenodd" clipRule="evenodd"
         d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27s1.36.09 2 .27c1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.01 8.01 0 0 0 16 8c0-4.42-3.58-8-8-8z"
-        fill={color}
-      />
+        fill={color} />
     </Svg>
   );
 }
 
 function WeatherIcon({ type = 'clear', isNight = false, size = 96 }) {
   let content = null;
-
   if (type === 'clear') {
-    content = isNight ? (
-      <MoonCrescent transform="translate(8 8) scale(2)" />
-    ) : (
-      <SunCore x={32} y={32} s={1.25} />
-    );
+    content = isNight
+      ? <MoonCrescent transform="translate(8 8) scale(2)" />
+      : <SunCore x={32} y={32} s={1.25} />;
   } else if (type === 'partly') {
     content = isNight ? (
       <G>
@@ -212,7 +184,6 @@ function WeatherIcon({ type = 'clear', isNight = false, size = 96 }) {
       </G>
     );
   }
-
   return (
     <Svg width={size} height={size} viewBox="0 0 64 64">
       {content}
@@ -233,12 +204,10 @@ function weathercodeToType(code) {
 export default function App() {
   const [isConnected, setIsConnected] = useState(null);
   const isConnectedRef = useRef(null);
-
   const updateConnection = (value) => {
     isConnectedRef.current = value;
     setIsConnected(value);
   };
-
   const [city, setCity] = useState('');
   const [loading, setLoading] = useState(false);
   const [locating, setLocating] = useState(false);
@@ -254,37 +223,40 @@ export default function App() {
   const [splashRendered, setSplashRendered] = useState(true);
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [rememberCity, setRememberCity] = useState(true);
-
+  const [appThemeMode, setAppThemeMode] = useState('author');
+  const [systemScheme, setSystemScheme] = useState('dark');
+  const [useMaterialYou, setUseMaterialYou] = useState(false);
+  const [themeLoaded, setThemeLoaded] = useState(false);
+  const [themePickerVisible, setThemePickerVisible] = useState(false);
   const lastRequest = useRef(null);
   const rememberRef = useRef(true);
-
   const splashOpacity = useRef(new Animated.Value(1)).current;
   const contentOpacity = useRef(new Animated.Value(0)).current;
   const sunScale = useRef(new Animated.Value(1)).current;
   const sunRotate = useRef(new Animated.Value(0)).current;
   const settingsOverlayOpacity = useRef(new Animated.Value(0)).current;
   const settingsScreenX = useRef(new Animated.Value(SCREEN_WIDTH)).current;
-
+  const pickerAnim = useRef(new Animated.Value(0)).current;
+  const t = useMemo(
+    () => resolveTheme(appThemeMode, systemScheme, useMaterialYou),
+    [appThemeMode, systemScheme, useMaterialYou]
+  );
+  const styles = useMemo(() => buildStyles(t), [t]);
+  const currentThemeLabel = useMemo(() => {
+    const found = THEME_MODES.find((m) => m.value === appThemeMode);
+    return found ? found.label : 'Фирменная';
+  }, [appThemeMode]);
+  const refreshColors =
+    t.mode === 'light' ? ['#3573c2', '#25945a'] : ['#4a90d9', '#38b06b'];
+  const switchTrackOff = t.mode === 'light' ? '#c9d3e6' : '#3a4560';
   useEffect(() => {
     const spin = Animated.loop(
-      Animated.timing(sunRotate, {
-        toValue: 1,
-        duration: 6000,
-        useNativeDriver: true,
-      })
+      Animated.timing(sunRotate, { toValue: 1, duration: 6000, useNativeDriver: true })
     );
     const pulse = Animated.loop(
       Animated.sequence([
-        Animated.timing(sunScale, {
-          toValue: 1.15,
-          duration: 900,
-          useNativeDriver: true,
-        }),
-        Animated.timing(sunScale, {
-          toValue: 1,
-          duration: 900,
-          useNativeDriver: true,
-        }),
+        Animated.timing(sunScale, { toValue: 1.15, duration: 900, useNativeDriver: true }),
+        Animated.timing(sunScale, { toValue: 1, duration: 900, useNativeDriver: true }),
       ])
     );
     spin.start();
@@ -299,32 +271,23 @@ export default function App() {
       clearTimeout(timer);
     };
   }, []);
-
   useEffect(() => {
-    if (!isSplashVisible) {
-      Animated.timing(splashOpacity, {
-        toValue: 0,
-        duration: 500,
-        useNativeDriver: true,
-      }).start(({ finished }) => {
-        if (finished) setSplashRendered(false);
-      });
-    }
-  }, [isSplashVisible]);
-
-  useEffect(() => {
-    if (isContentVisible) {
-      Animated.timing(contentOpacity, {
-        toValue: 1,
-        duration: 500,
-        useNativeDriver: true,
-      }).start();
-    }
-  }, [isContentVisible]);
-
+    const sub = Appearance.addChangeListener(({ colorScheme }) => {
+      setSystemScheme(colorScheme === 'light' ? 'light' : 'dark');
+    });
+    return () => sub.remove();
+  }, []);
   useEffect(() => {
     let active = true;
     const init = async () => {
+      const [savedMode, savedMy] = await Promise.all([loadAppTheme(), loadMaterialYou()]);
+      if (!active) return;
+      setAppThemeMode(savedMode);
+      setUseMaterialYou(savedMy);
+      const scheme = await detectSystemScheme();
+      if (!active) return;
+      setSystemScheme(scheme);
+      setThemeLoaded(true);
       const state = await NetInfo.fetch();
       if (!active) return;
       updateConnection(!!state.isConnected);
@@ -353,7 +316,20 @@ export default function App() {
       unsubscribe();
     };
   }, []);
-
+  useEffect(() => {
+    if (!isSplashVisible) {
+      Animated.timing(splashOpacity, { toValue: 0, duration: 500, useNativeDriver: true }).start(
+        ({ finished }) => {
+          if (finished) setSplashRendered(false);
+        }
+      );
+    }
+  }, [isSplashVisible]);
+  useEffect(() => {
+    if (isContentVisible) {
+      Animated.timing(contentOpacity, { toValue: 1, duration: 500, useNativeDriver: true }).start();
+    }
+  }, [isContentVisible]);
   useEffect(() => {
     if (!settingsOpen) return;
     Animated.parallel([
@@ -371,12 +347,20 @@ export default function App() {
       }),
     ]).start();
   }, [settingsOpen]);
-
+  useEffect(() => {
+    if (!themePickerVisible) return;
+    Animated.timing(pickerAnim, {
+      toValue: 1,
+      duration: 200,
+      easing: Easing.out(Easing.cubic),
+      useNativeDriver: true,
+    }).start();
+  }, [themePickerVisible]);
   const openSettings = () => {
     setSettingsOpen(true);
   };
-
   const closeSettings = () => {
+    if (themePickerVisible) closeThemePicker();
     Animated.parallel([
       Animated.timing(settingsOverlayOpacity, {
         toValue: 0,
@@ -394,31 +378,48 @@ export default function App() {
       if (finished) setSettingsOpen(false);
     });
   };
-
+  const openThemePicker = () => {
+    pickerAnim.setValue(0);
+    setThemePickerVisible(true);
+  };
+  const closeThemePicker = () => {
+    Animated.timing(pickerAnim, {
+      toValue: 0,
+      duration: 180,
+      easing: Easing.in(Easing.quad),
+      useNativeDriver: true,
+    }).start(({ finished }) => {
+      if (finished) setThemePickerVisible(false);
+    });
+  };
+  const selectThemeMode = async (value) => {
+    setAppThemeMode(value);
+    await saveAppTheme(value);
+    closeThemePicker();
+  };
   const toggleRemember = async (value) => {
     setRememberCity(value);
     rememberRef.current = value;
     await saveRememberCity(value);
   };
-
+  const toggleMaterialYou = async (value) => {
+    setUseMaterialYou(value);
+    await saveMaterialYou(value);
+  };
   const openGitHub = async () => {
     try {
       await Linking.openURL(GITHUB_URL);
     } catch (e) {}
   };
-
   const geocode = async (query) => {
     const data = await fetchJson(
-      `https://geocoding-api.open-meteo.com/v1/search?name=${encodeURIComponent(
-        query
-      )}&count=1&language=ru&format=json`
+      `https://geocoding-api.open-meteo.com/v1/search?name=${encodeURIComponent(query)}&count=1&language=ru&format=json`
     );
     if (!data.results || data.results.length === 0) {
       throw new Error('Город не найден');
     }
     return data.results[0];
   };
-
   const reverseGeocode = async (lat, lon) => {
     const data = await fetchJson(
       `https://geocoding-api.open-meteo.com/v1/reverse?latitude=${lat}&longitude=${lon}&count=1&language=ru&format=json`
@@ -439,29 +440,20 @@ export default function App() {
       longitude: lon,
     };
   };
-
   const fetchWeather = async (lat, lon) => {
     const data = await fetchJson(
       `${BASE_URL}?latitude=${lat}&longitude=${lon}&current_weather=true&daily=weathercode,temperature_2m_max,temperature_2m_min&timezone=auto`
     );
     return data;
   };
-
   const loadByCoords = async (lat, lon, silent = false) => {
     if (!silent) setLoading(true);
     setError(null);
     try {
-      const [place, data] = await Promise.all([
-        reverseGeocode(lat, lon),
-        fetchWeather(lat, lon),
-      ]);
+      const [place, data] = await Promise.all([reverseGeocode(lat, lon), fetchWeather(lat, lon)]);
       setWeather({ place, data });
       lastRequest.current = { type: 'coords', lat, lon };
-      if (
-        rememberRef.current &&
-        place.name &&
-        place.name !== 'Текущее местоположение'
-      ) {
+      if (rememberRef.current && place.name && place.name !== 'Текущее местоположение') {
         await saveLastCity(place.name);
       }
     } catch (e) {
@@ -478,7 +470,6 @@ export default function App() {
       setLoading(false);
     }
   };
-
   const detectMyLocation = async () => {
     if (isConnectedRef.current === false) {
       setError(NETWORK_ERROR);
@@ -503,7 +494,6 @@ export default function App() {
       setLocating(false);
     }
   };
-
   const doSearch = async (query, silent = false) => {
     if (!silent) setLoading(true);
     setError(null);
@@ -529,7 +519,6 @@ export default function App() {
       setLoading(false);
     }
   };
-
   const search = () => {
     const query = city.trim();
     if (!query) {
@@ -538,7 +527,6 @@ export default function App() {
     }
     doSearch(query);
   };
-
   const retryConnection = async () => {
     if (retrying) return;
     setRetrying(true);
@@ -559,7 +547,6 @@ export default function App() {
       setRetrying(false);
     }
   };
-
   const onRefresh = async () => {
     if (refreshing) return;
     setRefreshing(true);
@@ -576,12 +563,10 @@ export default function App() {
       setRefreshing(false);
     }
   };
-
   const spinInterpolate = sunRotate.interpolate({
     inputRange: [0, 1],
     outputRange: ['0deg', '360deg'],
   });
-
   const getSkyIsNight = () => {
     if (weather && weather.data) {
       const d = weather.data;
@@ -602,7 +587,6 @@ export default function App() {
     return h >= 21 || h < 6;
   };
   const skyIsNight = getSkyIsNight();
-
   let bannerType = null;
   let bannerMessage = null;
   if (isConnected === false) {
@@ -616,7 +600,6 @@ export default function App() {
     bannerMessage = error;
   }
   const showBanner = !!bannerMessage && bannerMessage !== dismissedMsg;
-
   useEffect(() => {
     if (bannerType === 'vpn' || bannerType === 'gps') {
       const timer = setTimeout(() => {
@@ -626,7 +609,6 @@ export default function App() {
       return () => clearTimeout(timer);
     }
   }, [bannerType, bannerMessage]);
-
   useEffect(() => {
     if (!weather || !weather.data) {
       setCityTime(null);
@@ -637,7 +619,6 @@ export default function App() {
     const timer = setInterval(tick, 30000);
     return () => clearInterval(timer);
   }, [weather]);
-
   const currentIsNight =
     weather &&
     weather.data &&
@@ -645,11 +626,9 @@ export default function App() {
     typeof weather.data.current_weather.is_day === 'number'
       ? weather.data.current_weather.is_day === 0
       : skyIsNight;
-
   const currentType = weather
     ? weathercodeToType(weather.data.current_weather.weathercode)
     : 'clear';
-
   const conditionFor = (code) => {
     if (code === 0) return 'Ясно';
     if (code <= 3) return 'Облачно';
@@ -659,290 +638,330 @@ export default function App() {
     if (code <= 86) return 'Ливень';
     return 'Гроза';
   };
-
+  if (!themeLoaded) {
+    return (
+      <SafeAreaView style={preloadStyles.safe}>
+        <View style={preloadStyles.fill} />
+      </SafeAreaView>
+    );
+  }
   return (
-    <SafeAreaView style={styles.safe}>
-      <Animated.View style={[styles.container, { opacity: contentOpacity }]}>
-        <View style={styles.titleRow}>
-          <Text style={styles.title}>Погода</Text>
-          <TouchableOpacity
-            style={styles.gearButton}
-            onPress={openSettings}
-            activeOpacity={0.7}
-          >
-            <Text style={styles.gearIcon}>⚙️</Text>
-          </TouchableOpacity>
-        </View>
-
-        <View style={styles.searchRow}>
-          <TextInput
-            style={styles.input}
-            placeholder="Введите город"
-            placeholderTextColor="#999"
-            value={city}
-            onChangeText={setCity}
-            onSubmitEditing={search}
-            returnKeyType="search"
-          />
-          <TouchableOpacity
-            style={styles.button}
-            onPress={search}
-            activeOpacity={0.7}
-          >
-            <Text style={styles.buttonText}>Поиск</Text>
-          </TouchableOpacity>
-        </View>
-
-        <TouchableOpacity
-          style={[styles.button, styles.locButton, locating && styles.buttonDisabled]}
-          onPress={detectMyLocation}
-          disabled={locating}
-          activeOpacity={0.7}
-        >
-          <Text style={styles.buttonText}>Определить моё местоположение</Text>
-        </TouchableOpacity>
-
-        {showBanner && (
-          <View
-            style={[
-              styles.infoBanner,
-              bannerType === 'offline' && styles.infoBannerOffline,
-              bannerType === 'vpn' && styles.infoBannerVpn,
-            ]}
-          >
-            <Text
-              style={[
-                styles.infoBannerText,
-                bannerType === 'offline' && styles.infoBannerTextOffline,
-              ]}
-            >
-              {bannerMessage}
-            </Text>
-            <TouchableOpacity
-              style={styles.bannerButton}
-              onPress={retryConnection}
-              disabled={retrying}
-            >
-              <Text style={styles.bannerButtonText}>
-                {retrying ? '…' : 'Повторить'}
-              </Text>
-            </TouchableOpacity>
-            <TouchableOpacity
-              style={styles.bannerClose}
-              onPress={() => setDismissedMsg(bannerMessage)}
-            >
-              <Text style={styles.bannerCloseText}>✕</Text>
+    <ThemeContext.Provider value={t}>
+      <SafeAreaView style={styles.safe}>
+        <Animated.View style={[styles.container, { opacity: contentOpacity }]}>
+          <View style={styles.titleRow}>
+            <Text style={styles.title}>Погода</Text>
+            <TouchableOpacity style={styles.gearButton} onPress={openSettings} activeOpacity={0.7}>
+              <Text style={styles.gearIcon}>⚙️</Text>
             </TouchableOpacity>
           </View>
-        )}
-
-        {(loading || locating) && (
-          <View style={styles.center}>
+          <View style={styles.searchRow}>
+            <TextInput
+              style={styles.input}
+              placeholder="Введите город"
+              placeholderTextColor={switchTrackOff}
+              value={city}
+              onChangeText={setCity}
+              onSubmitEditing={search}
+              returnKeyType="search"
+            />
+            <TouchableOpacity style={styles.button} onPress={search} activeOpacity={0.7}>
+              <Text style={styles.buttonText}>Поиск</Text>
+            </TouchableOpacity>
+          </View>
+          <TouchableOpacity
+            style={[styles.button, styles.locButton, locating && styles.buttonDisabled]}
+            onPress={detectMyLocation}
+            disabled={locating}
+            activeOpacity={0.7}
+          >
+            <Text style={styles.buttonText}>Определить моё местоположение</Text>
+          </TouchableOpacity>
+          {showBanner && (
+            <View
+              style={[
+                styles.infoBanner,
+                bannerType === 'offline' && styles.infoBannerOffline,
+                bannerType === 'vpn' && styles.infoBannerVpn,
+              ]}
+            >
+              <Text
+                style={[
+                  styles.infoBannerText,
+                  bannerType === 'offline' && styles.infoBannerTextOffline,
+                ]}
+              >
+                {bannerMessage}
+              </Text>
+              <TouchableOpacity style={styles.bannerButton} onPress={retryConnection} disabled={retrying}>
+                <Text style={styles.bannerButtonText}>{retrying ? '…' : 'Повторить'}</Text>
+              </TouchableOpacity>
+              <TouchableOpacity style={styles.bannerClose} onPress={() => setDismissedMsg(bannerMessage)}>
+                <Text style={styles.bannerCloseText}>✕</Text>
+              </TouchableOpacity>
+            </View>
+          )}
+          {(loading || locating) && (
+            <View style={styles.center}>
+              <Animated.View
+                style={[
+                  styles.skyIconWrap,
+                  { transform: [{ scale: sunScale }, { rotate: spinInterpolate }] },
+                ]}
+              >
+                <WeatherIcon type="clear" isNight={skyIsNight} size={72} />
+              </Animated.View>
+              <ActivityIndicator size="large" color={t.accent} />
+              <Text style={styles.loadingText}>
+                {locating ? 'Определение местоположения...' : 'Загрузка...'}
+              </Text>
+            </View>
+          )}
+          {weather && !loading && !locating && (
+            <ScrollView
+              style={styles.result}
+              contentContainerStyle={styles.resultContent}
+              refreshControl={
+                <RefreshControl
+                  refreshing={refreshing}
+                  onRefresh={onRefresh}
+                  tintColor={refreshColors[0]}
+                  colors={refreshColors}
+                  progressBackgroundColor={t.surface}
+                  titleColor={t.textSecondary}
+                />
+              }
+            >
+              <Text style={styles.cityName}>{weather.place.name}</Text>
+              <Text style={styles.subLabel}>
+                {weather.place.country} · {weather.place.latitude.toFixed(2)},
+                {weather.place.longitude.toFixed(2)}
+              </Text>
+              {cityTime && <Text style={styles.cityTime}>Местное время: {cityTime}</Text>}
+              <View style={styles.bigIconWrap}>
+                <WeatherIcon type={currentType} isNight={currentIsNight} size={100} />
+              </View>
+              <Text style={styles.temperature}>
+                {Math.round(weather.data.current_weather.temperature)}°
+              </Text>
+              <Text style={styles.condition}>
+                {conditionFor(weather.data.current_weather.weathercode)}
+              </Text>
+              <View style={styles.detailRow}>
+                <View style={styles.detailCard}>
+                  <Text style={styles.detailValue}>{weather.data.current_weather.windspeed} км/ч</Text>
+                  <Text style={styles.detailLabel}>Ветер</Text>
+                </View>
+                <View style={styles.detailCard}>
+                  <Text style={styles.detailValue}>
+                    {weather.data.current_weather.is_day ? 'День' : 'Ночь'}
+                  </Text>
+                  <Text style={styles.detailLabel}>Время суток</Text>
+                </View>
+              </View>
+              <Text style={styles.sectionTitle}>Прогноз на неделю</Text>
+              {weather.data.daily.time.map((day, i) => (
+                <View key={day} style={styles.forecastRow}>
+                  <Text style={styles.forecastDay}>{formatDay(day)}</Text>
+                  <View style={styles.forecastIconCell}>
+                    <WeatherIcon
+                      type={weathercodeToType(weather.data.daily.weathercode[i])}
+                      isNight={false}
+                      size={26}
+                    />
+                  </View>
+                  <Text style={styles.forecastTemp}>
+                    {Math.round(weather.data.daily.temperature_2m_min[i])}° /{' '}
+                    {Math.round(weather.data.daily.temperature_2m_max[i])}°
+                  </Text>
+                </View>
+              ))}
+            </ScrollView>
+          )}
+          {!loading && !locating && !weather && (
+            <View style={styles.center}>
+              <Text style={styles.hint}>
+                Введите название города или определите местоположение
+              </Text>
+            </View>
+          )}
+        </Animated.View>
+        {splashRendered && (
+          <Animated.View
+            style={[styles.splash, { opacity: splashOpacity }]}
+            pointerEvents={isSplashVisible ? 'auto' : 'none'}
+          >
             <Animated.View
               style={[
-                styles.skyIconWrap,
-                {
-                  transform: [
-                    { scale: sunScale },
-                    { rotate: spinInterpolate },
-                  ],
-                },
+                styles.splashIconWrap,
+                { transform: [{ scale: sunScale }, { rotate: spinInterpolate }] },
               ]}
             >
-              <WeatherIcon type="clear" isNight={skyIsNight} size={72} />
+              <WeatherIcon type="clear" isNight={skyIsNight} size={120} />
             </Animated.View>
-            <ActivityIndicator size="large" color="#4a90d9" />
-            <Text style={styles.loadingText}>
-              {locating ? 'Определение местоположения...' : 'Загрузка...'}
-            </Text>
+            <Text style={styles.splashText}>Определяем погоду...</Text>
+          </Animated.View>
+        )}
+        {settingsOpen && (
+          <View style={styles.settingsLayer} pointerEvents="box-none">
+            <Animated.View style={[styles.settingsDim, { opacity: settingsOverlayOpacity }]} />
+            <Animated.View
+              style={[styles.settingsScreen, { transform: [{ translateX: settingsScreenX }] }]}
+            >
+              <SafeAreaView style={styles.settingsSafe}>
+                <View style={styles.settingsHeader}>
+                  <TouchableOpacity
+                    style={styles.settingsBackButton}
+                    onPress={closeSettings}
+                    activeOpacity={0.7}
+                  >
+                    <Text style={styles.settingsBackIcon}>←</Text>
+                  </TouchableOpacity>
+                  <Text style={styles.settingsHeaderTitle}>О приложении</Text>
+                </View>
+                <ScrollView
+                  style={styles.settingsBody}
+                  contentContainerStyle={styles.settingsBodyContent}
+                >
+                  <View style={styles.settingsHero}>
+                    <Image source={APP_ICON_SOURCE} style={styles.heroAppIcon} resizeMode="cover" />
+                    <Text style={styles.heroTitle}>Погода</Text>
+                    <Text style={styles.heroAuthor}>от werxuiiika</Text>
+                    <Text style={styles.heroVersion}>Версия {APP_VERSION}</Text>
+                  </View>
+                  <Text style={styles.settingsSectionTitle}>Настройки</Text>
+                  <View style={styles.cardStack}>
+                    <View style={styles.aboutCard}>
+                      <View style={styles.aboutCardTextWrap}>
+                        <Text style={styles.aboutCardTitle}>Запоминать город</Text>
+                        <Text style={styles.aboutCardDesc}>
+                          Автоматически открывать сохранённый город при запуске
+                        </Text>
+                      </View>
+                      <Switch
+                        value={rememberCity}
+                        onValueChange={toggleRemember}
+                        trackColor={{ false: switchTrackOff, true: t.accent2 }}
+                        thumbColor="#ffffff"
+                        ios_backgroundColor={switchTrackOff}
+                      />
+                    </View>
+                  </View>
+                  <Text style={styles.settingsSectionTitle}>Интерфейс</Text>
+                  <View style={styles.cardStack}>
+                    <TouchableOpacity
+                      style={styles.aboutCard}
+                      onPress={openThemePicker}
+                      activeOpacity={0.6}
+                    >
+                      <View style={styles.interfaceIconWrap}>
+                        <Text style={styles.interfaceIconEmoji}>🎨</Text>
+                      </View>
+                      <View style={styles.aboutCardTextWrap}>
+                        <Text style={styles.aboutCardTitle}>Тема приложения</Text>
+                        <Text style={styles.aboutCardDesc}>{currentThemeLabel}</Text>
+                      </View>
+                      <Text style={styles.settingsChevron}>›</Text>
+                    </TouchableOpacity>
+                    <View style={styles.aboutCard}>
+                      <View style={styles.interfaceIconWrap}>
+                        <Text style={styles.interfaceIconEmoji}>🌈</Text>
+                      </View>
+                      <View style={styles.aboutCardTextWrap}>
+                        <Text style={styles.aboutCardTitle}>Material You</Text>
+                        <Text style={styles.aboutCardDesc}>
+                          Динамические цвета системы на Android 12+
+                        </Text>
+                      </View>
+                      <Switch
+                        value={useMaterialYou}
+                        onValueChange={toggleMaterialYou}
+                        trackColor={{ false: switchTrackOff, true: t.accent }}
+                        thumbColor="#ffffff"
+                        ios_backgroundColor={switchTrackOff}
+                      />
+                    </View>
+                  </View>
+                  <Text style={styles.settingsSectionTitle}>О проекте</Text>
+                  <View style={styles.cardStack}>
+                    <TouchableOpacity
+                      style={styles.aboutCard}
+                      onPress={openGitHub}
+                      activeOpacity={0.6}
+                    >
+                      <View style={styles.githubIconWrap}>
+                        <GithubIcon size={22} color={t.text} />
+                      </View>
+                      <View style={styles.aboutCardTextWrap}>
+                        <Text style={styles.aboutCardTitle}>Исходный код</Text>
+                        <Text style={styles.aboutCardDesc}>
+                          Баги, предложения и код на GitHub
+                        </Text>
+                      </View>
+                      <Text style={styles.settingsChevron}>›</Text>
+                    </TouchableOpacity>
+                  </View>
+                </ScrollView>
+                {themePickerVisible && (
+                  <View style={styles.pickerLayer} pointerEvents="box-none">
+                    <Animated.View style={[styles.pickerBackdrop, { opacity: pickerAnim }]}>
+                      <TouchableOpacity
+                        style={StyleSheet.absoluteFill}
+                        activeOpacity={1}
+                        onPress={closeThemePicker}
+                      />
+                    </Animated.View>
+                    <Animated.View
+                      style={[
+                        styles.pickerCard,
+                        {
+                          opacity: pickerAnim,
+                          transform: [
+                            {
+                              scale: pickerAnim.interpolate({
+                                inputRange: [0, 1],
+                                outputRange: [0.92, 1],
+                              }),
+                            },
+                          ],
+                        },
+                      ]}
+                    >
+                      <Text style={styles.pickerTitle}>Тема приложения</Text>
+                      {THEME_MODES.map((m) => {
+                        const selected = m.value === appThemeMode;
+                        return (
+                          <TouchableOpacity
+                            key={m.value}
+                            style={styles.pickerOption}
+                            onPress={() => selectThemeMode(m.value)}
+                            activeOpacity={0.6}
+                          >
+                            <View
+                              style={[styles.radioOuter, selected && { borderColor: t.accent }]}
+                            >
+                              {selected && (
+                                <View
+                                  style={[styles.radioInner, { backgroundColor: t.accent }]}
+                                />
+                              )}
+                            </View>
+                            <View style={styles.pickerOptionTextWrap}>
+                              <Text style={styles.pickerOptionLabel}>{m.label}</Text>
+                              <Text style={styles.pickerOptionDesc}>{m.desc}</Text>
+                            </View>
+                          </TouchableOpacity>
+                        );
+                      })}
+                    </Animated.View>
+                  </View>
+                )}
+              </SafeAreaView>
+            </Animated.View>
           </View>
         )}
-
-        {weather && !loading && !locating && (
-          <ScrollView
-            style={styles.result}
-            contentContainerStyle={styles.resultContent}
-            refreshControl={
-              <RefreshControl
-                refreshing={refreshing}
-                onRefresh={onRefresh}
-                tintColor="#4a90e2"
-                colors={['#4a90e2', '#38b06b']}
-                progressBackgroundColor="#2a3248"
-                titleColor="#cfe0ff"
-              />
-            }
-          >
-            <Text style={styles.cityName}>{weather.place.name}</Text>
-            <Text style={styles.subLabel}>
-              {weather.place.country} · {weather.place.latitude.toFixed(2)},
-              {weather.place.longitude.toFixed(2)}
-            </Text>
-            {cityTime && (
-              <Text style={styles.cityTime}>Местное время: {cityTime}</Text>
-            )}
-
-            <View style={styles.bigIconWrap}>
-              <WeatherIcon
-                type={currentType}
-                isNight={currentIsNight}
-                size={100}
-              />
-            </View>
-            <Text style={styles.temperature}>
-              {Math.round(weather.data.current_weather.temperature)}°
-            </Text>
-            <Text style={styles.condition}>
-              {conditionFor(weather.data.current_weather.weathercode)}
-            </Text>
-
-            <View style={styles.detailRow}>
-              <View style={styles.detailCard}>
-                <Text style={styles.detailValue}>
-                  {weather.data.current_weather.windspeed} км/ч
-                </Text>
-                <Text style={styles.detailLabel}>Ветер</Text>
-              </View>
-              <View style={styles.detailCard}>
-                <Text style={styles.detailValue}>
-                  {weather.data.current_weather.is_day ? 'День' : 'Ночь'}
-                </Text>
-                <Text style={styles.detailLabel}>Время суток</Text>
-              </View>
-            </View>
-
-            <Text style={styles.sectionTitle}>Прогноз на неделю</Text>
-            {weather.data.daily.time.map((day, i) => (
-              <View key={day} style={styles.forecastRow}>
-                <Text style={styles.forecastDay}>{formatDay(day)}</Text>
-                <View style={styles.forecastIconCell}>
-                  <WeatherIcon
-                    type={weathercodeToType(weather.data.daily.weathercode[i])}
-                    isNight={false}
-                    size={26}
-                  />
-                </View>
-                <Text style={styles.forecastTemp}>
-                  {Math.round(weather.data.daily.temperature_2m_min[i])}° /{' '}
-                  {Math.round(weather.data.daily.temperature_2m_max[i])}°
-                </Text>
-              </View>
-            ))}
-          </ScrollView>
-        )}
-
-        {!loading && !locating && !weather && (
-          <View style={styles.center}>
-            <Text style={styles.hint}>
-              Введите название города или определите местоположение
-            </Text>
-          </View>
-        )}
-      </Animated.View>
-
-      {splashRendered && (
-        <Animated.View
-          style={[styles.splash, { opacity: splashOpacity }]}
-          pointerEvents={isSplashVisible ? 'auto' : 'none'}
-        >
-          <Animated.View
-            style={[
-              styles.splashIconWrap,
-              {
-                transform: [
-                  { scale: sunScale },
-                  { rotate: spinInterpolate },
-                ],
-              },
-            ]}
-          >
-            <WeatherIcon type="clear" isNight={skyIsNight} size={120} />
-          </Animated.View>
-          <Text style={styles.splashText}>Определяем погоду...</Text>
-        </Animated.View>
-      )}
-
-      {settingsOpen && (
-        <View style={styles.settingsLayer} pointerEvents="box-none">
-          <Animated.View
-            style={[
-              styles.settingsDim,
-              { opacity: settingsOverlayOpacity },
-            ]}
-          />
-          <Animated.View
-            style={[
-              styles.settingsScreen,
-              { transform: [{ translateX: settingsScreenX }] },
-            ]}
-          >
-            <SafeAreaView style={styles.settingsSafe}>
-              <View style={styles.settingsHeader}>
-                <TouchableOpacity
-                  style={styles.settingsBackButton}
-                  onPress={closeSettings}
-                  activeOpacity={0.7}
-                >
-                  <Text style={styles.settingsBackIcon}>←</Text>
-                </TouchableOpacity>
-                <Text style={styles.settingsHeaderTitle}>О приложении</Text>
-              </View>
-
-              <ScrollView
-                style={styles.settingsBody}
-                contentContainerStyle={styles.settingsBodyContent}
-              >
-                <View style={styles.settingsHero}>
-                  <Image
-                    source={APP_ICON_SOURCE}
-                    style={styles.heroAppIcon}
-                    resizeMode="cover"
-                  />
-                  <Text style={styles.heroTitle}>Погода</Text>
-                  <Text style={styles.heroAuthor}>от werxuiiika</Text>
-                  <Text style={styles.heroVersion}>Версия {APP_VERSION}</Text>
-                </View>
-
-                <Text style={styles.settingsSectionTitle}>Настройки</Text>
-                <View style={styles.aboutCard}>
-                  <View style={styles.aboutCardTextWrap}>
-                    <Text style={styles.aboutCardTitle}>Запоминать город</Text>
-                    <Text style={styles.aboutCardDesc}>
-                      Автоматически открывать сохранённый город при запуске
-                    </Text>
-                  </View>
-                  <Switch
-                    value={rememberCity}
-                    onValueChange={toggleRemember}
-                    trackColor={{ false: '#3a4560', true: '#38b06b' }}
-                    thumbColor="#ffffff"
-                    ios_backgroundColor="#3a4560"
-                  />
-                </View>
-
-                <Text style={styles.settingsSectionTitle}>О проекте</Text>
-                <TouchableOpacity
-                  style={styles.aboutCard}
-                  onPress={openGitHub}
-                  activeOpacity={0.6}
-                >
-                  <View style={styles.githubIconWrap}>
-                    <GithubIcon size={22} color="#eaf0fc" />
-                  </View>
-                  <View style={styles.aboutCardTextWrap}>
-                    <Text style={styles.aboutCardTitle}>Исходный код</Text>
-                    <Text style={styles.aboutCardDesc}>
-                      Баги, предложения и код на GitHub
-                    </Text>
-                  </View>
-                  <Text style={styles.settingsChevron}>›</Text>
-                </TouchableOpacity>
-              </ScrollView>
-            </SafeAreaView>
-          </Animated.View>
-        </View>
-      )}
-    </SafeAreaView>
+      </SafeAreaView>
+    </ThemeContext.Provider>
   );
 }
 
@@ -954,10 +973,7 @@ function formatDay(iso) {
 function computeCityClock(data) {
   if (!data || typeof data.utc_offset_seconds !== 'number') return null;
   const now = new Date();
-  const cityMs =
-    now.getTime() +
-    now.getTimezoneOffset() * 60000 +
-    data.utc_offset_seconds * 1000;
+  const cityMs = now.getTime() + now.getTimezoneOffset() * 60000 + data.utc_offset_seconds * 1000;
   const d = new Date(cityMs);
   return (
     String(d.getHours()).padStart(2, '0') +
@@ -966,376 +982,91 @@ function computeCityClock(data) {
   );
 }
 
-const styles = StyleSheet.create({
-  safe: {
-    flex: 1,
-    backgroundColor: '#1c2333',
-  },
-  splash: {
-    position: 'absolute',
-    top: 0,
-    left: 0,
-    right: 0,
-    bottom: 0,
-    backgroundColor: '#1c2333',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  splashIconWrap: {
-    marginBottom: 24,
-  },
-  splashText: {
-    color: '#cfe0ff',
-    fontSize: 18,
-  },
-  container: {
-    flex: 1,
-    paddingHorizontal: 20,
-    paddingTop: 20,
-  },
-  titleRow: {
-    position: 'relative',
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginBottom: 20,
-  },
-  title: {
-    fontSize: 32,
-    fontWeight: '700',
-    color: '#fff',
-    textAlign: 'center',
-  },
-  gearButton: {
-    position: 'absolute',
-    right: 0,
-    top: 10,
-    padding: 6,
-  },
-  gearIcon: {
-    fontSize: 26,
-  },
-  searchRow: {
-    flexDirection: 'row',
-    marginBottom: 10,
-  },
-  input: {
-    flex: 1,
-    height: 48,
-    backgroundColor: '#2a3248',
-    borderRadius: 10,
-    paddingHorizontal: 14,
-    color: '#fff',
-    fontSize: 16,
-    marginRight: 10,
-  },
-  button: {
-    height: 48,
-    paddingHorizontal: 20,
-    backgroundColor: '#4a90d9',
-    borderRadius: 10,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  locButton: {
-    backgroundColor: '#38b06b',
-    marginBottom: 16,
-  },
-  buttonDisabled: {
-    opacity: 0.5,
-  },
-  buttonText: {
-    color: '#fff',
-    fontSize: 16,
-    fontWeight: '600',
-  },
-  infoBanner: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#fff3cd',
-    borderRadius: 10,
-    paddingVertical: 10,
-    paddingHorizontal: 12,
-    marginBottom: 16,
-  },
-  infoBannerVpn: {
-    backgroundColor: '#ffe0b2',
-  },
-  infoBannerOffline: {
-    backgroundColor: '#fdecea',
-  },
-  infoBannerTextOffline: {
-    color: '#7a1c1c',
-  },
-  infoBannerText: {
-    flex: 1,
-    color: '#4a3000',
-    fontSize: 13,
-    fontWeight: '600',
-    marginRight: 8,
-  },
-  bannerButton: {
-    backgroundColor: '#4a3000',
-    borderRadius: 8,
-    paddingVertical: 6,
-    paddingHorizontal: 10,
-    marginRight: 8,
-  },
-  bannerButtonText: {
-    color: '#fff3cd',
-    fontSize: 13,
-    fontWeight: '700',
-  },
-  bannerClose: {
-    padding: 4,
-  },
-  bannerCloseText: {
-    color: '#4a3000',
-    fontSize: 16,
-    fontWeight: '700',
-  },
-  center: {
-    alignItems: 'center',
-    justifyContent: 'center',
-    flex: 1,
-  },
-  skyIconWrap: {
-    marginBottom: 16,
-  },
-  loadingText: {
-    color: '#aab',
-    marginTop: 10,
-    fontSize: 16,
-  },
-  hint: {
-    color: '#aab',
-    fontSize: 16,
-    textAlign: 'center',
-  },
-  result: {
-    flex: 1,
-  },
-  resultContent: {
-    paddingBottom: 30,
-  },
-  cityName: {
-    fontSize: 26,
-    fontWeight: '700',
-    color: '#fff',
-    textAlign: 'center',
-  },
-  subLabel: {
-    fontSize: 13,
-    color: '#aab',
-    textAlign: 'center',
-    marginTop: 2,
-  },
-  cityTime: {
-    fontSize: 14,
-    color: '#cfe0ff',
-    textAlign: 'center',
-    marginTop: 4,
-  },
-  bigIconWrap: {
-    alignItems: 'center',
-    marginTop: 20,
-  },
-  temperature: {
-    fontSize: 72,
-    fontWeight: '300',
-    color: '#fff',
-    textAlign: 'center',
-  },
-  condition: {
-    fontSize: 20,
-    color: '#cfe0ff',
-    textAlign: 'center',
-    marginBottom: 20,
-  },
-  detailRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-around',
-    marginVertical: 16,
-  },
-  detailCard: {
-    backgroundColor: '#2a3248',
-    borderRadius: 12,
-    paddingVertical: 14,
-    paddingHorizontal: 20,
-    alignItems: 'center',
-  },
-  detailValue: {
-    color: '#fff',
-    fontSize: 16,
-    fontWeight: '600',
-  },
-  detailLabel: {
-    color: '#aab',
-    fontSize: 12,
-    marginTop: 4,
-  },
-  sectionTitle: {
-    fontSize: 18,
-    fontWeight: '600',
-    color: '#fff',
-    marginTop: 10,
-    marginBottom: 8,
-  },
-  forecastRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    backgroundColor: '#202840',
-    borderRadius: 8,
-    paddingHorizontal: 14,
-    paddingVertical: 10,
-    marginBottom: 6,
-  },
-  forecastDay: {
-    color: '#cfe0ff',
-    fontSize: 15,
-    flex: 1,
-  },
-  forecastIconCell: {
-    width: 32,
-    alignItems: 'center',
-    marginRight: 12,
-  },
-  forecastTemp: {
-    color: '#fff',
-    fontSize: 15,
-    fontWeight: '600',
-  },
-  settingsLayer: {
-    position: 'absolute',
-    top: 0,
-    left: 0,
-    right: 0,
-    bottom: 0,
-    zIndex: 100,
-  },
-  settingsDim: {
-    ...StyleSheet.absoluteFillObject,
-    backgroundColor: 'rgba(8, 11, 20, 0.5)',
-  },
-  settingsScreen: {
-    position: 'absolute',
-    top: 0,
-    left: 0,
-    right: 0,
-    bottom: 0,
-    backgroundColor: '#1c2333',
-  },
-  settingsSafe: {
-    flex: 1,
-  },
-  settingsHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: 16,
-    paddingTop: 46,
-    paddingBottom: 12,
-    borderBottomWidth: 1,
-    borderBottomColor: '#262e45',
-  },
-  settingsBackButton: {
-    width: 40,
-    height: 40,
-    borderRadius: 12,
-    backgroundColor: '#232b40',
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginRight: 10,
-  },
-  settingsBackIcon: {
-    fontSize: 22,
-    color: '#cfe0ff',
-  },
-  settingsHeaderTitle: {
-    fontSize: 22,
-    fontWeight: '700',
-    color: '#fff',
-  },
-  settingsBody: {
-    flex: 1,
-  },
-  settingsBodyContent: {
-    paddingHorizontal: 20,
-    paddingTop: 8,
-    paddingBottom: 34,
-  },
-  settingsHero: {
-    alignItems: 'center',
-    paddingTop: 26,
-    paddingBottom: 10,
-    marginBottom: 22,
-  },
-  heroAppIcon: {
-    width: 124,
-    height: 124,
-    borderRadius: 28,
-    backgroundColor: '#232b40',
-    borderWidth: 1,
-    borderColor: '#2a3248',
-    marginBottom: 18,
-  },
-  heroTitle: {
-    fontSize: 30,
-    fontWeight: '700',
-    color: '#fff',
-  },
-  heroAuthor: {
-    fontSize: 14,
-    color: '#7f8db0',
-    marginTop: 6,
-  },
-  heroVersion: {
-    fontSize: 12,
-    color: '#66718f',
-    marginTop: 3,
-  },
-  settingsSectionTitle: {
-    fontSize: 13,
-    fontWeight: '700',
-    color: '#7f8db0',
-    letterSpacing: 0.8,
-    marginBottom: 10,
-    marginTop: 22,
-  },
-  aboutCard: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#2a3248',
-    borderRadius: 16,
-    paddingHorizontal: 16,
-    paddingVertical: 14,
-  },
-  aboutCardTextWrap: {
-    flex: 1,
-    marginRight: 12,
-  },
-  aboutCardTitle: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: '#eaf0fc',
-  },
-  aboutCardDesc: {
-    fontSize: 13,
-    color: '#7f8db0',
-    marginTop: 4,
-    lineHeight: 18,
-  },
-  githubIconWrap: {
-    width: 42,
-    height: 42,
-    borderRadius: 12,
-    backgroundColor: '#1c2333',
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginRight: 12,
-  },
-  settingsChevron: {
-    fontSize: 24,
-    color: '#7f8db0',
-    marginLeft: 6,
-  },
+const preloadStyles = StyleSheet.create({
+  safe: { flex: 1, backgroundColor: '#1c2333' },
+  fill: { flex: 1 },
 });
+
+const buildStyles = (t) =>
+  StyleSheet.create({
+    safe: { flex: 1, backgroundColor: t.background },
+    splash: { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: t.background, alignItems: 'center', justifyContent: 'center' },
+    splashIconWrap: { marginBottom: 24 },
+    splashText: { color: t.textSecondary, fontSize: 18 },
+    container: { flex: 1, paddingHorizontal: 20, paddingTop: 20 },
+    titleRow: { position: 'relative', alignItems: 'center', justifyContent: 'center', marginBottom: 20 },
+    title: { fontSize: 32, fontWeight: '700', color: t.text, textAlign: 'center' },
+    gearButton: { position: 'absolute', right: 0, top: 10, padding: 6 },
+    gearIcon: { fontSize: 26 },
+    searchRow: { flexDirection: 'row', marginBottom: 10 },
+    input: { flex: 1, height: 48, backgroundColor: t.surface, borderRadius: 10, paddingHorizontal: 14, color: t.text, fontSize: 16, marginRight: 10 },
+    button: { height: 48, paddingHorizontal: 20, backgroundColor: t.accent, borderRadius: 10, alignItems: 'center', justifyContent: 'center' },
+    locButton: { backgroundColor: t.accent2, marginBottom: 16 },
+    buttonDisabled: { opacity: 0.5 },
+    buttonText: { color: t.onAccent, fontSize: 16, fontWeight: '600' },
+    infoBanner: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#fff3cd', borderRadius: 10, paddingVertical: 10, paddingHorizontal: 12, marginBottom: 16 },
+    infoBannerVpn: { backgroundColor: '#ffe0b2' },
+    infoBannerOffline: { backgroundColor: '#fdecea' },
+    infoBannerText: { flex: 1, color: '#4a3000', fontSize: 13, fontWeight: '600', marginRight: 8 },
+    infoBannerTextOffline: { color: '#7a1c1c' },
+    bannerButton: { backgroundColor: '#4a3000', borderRadius: 8, paddingVertical: 6, paddingHorizontal: 10, marginRight: 8 },
+    bannerButtonText: { color: '#fff3cd', fontSize: 13, fontWeight: '700' },
+    bannerClose: { padding: 4 },
+    bannerCloseText: { color: '#4a3000', fontSize: 16, fontWeight: '700' },
+    center: { alignItems: 'center', justifyContent: 'center', flex: 1 },
+    skyIconWrap: { marginBottom: 16 },
+    loadingText: { color: t.textMuted, marginTop: 10, fontSize: 16 },
+    hint: { color: t.textMuted, fontSize: 16, textAlign: 'center' },
+    result: { flex: 1 },
+    resultContent: { paddingBottom: 30 },
+    cityName: { fontSize: 26, fontWeight: '700', color: t.text, textAlign: 'center' },
+    subLabel: { fontSize: 13, color: t.textMuted, textAlign: 'center', marginTop: 2 },
+    cityTime: { fontSize: 14, color: t.textSecondary, textAlign: 'center', marginTop: 4 },
+    bigIconWrap: { alignItems: 'center', marginTop: 20 },
+    temperature: { fontSize: 72, fontWeight: '300', color: t.text, textAlign: 'center' },
+    condition: { fontSize: 20, color: t.textSecondary, textAlign: 'center', marginBottom: 20 },
+    detailRow: { flexDirection: 'row', justifyContent: 'space-around', marginVertical: 16 },
+    detailCard: { backgroundColor: t.surface, borderRadius: 12, paddingVertical: 14, paddingHorizontal: 20, alignItems: 'center' },
+    detailValue: { color: t.text, fontSize: 16, fontWeight: '600' },
+    detailLabel: { color: t.textMuted, fontSize: 12, marginTop: 4 },
+    sectionTitle: { fontSize: 18, fontWeight: '600', color: t.text, marginTop: 10, marginBottom: 8 },
+    forecastRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', backgroundColor: t.surfaceAlt, borderRadius: 8, paddingHorizontal: 14, paddingVertical: 10, marginBottom: 6 },
+    forecastDay: { color: t.textSecondary, fontSize: 15, flex: 1 },
+    forecastIconCell: { width: 32, alignItems: 'center', marginRight: 12 },
+    forecastTemp: { color: t.text, fontSize: 15, fontWeight: '600' },
+    settingsLayer: { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, zIndex: 100 },
+    settingsDim: { ...StyleSheet.absoluteFillObject, backgroundColor: t.dim },
+    settingsScreen: { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: t.background },
+    settingsSafe: { flex: 1 },
+    settingsHeader: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 16, paddingTop: 46, paddingBottom: 12, borderBottomWidth: 1, borderBottomColor: t.border },
+    settingsBackButton: { width: 40, height: 40, borderRadius: 12, backgroundColor: t.surfaceRaised, alignItems: 'center', justifyContent: 'center', marginRight: 10 },
+    settingsBackIcon: { fontSize: 22, color: t.textSecondary },
+    settingsHeaderTitle: { fontSize: 22, fontWeight: '700', color: t.text },
+    settingsBody: { flex: 1 },
+    settingsBodyContent: { paddingHorizontal: 20, paddingTop: 8, paddingBottom: 34 },
+    settingsHero: { alignItems: 'center', paddingTop: 26, paddingBottom: 10, marginBottom: 22 },
+    heroAppIcon: { width: 124, height: 124, borderRadius: 28, backgroundColor: t.surfaceRaised, borderWidth: 1, borderColor: t.border, marginBottom: 18 },
+    heroTitle: { fontSize: 30, fontWeight: '700', color: t.text },
+    heroAuthor: { fontSize: 14, color: t.textMuted, marginTop: 6 },
+    heroVersion: { fontSize: 12, color: t.textMuted, marginTop: 3 },
+    settingsSectionTitle: { fontSize: 13, fontWeight: '700', color: t.textMuted, letterSpacing: 0.8, marginBottom: 10, marginTop: 22 },
+    cardStack: { gap: 10 },
+    aboutCard: { flexDirection: 'row', alignItems: 'center', backgroundColor: t.surface, borderRadius: 16, paddingHorizontal: 16, paddingVertical: 14 },
+    aboutCardTextWrap: { flex: 1, marginRight: 12 },
+    aboutCardTitle: { fontSize: 16, fontWeight: '600', color: t.text },
+    aboutCardDesc: { fontSize: 13, color: t.textMuted, marginTop: 4, lineHeight: 18 },
+    interfaceIconWrap: { width: 42, height: 42, borderRadius: 12, backgroundColor: t.background, alignItems: 'center', justifyContent: 'center', marginRight: 12 },
+    interfaceIconEmoji: { fontSize: 20 },
+    githubIconWrap: { width: 42, height: 42, borderRadius: 12, backgroundColor: t.background, alignItems: 'center', justifyContent: 'center', marginRight: 12 },
+    settingsChevron: { fontSize: 24, color: t.textMuted, marginLeft: 6 },
+    pickerLayer: { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, zIndex: 20, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 24 },
+    pickerBackdrop: { ...StyleSheet.absoluteFillObject, backgroundColor: 'rgba(0, 0, 0, 0.45)' },
+    pickerCard: { width: '100%', maxWidth: 360, backgroundColor: t.surface, borderRadius: 20, borderWidth: 1, borderColor: t.border, padding: 18 },
+    pickerTitle: { fontSize: 18, fontWeight: '700', color: t.text, marginBottom: 12 },
+    pickerOption: { flexDirection: 'row', alignItems: 'center', paddingVertical: 11 },
+    radioOuter: { width: 22, height: 22, borderRadius: 11, borderWidth: 2, borderColor: t.border, alignItems: 'center', justifyContent: 'center', marginRight: 12 },
+    radioInner: { width: 10, height: 10, borderRadius: 5 },
+    pickerOptionTextWrap: { flex: 1 },
+    pickerOptionLabel: { fontSize: 15, fontWeight: '600', color: t.text },
+    pickerOptionDesc: { fontSize: 12, color: t.textMuted, marginTop: 2 },
+  });
