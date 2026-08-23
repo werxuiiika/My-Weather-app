@@ -84,6 +84,17 @@ const ICON_COLORS = {
   fog: '#aab6cf',
 };
 
+function CloudShape({ x = 0, y = 0, s = 1, fill }) {
+  return (
+    <G transform={`translate(${x} ${y}) scale(${s})`}>
+      <Circle cx={21} cy={33} r={9} fill={fill} />
+      <Circle cx={32} cy={27} r={11.5} fill={fill} />
+      <Circle cx={43} cy={34} r={8} fill={fill} />
+      <Rect x={12} y={37} width={40} height={9} rx={4.5} fill={fill} />
+    </G>
+  );
+}
+
 function SunCore({ x = 0, y = 0, s = 1 }) {
   const rays = [];
   for (let i = 0; i < 8; i++) {
@@ -188,13 +199,13 @@ function DriftCloud({ size, fill, offsetX = 0, offsetY = 0, s = 1 }) {
       Animated.sequence([
         Animated.timing(x, {
           toValue: 1,
-          duration: 6000,
+          duration: 3500,
           easing: Easing.linear,
           useNativeDriver: true,
         }),
         Animated.timing(x, {
           toValue: 0,
-          duration: 6000,
+          duration: 3500,
           easing: Easing.linear,
           useNativeDriver: true,
         }),
@@ -231,7 +242,7 @@ function DriftCloud({ size, fill, offsetX = 0, offsetY = 0, s = 1 }) {
 function WeatherIcon({ type = 'clear', isNight = false, size = 96 }) {
   const isRain = type === 'rain' || type === 'showers';
   let content = null;
-  let cloud = null;
+  let driftingCloud = null;
   if (type === 'clear') {
     content = isNight
       ? <MoonCrescent transform="translate(8 8) scale(2)" />
@@ -242,7 +253,7 @@ function WeatherIcon({ type = 'clear', isNight = false, size = 96 }) {
     ) : (
       <SunCore x={22} y={20} s={0.85} />
     );
-    cloud = { fill: ICON_COLORS.cloudDark, offsetX: 10, offsetY: 16, s: 0.85 };
+    driftingCloud = { fill: ICON_COLORS.cloudDark, offsetX: 4, offsetY: 8, s: 0.85 };
   } else if (type === 'fog') {
     content = (
       <G>
@@ -250,26 +261,27 @@ function WeatherIcon({ type = 'clear', isNight = false, size = 96 }) {
         <Line x1={20} y1={59} x2={44} y2={59} stroke={ICON_COLORS.fog} strokeWidth={3.5} strokeLinecap="round" />
       </G>
     );
-    cloud = { fill: ICON_COLORS.cloudDark, offsetY: -6 };
+    driftingCloud = { fill: ICON_COLORS.cloudDark, offsetY: -6 };
   } else if (type === 'snow') {
     content = (
       <G>
+        <CloudShape y={-2} fill={ICON_COLORS.cloudDark} />
         <Circle cx={22} cy={53} r={2.6} fill={ICON_COLORS.snow} />
         <Circle cx={33} cy={58} r={2.6} fill={ICON_COLORS.snow} />
         <Circle cx={43} cy={52} r={2.6} fill={ICON_COLORS.snow} />
       </G>
     );
-    cloud = { fill: ICON_COLORS.cloudDark, offsetY: -2 };
   } else if (type === 'thunder') {
     content = (
-      <Path d="M34 42 L26 55 h5 l-2 8 10 -13 h-6 l4 -8 z" fill={ICON_COLORS.sun} />
+      <G>
+        <CloudShape y={-2} fill={ICON_COLORS.cloudDark} />
+        <Path d="M34 42 L26 55 h5 l-2 8 10 -13 h-6 l4 -8 z" fill={ICON_COLORS.sun} />
+      </G>
     );
-    cloud = { fill: ICON_COLORS.cloudDark, offsetY: -2 };
   } else {
-    cloud = {
-      fill: type === 'showers' ? ICON_COLORS.cloudDark : ICON_COLORS.cloudLight,
-      offsetY: -2,
-    };
+    content = (
+      <CloudShape y={-2} fill={type === 'showers' ? ICON_COLORS.cloudDark : ICON_COLORS.cloudLight} />
+    );
   }
   return (
     <View style={{ width: size, height: size, overflow: 'hidden' }}>
@@ -277,7 +289,7 @@ function WeatherIcon({ type = 'clear', isNight = false, size = 96 }) {
       <Svg width={size} height={size} viewBox="0 0 64 64">
         {content}
       </Svg>
-      {cloud && <DriftCloud size={size} {...cloud} />}
+      {driftingCloud && <DriftCloud size={size} {...driftingCloud} />}
     </View>
   );
 }
