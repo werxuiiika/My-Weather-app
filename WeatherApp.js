@@ -84,6 +84,10 @@ const ICON_COLORS = {
   fog: '#aab6cf',
 };
 
+const THUNDER_LIGHTNING_D = 'M30 16 L24 50 L29 50 L25 60 L36 42 L32 42';
+const THUNDER_LIGHTNING_LEN = 75.4;
+const AnimatedPath = Animated.createAnimatedComponent(Path);
+
 function CloudShape({ x = 0, y = 0, s = 1, fill }) {
   return (
     <G transform={`translate(${x} ${y}) scale(${s})`}>
@@ -307,6 +311,7 @@ function DriftCloud({ size, fill, offsetX = 0, offsetY = 0, s = 1 }) {
 function ThunderWeather({ size }) {
   const [lit, setLit] = useState(false);
   const flash = useRef(new Animated.Value(0)).current;
+  const draw = useRef(new Animated.Value(0)).current;
   const animRef = useRef(null);
   useEffect(() => {
     let timer;
@@ -315,20 +320,33 @@ function ThunderWeather({ size }) {
       timer = setTimeout(() => {
         if (cancelled) return;
         setLit(true);
-        animRef.current = Animated.sequence([
-          Animated.timing(flash, {
-            toValue: 0.7,
-            duration: 70,
+        draw.setValue(0);
+
+        const strike = Animated.parallel([
+          Animated.timing(draw, {
+            toValue: 1,
+            duration: 180,
             easing: Easing.out(Easing.quad),
-            useNativeDriver: true,
+            useNativeDriver: false,
           }),
-          Animated.timing(flash, { toValue: 0.15, duration: 90, useNativeDriver: true }),
-          Animated.timing(flash, { toValue: 0.6, duration: 60, useNativeDriver: true }),
-          Animated.timing(flash, { toValue: 0, duration: 150, useNativeDriver: true }),
+          Animated.sequence([
+            Animated.timing(flash, {
+              toValue: 0.7,
+              duration: 70,
+              easing: Easing.out(Easing.quad),
+              useNativeDriver: true,
+            }),
+            Animated.timing(flash, { toValue: 0.15, duration: 90, useNativeDriver: true }),
+            Animated.timing(flash, { toValue: 0.6, duration: 60, useNativeDriver: true }),
+            Animated.timing(flash, { toValue: 0, duration: 150, useNativeDriver: true }),
+          ]),
         ]);
-        animRef.current.start(({ finished }) => {
+        animRef.current = strike;
+        strike.start(({ finished }) => {
           setLit(false);
           if (!cancelled && finished) {
+            draw.setValue(0);
+            flash.setValue(0);
             schedule(2000 + Math.random() * 3000);
           }
         });
@@ -340,13 +358,38 @@ function ThunderWeather({ size }) {
       clearTimeout(timer);
       if (animRef.current) animRef.current.stop();
     };
-  }, []);
+  }, [draw, flash]);
+
+  const strokeDashoffset = draw.interpolate({
+    inputRange: [0, 1],
+    outputRange: [THUNDER_LIGHTNING_LEN, 0],
+  });
+
   return (
     <View style={{ width: size, height: size, overflow: 'hidden' }}>
       <Svg width={size} height={size} viewBox="0 0 64 64">
         <G>
           <CloudShape y={-2} fill={lit ? '#cbd6ec' : ICON_COLORS.cloudDark} />
-          <Path d="M34 42 L26 55 h5 l-2 8 10 -13 h-6 l4 -8 z" fill={ICON_COLORS.sun} />
+          <AnimatedPath
+            d={THUNDER_LIGHTNING_D}
+            stroke={ICON_COLORS.sun}
+            strokeWidth={2.6}
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            fill="none"
+            strokeDasharray={THUNDER_LIGHTNING_LEN}
+            strokeDashoffset={strokeDashoffset}
+          />
+          <AnimatedPath
+            d={THUNDER_LIGHTNING_D}
+            stroke="rgba(255, 255, 0, 0.5)"
+            strokeWidth={5.2}
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            fill="none"
+            strokeDasharray={THUNDER_LIGHTNING_LEN}
+            strokeDashoffset={strokeDashoffset}
+          />
         </G>
       </Svg>
       <Animated.View
