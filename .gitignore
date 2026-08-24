@@ -11,3 +11,4 @@ dist/
 *.orig.*
 web-build/
 recovered_bundle.js
+.aider*
