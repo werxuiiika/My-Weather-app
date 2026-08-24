@@ -19,7 +19,7 @@ import {
   Linking,
   Image,
 } from 'react-native';
-import Svg, { Circle, G, Line, Path, Rect } from 'react-native-svg';
+import Svg, { Circle, Defs, G, Line, Path, RadialGradient, Rect, Stop } from 'react-native-svg';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import {
   APP_THEME_KEY,
@@ -84,9 +84,11 @@ const ICON_COLORS = {
   fog: '#aab6cf',
 };
 
-const THUNDER_LIGHTNING_D = 'M30 16 L24 50 L29 50 L25 60 L36 42 L32 42';
-const THUNDER_LIGHTNING_LEN = 75.4;
-const AnimatedPath = Animated.createAnimatedComponent(Path);
+const THUNDER_BOLT_PATHS = [
+  'M32 14 L26 54 L32 54 L28 64 L40 46 L36 46',
+  'M34 14 L40 50 L34 50 L38 62 L30 44 L33 44',
+  'M30 46 L26 60 L34 60 L30 46',
+];
 
 function CloudShape({ x = 0, y = 0, s = 1, fill }) {
   return (
@@ -309,93 +311,186 @@ function DriftCloud({ size, fill, offsetX = 0, offsetY = 0, s = 1 }) {
 }
 
 function ThunderWeather({ size }) {
-  const [lit, setLit] = useState(false);
-  const flash = useRef(new Animated.Value(0)).current;
-  const draw = useRef(new Animated.Value(0)).current;
-  const animRef = useRef(null);
-  useEffect(() => {
-    let timer;
-    let cancelled = false;
-    const schedule = (ms) => {
-      timer = setTimeout(() => {
-        if (cancelled) return;
-        setLit(true);
-        draw.setValue(0);
+  const scale = size / 64;
+  const originX = 32 * scale;
+  const originY = 34 * scale;
+  const burstR = 36 * scale;
 
-        const strike = Animated.parallel([
-          Animated.timing(draw, {
-            toValue: 1,
-            duration: 180,
-            easing: Easing.out(Easing.quad),
-            useNativeDriver: false,
-          }),
-          Animated.sequence([
-            Animated.timing(flash, {
-              toValue: 0.7,
-              duration: 70,
-              easing: Easing.out(Easing.quad),
-              useNativeDriver: true,
-            }),
-            Animated.timing(flash, { toValue: 0.15, duration: 90, useNativeDriver: true }),
-            Animated.timing(flash, { toValue: 0.6, duration: 60, useNativeDriver: true }),
-            Animated.timing(flash, { toValue: 0, duration: 150, useNativeDriver: true }),
-          ]),
-        ]);
-        animRef.current = strike;
-        strike.start(({ finished }) => {
-          setLit(false);
-          if (!cancelled && finished) {
-            draw.setValue(0);
-            flash.setValue(0);
-            schedule(2000 + Math.random() * 3000);
-          }
-        });
-      }, ms);
+  const forkOps = useRef(THUNDER_BOLT_PATHS.map(() => new Animated.Value(0))).current;
+  const burstScale = useRef(new Animated.Value(1)).current;
+  const burstOp = useRef(new Animated.Value(0)).current;
+  const flashOp = useRef(new Animated.Value(0)).current;
+  const shake = useRef(new Animated.Value(0)).current;
+  const animRef = useRef(null);
+
+  const runStrike = (forkIndex) => {
+    const op = forkOps[forkIndex];
+    op.setValue(0);
+    Animated.sequence([
+      Animated.timing(op, {
+        toValue: 0.85,
+        duration: 70,
+        easing: Easing.out(Easing.quad),
+        useNativeDriver: true,
+      }),
+      Animated.timing(op, {
+        toValue: 0,
+        duration: 240,
+        easing: Easing.in(Easing.quad),
+        useNativeDriver: true,
+      }),
+    ]).start();
+  };
+
+  const runBurst = () => {
+    const hitCount = 2 + Math.floor(Math.random() * 2);
+    let fired = 0;
+    const fireNext = () => {
+      runStrike(fired % THUNDER_BOLT_PATHS.length);
+      fired += 1;
+      if (fired < hitCount) {
+        animRef.current = setTimeout(fireNext, 120 + Math.random() * 80);
+      } else {
+        animRef.current = setTimeout(runStorm, 2200 + Math.random() * 3200);
+      }
     };
-    schedule(1200 + Math.random() * 1500);
+    burstScale.setValue(0.3);
+    burstOp.setValue(0);
+    flashOp.setValue(0);
+    shake.setValue(0);
+    Animated.parallel([
+      Animated.timing(burstScale, {
+        toValue: 1.6,
+        duration: 240,
+        easing: Easing.out(Easing.quad),
+        useNativeDriver: true,
+      }),
+      Animated.sequence([
+        Animated.timing(burstOp, { toValue: 0.9, duration: 90, useNativeDriver: true }),
+        Animated.timing(burstOp, {
+          toValue: 0,
+          duration: 220,
+          easing: Easing.in(Easing.quad),
+          useNativeDriver: true,
+        }),
+      ]),
+      Animated.sequence([
+        Animated.timing(flashOp, { toValue: 0.55, duration: 80, useNativeDriver: true }),
+        Animated.timing(flashOp, {
+          toValue: 0,
+          duration: 280,
+          easing: Easing.in(Easing.quad),
+          useNativeDriver: true,
+        }),
+      ]),
+      Animated.sequence([
+        Animated.timing(shake, { toValue: 1, duration: 150, easing: Easing.inOut(Easing.quad), useNativeDriver: true }),
+        Animated.timing(shake, { toValue: 0, duration: 140, easing: Easing.inOut(Easing.quad), useNativeDriver: true }),
+      ]),
+    ]).start();
+    fireNext();
+  };
+
+  const runStorm = () => {
+    runBurst();
+  };
+
+  useEffect(() => {
+    let cancelled = false;
+    const first = () => {
+      if (cancelled) return;
+      runStorm();
+    };
+    animRef.current = setTimeout(first, 800 + Math.random() * 1400);
     return () => {
       cancelled = true;
-      clearTimeout(timer);
-      if (animRef.current) animRef.current.stop();
+      if (animRef.current) clearTimeout(animRef.current);
+      forkOps.forEach((o) => o.stopAnimation());
+      [burstScale, burstOp, flashOp, shake].forEach((v) => v.stopAnimation());
     };
-  }, [draw, flash]);
+  }, []);
 
-  const strokeDashoffset = draw.interpolate({
-    inputRange: [0, 1],
-    outputRange: [THUNDER_LIGHTNING_LEN, 0],
+  const shakeX = shake.interpolate({
+    inputRange: [0, 0.25, 0.5, 0.75, 1],
+    outputRange: [-3 * scale, -2 * scale, 3 * scale, 2 * scale, 0],
+  });
+  const shakeY = shake.interpolate({
+    inputRange: [0, 0.5, 1],
+    outputRange: [0, -2 * scale, 0],
   });
 
   return (
     <View style={{ width: size, height: size, overflow: 'hidden' }}>
-      <Svg width={size} height={size} viewBox="0 0 64 64">
-        <G>
-          <CloudShape y={-2} fill={lit ? '#cbd6ec' : ICON_COLORS.cloudDark} />
-          <AnimatedPath
-            d={THUNDER_LIGHTNING_D}
-            stroke={ICON_COLORS.sun}
-            strokeWidth={2.6}
-            strokeLinecap="round"
-            strokeLinejoin="round"
-            fill="none"
-            strokeDasharray={THUNDER_LIGHTNING_LEN}
-            strokeDashoffset={strokeDashoffset}
-          />
-          <AnimatedPath
-            d={THUNDER_LIGHTNING_D}
-            stroke="rgba(255, 255, 0, 0.5)"
-            strokeWidth={5.2}
-            strokeLinecap="round"
-            strokeLinejoin="round"
-            fill="none"
-            strokeDasharray={THUNDER_LIGHTNING_LEN}
-            strokeDashoffset={strokeDashoffset}
-          />
-        </G>
-      </Svg>
       <Animated.View
-        pointerEvents="none"
-        style={[StyleSheet.absoluteFill, { backgroundColor: '#fff9c4', opacity: flash }]}
-      />
+        style={{
+          width: size,
+          height: size,
+          transform: [{ translateX: shakeX }, { translateY: shakeY }],
+        }}
+      >
+        <Svg width={size} height={size} viewBox="0 0 64 64">
+          <G>
+            <CloudShape y={-2} fill={ICON_COLORS.cloudDark} />
+          </G>
+        </Svg>
+
+        {THUNDER_BOLT_PATHS.map((d, i) => (
+          <Animated.View
+            key={`bolt-${i}`}
+            pointerEvents="none"
+            style={[StyleSheet.absoluteFill, { width: size, height: size, opacity: forkOps[i] }]}
+          >
+            <Svg width={size} height={size} viewBox="0 0 64 64">
+              <G>
+                <Path
+                  d={d}
+                  stroke={ICON_COLORS.sun}
+                  strokeWidth={2.2}
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  fill="none"
+                />
+                <Path
+                  d={d}
+                  stroke="rgba(255, 255, 0, 0.35)"
+                  strokeWidth={4.4}
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  fill="none"
+                />
+              </G>
+            </Svg>
+          </Animated.View>
+        ))}
+
+        <Animated.View
+          pointerEvents="none"
+          style={[StyleSheet.absoluteFill, { backgroundColor: '#fff9c4', opacity: flashOp }]}
+        />
+
+        <Animated.View
+          pointerEvents="none"
+          style={{
+            position: 'absolute',
+            left: originX - burstR,
+            top: originY - burstR,
+            width: burstR * 2,
+            height: burstR * 2,
+            opacity: burstOp,
+            transform: [{ scale: burstScale }],
+          }}
+        >
+          <Svg width={burstR * 2} height={burstR * 2} viewBox="0 0 64 64">
+            <Defs>
+              <RadialGradient id="thunderBurst" cx="32" cy="32" r="32" fx="32" fy="32">
+                <Stop offset="0%" stopColor="#ffffff" stopOpacity={1} />
+                <Stop offset="100%" stopColor="#ffffff" stopOpacity={0} />
+              </RadialGradient>
+            </Defs>
+            <Circle cx={32} cy={32} r={32} fill="url(#thunderBurst)" />
+          </Svg>
+        </Animated.View>
+      </Animated.View>
     </View>
   );
 }
