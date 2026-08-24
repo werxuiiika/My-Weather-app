@@ -357,6 +357,35 @@ function ThunderWeather({ size }) {
   );
 }
 
+function AnimatedSunIcon({ size, isPartly = false }) {
+  const scale = useRef(new Animated.Value(1)).current;
+  useEffect(() => {
+    const loop = Animated.loop(
+      Animated.sequence([
+        Animated.timing(scale, {
+          toValue: 1.1,
+          duration: 1200,
+          easing: Easing.inOut(Easing.quad),
+          useNativeDriver: true,
+        }),
+        Animated.timing(scale, {
+          toValue: 1,
+          duration: 1200,
+          easing: Easing.inOut(Easing.quad),
+          useNativeDriver: true,
+        }),
+      ])
+    );
+    loop.start();
+    return () => loop.stop();
+  }, []);
+  return (
+    <Animated.View style={{ transform: [{ scale }] }}>
+      <SunCore x={isPartly ? 22 : 32} y={isPartly ? 20 : 32} s={isPartly ? 0.85 : 1.25} />
+    </Animated.View>
+  );
+}
+
 function WeatherIcon({ type = 'clear', isNight = false, size = 96 }) {
   if (type === 'thunder') {
     return <ThunderWeather size={size} />;
@@ -368,12 +397,12 @@ function WeatherIcon({ type = 'clear', isNight = false, size = 96 }) {
   if (type === 'clear') {
     content = isNight
       ? <MoonCrescent transform="translate(8 8) scale(2)" />
-      : <SunCore x={32} y={32} s={1.25} />;
+      : <AnimatedSunIcon size={size} />;
   } else if (type === 'partly') {
     content = isNight ? (
       <MoonCrescent transform="translate(20 0) scale(1.5)" />
     ) : (
-      <SunCore x={22} y={20} s={0.85} />
+      <AnimatedSunIcon size={size} isPartly />
     );
     driftingCloud = { fill: ICON_COLORS.cloudDark, offsetX: 4, offsetY: 8, s: 0.85 };
   } else if (type === 'fog') {
