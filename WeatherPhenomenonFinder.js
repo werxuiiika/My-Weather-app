@@ -73,10 +73,12 @@ export default function WeatherPhenomenonFinder() {
   const [selectedPhenomenon, setSelectedPhenomenon] = useState('Ясно');
   const [loading, setLoading] = useState(false);
   const [results, setResults] = useState([]);
+  const [hasSearched, setHasSearched] = useState(false);
 
   const handleSearch = async () => {
     setLoading(true);
     setResults([]);
+    setHasSearched(true);
     try {
       const fetchPromises = CITIES.map(async (city) => {
         try {
@@ -170,7 +172,11 @@ export default function WeatherPhenomenonFinder() {
       )}
       {!loading && results.length === 0 && (
         <View style={styles.hintContainer}>
-          <Text style={styles.hint}>Нажмите кнопку для поиска погоды в 20 городах</Text>
+          <Text style={styles.hint}>
+            {hasSearched
+              ? 'В выбранных городах сейчас нет такой погоды. Попробуйте нажать еще раз позже.'
+              : 'Нажмите кнопку для поиска погоды в 20 городах'}
+          </Text>
         </View>
       )}
     </SafeAreaView>

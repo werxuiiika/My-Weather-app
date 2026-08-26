@@ -28,6 +28,7 @@ import {
   authorTheme,
 } from './themes';
 import { useRoute } from '@react-navigation/native';
+import { LoadingContext } from './App';
 
 const BASE_URL = 'https://api.open-meteo.com/v1/forecast';
 const TIMEOUT_MS = 10000;
@@ -596,6 +597,7 @@ export default function App() {
   }, [appThemeMode]);
   const route = useRoute();
   const cityParam = route.params?.city;
+  const { setLoading: setAppLoading } = useContext(LoadingContext);
   const refreshColors =
     t.mode === 'light' ? ['#3573c2', '#25945a'] : ['#4a90d9', '#38b06b'];
   const switchTrackOff = t.mode === 'light' ? '#c9d3e6' : '#3a4560';
@@ -961,6 +963,13 @@ export default function App() {
     const timer = setInterval(tick, 30000);
     return () => clearInterval(timer);
   }, [weather]);
+  useEffect(() => {
+    const busy =
+      isSplashVisible ||
+      !themeLoaded ||
+      ((loading || locating) && weather === null);
+    setAppLoading(busy);
+  }, [isSplashVisible, themeLoaded, loading, locating, weather]);
   const currentIsNight =
     weather &&
     weather.data &&
