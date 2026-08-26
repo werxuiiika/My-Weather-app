@@ -545,6 +545,91 @@ function WeatherIcon({ type = 'clear', isNight = false, size = 96 }) {
   );
 }
 
+function SunAnimation({ size = 96 }) {
+  const rotate = useRef(new Animated.Value(0)).current;
+  const scale = useRef(new Animated.Value(1)).current;
+
+  useEffect(() => {
+    const spin = Animated.loop(
+      Animated.timing(rotate, {
+        toValue: 1,
+        duration: 20000,
+        easing: Easing.linear,
+        useNativeDriver: true,
+      })
+    );
+    const pulse = Animated.loop(
+      Animated.sequence([
+        Animated.timing(scale, { toValue: 1.05, duration: 1500, useNativeDriver: true }),
+        Animated.timing(scale, { toValue: 1, duration: 1500, useNativeDriver: true }),
+      ])
+    );
+    spin.start();
+    pulse.start();
+    return () => {
+      spin.stop();
+      pulse.stop();
+    };
+  }, [rotate, scale]);
+
+  const rotateDeg = rotate.interpolate({
+    inputRange: [0, 1],
+    outputRange: ['0deg', '360deg'],
+  });
+
+  return (
+    <Animated.View
+      style={{ width: size, height: size, transform: [{ rotate: rotateDeg }, { scale }] }}
+    >
+      <Svg width={size} height={size} viewBox="0 0 64 64">
+        <SunCore x={32} y={32} s={1.25} />
+      </Svg>
+    </Animated.View>
+  );
+}
+
+function FogAnimation({ size = 96 }) {
+  const anim1 = useRef(new Animated.Value(0)).current;
+  const anim2 = useRef(new Animated.Value(0)).current;
+  const anim3 = useRef(new Animated.Value(0)).current;
+
+  useEffect(() => {
+    const loops = [
+      Animated.loop(Animated.timing(anim1, { toValue: 1, duration: 20000, easing: Easing.linear, useNativeDriver: true })),
+      Animated.loop(Animated.timing(anim2, { toValue: 1, duration: 28000, easing: Easing.linear, useNativeDriver: true })),
+      Animated.loop(Animated.timing(anim3, { toValue: 1, duration: 36000, easing: Easing.linear, useNativeDriver: true })),
+    ];
+    loops.forEach((l) => l.start());
+    return () => loops.forEach((l) => l.stop());
+  }, [anim1, anim2, anim3]);
+
+  const layerX = (anim, direction) =>
+    anim.interpolate({
+      inputRange: [0, 1],
+      outputRange: direction === 'left' ? [size * 0.5, -size * 0.5] : [-size * 0.5, size * 0.5],
+    });
+
+  const fogLayer = (color, anim, direction, top, height, width) => ({
+    position: 'absolute',
+    top,
+    left: 0,
+    width,
+    height,
+    backgroundColor: color,
+    borderRadius: height,
+    opacity: 0.5,
+    transform: [{ translateX: layerX(anim, direction) }],
+  });
+
+  return (
+    <View style={{ width: size, height: size, overflow: 'hidden', alignItems: 'center', justifyContent: 'center' }}>
+      <Animated.View style={fogLayer('#e2e8f0', anim1, 'left', size * 0.14, size * 0.22, size * 1.2)} />
+      <Animated.View style={fogLayer('#cdd6e5', anim2, 'right', size * 0.36, size * 0.18, size * 1.1)} />
+      <Animated.View style={fogLayer('#cbd5e1', anim3, 'left', size * 0.58, size * 0.2, size * 1.3)} />
+    </View>
+  );
+}
+
 function weathercodeToType(code) {
   if (code === 0) return 'clear';
   if (code <= 3) return 'partly';
@@ -1090,7 +1175,13 @@ export default function App() {
               </Text>
               {cityTime && <Text style={styles.cityTime}>Местное время: {cityTime}</Text>}
               <View style={styles.bigIconWrap}>
-                <WeatherIcon type={currentType} isNight={currentIsNight} size={100} />
+                {currentType === 'clear' ? (
+                  <SunAnimation size={100} />
+                ) : currentType === 'fog' ? (
+                  <FogAnimation size={100} />
+                ) : (
+                  <WeatherIcon type={currentType} isNight={currentIsNight} size={100} />
+                )}
               </View>
               <Text style={styles.temperature}>
                 {Math.round(weather.data.current_weather.temperature)}°
