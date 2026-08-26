@@ -174,7 +174,7 @@ export default function WeatherPhenomenonFinder() {
         <View style={styles.hintContainer}>
           <Text style={styles.hint}>
             {hasSearched
-              ? 'В выбранных городах сейчас нет такой погоды. Попробуйте нажать еще раз позже.'
+              ? 'Сейчас такого явления нет в базе городов. Попробуйте позже.'
               : 'Нажмите кнопку для поиска погоды в 20 городах'}
           </Text>
         </View>
