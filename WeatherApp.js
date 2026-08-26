@@ -27,6 +27,7 @@ import {
   resolveTheme,
   authorTheme,
 } from './themes';
+import { useRoute } from '@react-navigation/native';
 
 const BASE_URL = 'https://api.open-meteo.com/v1/forecast';
 const TIMEOUT_MS = 10000;
@@ -593,6 +594,8 @@ export default function App() {
     const found = THEME_MODES.find((m) => m.value === appThemeMode);
     return found ? found.label : 'Оригинальная';
   }, [appThemeMode]);
+  const route = useRoute();
+  const cityParam = route.params?.city;
   const refreshColors =
     t.mode === 'light' ? ['#3573c2', '#25945a'] : ['#4a90d9', '#38b06b'];
   const switchTrackOff = t.mode === 'light' ? '#c9d3e6' : '#3a4560';
@@ -852,6 +855,12 @@ export default function App() {
       setLoading(false);
     }
   };
+  useEffect(() => {
+    if (cityParam) {
+      setCity(cityParam);
+      doSearch(cityParam);
+    }
+  }, [cityParam]);
   const search = () => {
     const query = city.trim();
     if (!query) {

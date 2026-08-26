@@ -1,5 +1,7 @@
 import React, { useState } from 'react';
 import { View, Text, FlatList, TouchableOpacity, ActivityIndicator, StyleSheet } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
+import { useNavigation } from '@react-navigation/native';
 import Svg, { Circle, Path } from 'react-native-svg';
 
 const CITIES = [
@@ -13,7 +15,9 @@ const CITIES = [
   { name: 'Санкт-Петербург', latitude: 59.9343, longitude: 30.3351 },
   { name: 'Новосибирск', latitude: 55.0302, longitude: 82.9784 },
   { name: 'Екатеринбург', latitude: 56.8389, longitude: 60.6159 },
-  { name: 'Норильск', latitude: 69.3564, longitude: 88.0667 },
+  { name: 'Норильск', latitude: 69.35, longitude: 88.2 },
+  { name: 'Мурманск', latitude: 68.97, longitude: 33.08 },
+  { name: 'Рейкьявик', latitude: 64.15, longitude: -21.94 },
   { name: 'Красноярск', latitude: 56.0153, longitude: 92.8567 },
   { name: 'Сеул', latitude: 37.5665, longitude: 126.978 },
   { name: 'Берлин', latitude: 52.52, longitude: 13.405 },
@@ -25,7 +29,7 @@ const CITIES = [
   { name: 'Сидней', latitude: -33.8688, longitude: 151.2093 },
 ];
 
-const PHENOMENA_BUTTONS = ['Ясно', 'Гроза', 'Дождь', 'Снег', 'Облачно', 'Туман'];
+const PHENOMENA_BUTTONS = ['Ясно', 'Дождь', 'Снег', 'Облачно', 'Туман'];
 
 function isCodeInPhenomenon(code, phenomenon) {
   switch (phenomenon) {
@@ -65,6 +69,7 @@ function SearchTabIcon({ color = '#fbbf24', size = 26 }) {
 }
 
 export default function WeatherPhenomenonFinder() {
+  const navigation = useNavigation();
   const [selectedPhenomenon, setSelectedPhenomenon] = useState('Ясно');
   const [loading, setLoading] = useState(false);
   const [results, setResults] = useState([]);
@@ -133,14 +138,18 @@ export default function WeatherPhenomenonFinder() {
   };
 
   const renderItem = ({ item }) => (
-    <View style={styles.resultCard}>
+    <TouchableOpacity
+      style={styles.resultCard}
+      onPress={() => navigation.navigate('Погода', { city: item.name })}
+      activeOpacity={0.7}
+    >
       <Text style={styles.resultCity}>{item.name}</Text>
       <Text style={styles.resultTemp}>{item.temperature}°</Text>
-    </View>
+    </TouchableOpacity>
   );
 
   return (
-    <View style={styles.container}>
+    <SafeAreaView style={styles.container} edges={['top', 'left', 'right']}>
       <Text style={styles.title}>Поиск погоды по явлениям</Text>
       <View style={styles.buttonContainer}>
         {PHENOMENA_BUTTONS.map((label) => renderButton(label))}
@@ -164,7 +173,7 @@ export default function WeatherPhenomenonFinder() {
           <Text style={styles.hint}>Нажмите кнопку для поиска погоды в 20 городах</Text>
         </View>
       )}
-    </View>
+    </SafeAreaView>
   );
 }
 
