@@ -29,6 +29,7 @@ import {
 } from './themes';
 import { useRoute } from '@react-navigation/native';
 import { LoadingContext } from './App';
+import { SettingsContext } from './SettingsContext';
 
 const BASE_URL = 'https://api.open-meteo.com/v1/forecast';
 const TIMEOUT_MS = 10000;
@@ -640,6 +641,70 @@ function weathercodeToType(code) {
   return 'thunder';
 }
 
+const TEMP_UNIT_OPTIONS = [
+  { value: 'C', label: '°C', desc: 'Цельсий' },
+  { value: 'F', label: '°F', desc: 'Фаренгейт' },
+];
+
+const WIND_UNIT_OPTIONS = [
+  { value: 'kmh', label: 'Километры в час', desc: 'km/h' },
+  { value: 'ms', label: 'Метры в секунду', desc: 'м/с' },
+  { value: 'mph', label: 'Мили в час', desc: 'mph' },
+  { value: 'knots', label: 'Узлы', desc: 'узл.' },
+  { value: 'beaufort', label: 'Шкала Бофорта', desc: 'Bft' },
+];
+
+const WIND_UNIT_LABEL = {
+  kmh: 'км/ч',
+  ms: 'м/с',
+  mph: 'mph',
+  knots: 'узл.',
+  beaufort: 'Bft',
+};
+
+const TEMP_UNIT_SUFFIX = { C: '°C', F: '°F' };
+
+function beaufortFromMs(ms) {
+  const v = Math.abs(ms);
+  if (v <= 0.2) return 0;
+  if (v <= 1.5) return 1;
+  if (v <= 3.3) return 2;
+  if (v <= 5.4) return 3;
+  if (v <= 7.9) return 4;
+  if (v <= 10.7) return 5;
+  if (v <= 13.8) return 6;
+  if (v <= 17.1) return 7;
+  if (v <= 20.7) return 8;
+  if (v <= 24.4) return 9;
+  if (v <= 28.4) return 10;
+  if (v <= 32.6) return 11;
+  return 12;
+}
+
+function convertTemp(celsius, unit) {
+  if (unit === 'F') return celsius * 9 / 5 + 32;
+  return celsius;
+}
+
+function convertWind(speedKmh, unit) {
+  if (unit === 'ms') return speedKmh / 3.6;
+  if (unit === 'mph') return speedKmh / 1.609344;
+  if (unit === 'knots') return speedKmh / 1.852;
+  if (unit === 'beaufort') return beaufortFromMs(speedKmh / 3.6);
+  return speedKmh;
+}
+
+function formatTemp(celsius, unit) {
+  return `${Math.round(convertTemp(celsius, unit))}${TEMP_UNIT_SUFFIX[unit] || '°C'}`;
+}
+
+function formatWind(speedKmh, unit) {
+  if (unit === 'beaufort') return `${beaufortFromMs(speedKmh / 3.6)} Bft`;
+  const v = convertWind(speedKmh, unit);
+  if (unit === 'kmh') return `${Math.round(v)} ${WIND_UNIT_LABEL.kmh}`;
+  return `${v.toFixed(1)} ${WIND_UNIT_LABEL[unit] || 'км/ч'}`;
+}
+
 export default function App() {
   const [isConnected, setIsConnected] = useState(null);
   const isConnectedRef = useRef(null);
@@ -665,6 +730,9 @@ export default function App() {
   const [appThemeMode, setAppThemeMode] = useState('author');
   const [themeLoaded, setThemeLoaded] = useState(false);
   const [themePickerVisible, setThemePickerVisible] = useState(false);
+  const [unitPickerVisible, setUnitPickerVisible] = useState(false);
+  const [unitPickerMode, setUnitPickerMode] = useState('temp');
+  const [tempPickerAnim] = useState(() => new Animated.Value(0));
   const lastRequest = useRef(null);
   const rememberRef = useRef(true);
   const splashOpacity = useRef(new Animated.Value(1)).current;
@@ -683,6 +751,7 @@ export default function App() {
   const route = useRoute();
   const cityParam = route.params?.city;
   const { setLoading: setAppLoading } = useContext(LoadingContext);
+  const { tempUnit, windUnit, setTempUnit, setWindUnit } = useContext(SettingsContext);
   const refreshColors =
     t.mode === 'light' ? ['#3573c2', '#25945a'] : ['#4a90d9', '#38b06b'];
   const switchTrackOff = t.mode === 'light' ? '#c9d3e6' : '#3a4560';
@@ -783,6 +852,15 @@ export default function App() {
       useNativeDriver: true,
     }).start();
   }, [themePickerVisible]);
+  useEffect(() => {
+    if (!unitPickerVisible) return;
+    Animated.timing(tempPickerAnim, {
+      toValue: 1,
+      duration: 200,
+      easing: Easing.out(Easing.cubic),
+      useNativeDriver: true,
+    }).start();
+  }, [unitPickerVisible]);
   const openSettings = () => {
     setSettingsOpen(true);
   };
@@ -828,6 +906,29 @@ export default function App() {
     setRememberCity(value);
     rememberRef.current = value;
     await saveRememberCity(value);
+  };
+  const showUnitPicker = (mode) => {
+    setUnitPickerMode(mode);
+    tempPickerAnim.setValue(0);
+    setUnitPickerVisible(true);
+  };
+  const hideUnitPicker = () => {
+    Animated.timing(tempPickerAnim, {
+      toValue: 0,
+      duration: 180,
+      easing: Easing.in(Easing.quad),
+      useNativeDriver: true,
+    }).start(({ finished }) => {
+      if (finished) setUnitPickerVisible(false);
+    });
+  };
+  const onSelectUnit = async (value) => {
+    if (unitPickerMode === 'temp') {
+      await setTempUnit(value);
+    } else {
+      await setWindUnit(value);
+    }
+    hideUnitPicker();
   };
   const openGitHub = async () => {
     try {
@@ -1184,14 +1285,14 @@ export default function App() {
                 )}
               </View>
               <Text style={styles.temperature}>
-                {Math.round(weather.data.current_weather.temperature)}°
+                 {formatTemp(weather.data.current_weather.temperature, tempUnit)}
               </Text>
               <Text style={styles.condition}>
                 {conditionFor(weather.data.current_weather.weathercode)}
               </Text>
               <View style={styles.detailRow}>
                 <View style={styles.detailCard}>
-                  <Text style={styles.detailValue}>{weather.data.current_weather.windspeed} км/ч</Text>
+                   <Text style={styles.detailValue}>{formatWind(weather.data.current_weather.windspeed, windUnit)}</Text>
                   <Text style={styles.detailLabel}>Ветер</Text>
                 </View>
                 <View style={styles.detailCard}>
@@ -1213,8 +1314,8 @@ export default function App() {
                     />
                   </View>
                   <Text style={styles.forecastTemp}>
-                    {Math.round(weather.data.daily.temperature_2m_min[i])}° /{' '}
-                    {Math.round(weather.data.daily.temperature_2m_max[i])}°
+                    {formatTemp(weather.data.daily.temperature_2m_min[i], tempUnit)} /{' '}
+                    {formatTemp(weather.data.daily.temperature_2m_max[i], tempUnit)}
                   </Text>
                 </View>
               ))}
@@ -1306,6 +1407,41 @@ export default function App() {
                       <Text style={styles.settingsChevron}>›</Text>
                     </TouchableOpacity>
                   </View>
+                  <Text style={styles.settingsSectionTitle}>Единицы измерения</Text>
+                  <View style={styles.cardStack}>
+                    <TouchableOpacity
+                      style={styles.aboutCard}
+                      onPress={() => showUnitPicker('temp')}
+                      activeOpacity={0.6}
+                    >
+                      <View style={styles.interfaceIconWrap}>
+                        <Text style={styles.interfaceIconEmoji}>🌡️</Text>
+                      </View>
+                      <View style={styles.aboutCardTextWrap}>
+                        <Text style={styles.aboutCardTitle}>Температура</Text>
+                        <Text style={styles.aboutCardDesc}>
+                          {TEMP_UNIT_OPTIONS.find((o) => o.value === tempUnit)?.label ?? '°C'}
+                        </Text>
+                      </View>
+                      <Text style={styles.settingsChevron}>›</Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity
+                      style={styles.aboutCard}
+                      onPress={() => showUnitPicker('wind')}
+                      activeOpacity={0.6}
+                    >
+                      <View style={styles.interfaceIconWrap}>
+                        <Text style={styles.interfaceIconEmoji}>💨</Text>
+                      </View>
+                      <View style={styles.aboutCardTextWrap}>
+                        <Text style={styles.aboutCardTitle}>Скорость ветра</Text>
+                        <Text style={styles.aboutCardDesc}>
+                          {WIND_UNIT_OPTIONS.find((o) => o.value === windUnit)?.label ?? 'Километры в час'}
+                        </Text>
+                      </View>
+                      <Text style={styles.settingsChevron}>›</Text>
+                    </TouchableOpacity>
+                  </View>
                   <Text style={styles.settingsSectionTitle}>О проекте</Text>
                   <View style={styles.cardStack}>
                     <TouchableOpacity
@@ -1376,11 +1512,72 @@ export default function App() {
                             </View>
                           </TouchableOpacity>
                         );
-                      })}
-                    </Animated.View>
-                  </View>
-                )}
-              </SafeAreaView>
+                       })}
+                     </Animated.View>
+                   </View>
+                 )}
+                 {unitPickerVisible && (
+                   <View style={styles.pickerLayer} pointerEvents="box-none">
+                     <Animated.View style={[styles.pickerBackdrop, { opacity: tempPickerAnim }]}>
+                       <TouchableOpacity
+                         style={StyleSheet.absoluteFill}
+                         activeOpacity={1}
+                         onPress={hideUnitPicker}
+                       />
+                     </Animated.View>
+                     <Animated.View
+                       style={[
+                         styles.pickerCard,
+                         {
+                           opacity: tempPickerAnim,
+                           transform: [
+                             {
+                               scale: tempPickerAnim.interpolate({
+                                 inputRange: [0, 1],
+                                 outputRange: [0.92, 1],
+                               }),
+                             },
+                           ],
+                         },
+                       ]}
+                     >
+                       <Text style={styles.pickerTitle}>
+                         {unitPickerMode === 'temp' ? 'Температура' : 'Скорость ветра'}
+                       </Text>
+                       {(unitPickerMode === 'temp' ? TEMP_UNIT_OPTIONS : WIND_UNIT_OPTIONS).map(
+                         (o) => {
+                           const selected =
+                             (unitPickerMode === 'temp'
+                               ? o.value === tempUnit
+                               : o.value === windUnit) || false;
+                           return (
+                             <TouchableOpacity
+                               key={o.value}
+                               style={styles.pickerOption}
+                               onPress={() => onSelectUnit(o.value)}
+                               activeOpacity={0.6}
+                             >
+                               <View
+                                 style={[styles.radioOuter, selected && { borderColor: t.accent }]}
+                               >
+                                 {selected && (
+                                   <View
+                                     style={[styles.radioInner, { backgroundColor: t.accent }]}
+                                   />
+                                 )}
+                               </View>
+                               <View style={styles.pickerOptionTextWrap}>
+                                 <Text style={styles.pickerOptionLabel}>{o.label}</Text>
+                                 <Text style={styles.pickerOptionDesc}>{o.desc}</Text>
+                               </View>
+                             </TouchableOpacity>
+                           );
+                         },
+                       )}
+                     </Animated.View>
+                   </View>
+                 )}
+                </SafeAreaView>
             </Animated.View>
           </View>
         )}
