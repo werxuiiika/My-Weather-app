@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, useMemo, createContext, useContext } from 'react';
+import { useState, useEffect, useLayoutEffect, useRef, useMemo, createContext, useContext } from 'react';
 import NetInfo from '@react-native-community/netinfo';
 import * as Location from 'expo-location';
 import {
@@ -27,7 +27,7 @@ import {
   resolveTheme,
   authorTheme,
 } from './themes';
-import { useRoute } from '@react-navigation/native';
+import { useRoute, useNavigation } from '@react-navigation/native';
 import { LoadingContext } from './App';
 import { SettingsContext } from './SettingsContext';
 
@@ -662,8 +662,6 @@ const WIND_UNIT_LABEL = {
   beaufort: 'Bft',
 };
 
-const TEMP_UNIT_SUFFIX = { C: '°C', F: '°F' };
-
 function beaufortFromMs(ms) {
   const v = Math.abs(ms);
   if (v <= 0.2) return 0;
@@ -695,7 +693,7 @@ function convertWind(speedKmh, unit) {
 }
 
 function formatTemp(celsius, unit) {
-  return `${Math.round(convertTemp(celsius, unit))}${TEMP_UNIT_SUFFIX[unit] || '°C'}`;
+  return `${Math.round(convertTemp(celsius, unit))}°`;
 }
 
 function formatWind(speedKmh, unit) {
@@ -749,8 +747,9 @@ export default function App() {
     return found ? found.label : 'Оригинальная';
   }, [appThemeMode]);
   const route = useRoute();
+  const navigation = useNavigation();
   const cityParam = route.params?.city;
-  const { setLoading: setAppLoading } = useContext(LoadingContext);
+  const { isLoading, setLoading: setAppLoading } = useContext(LoadingContext);
   const { tempUnit, windUnit, setTempUnit, setWindUnit } = useContext(SettingsContext);
   const refreshColors =
     t.mode === 'light' ? ['#3573c2', '#25945a'] : ['#4a90d9', '#38b06b'];
@@ -1156,6 +1155,17 @@ export default function App() {
       ((loading || locating) && weather === null);
     setAppLoading(busy);
   }, [isSplashVisible, themeLoaded, loading, locating, weather]);
+  useLayoutEffect(() => {
+    navigation.setOptions({
+      tabBarStyle: {
+        backgroundColor: '#0f172a',
+        borderTopColor: '#1e293b',
+        height: 70,
+        paddingBottom: 8,
+        display: settingsOpen || isLoading ? 'none' : 'flex',
+      },
+    });
+  }, [settingsOpen, isLoading, navigation]);
   const currentIsNight =
     weather &&
     weather.data &&

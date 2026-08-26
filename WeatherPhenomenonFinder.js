@@ -142,7 +142,7 @@ export default function WeatherPhenomenonFinder() {
   const renderItem = ({ item }) => (
     <TouchableOpacity
       style={styles.resultCard}
-      onPress={() => navigation.navigate('Погода', { city: item.name })}
+      onPress={() => navigation.navigate('Погода', { city: item.name }, { merge: true })}
       activeOpacity={0.7}
     >
       <Text style={styles.resultCity}>{item.name}</Text>
