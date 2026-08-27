@@ -1758,7 +1758,7 @@ const buildStyles = (t) =>
     splash: { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: t.background, alignItems: 'center', justifyContent: 'center' },
     splashIconWrap: { marginBottom: 24 },
     splashText: { color: t.textSecondary, fontSize: 18 },
-    container: { flex: 1, position: 'relative', paddingHorizontal: 20, paddingTop: 20 },
+    container: { flex: 1, position: 'relative', overflow: 'hidden', paddingHorizontal: 20, paddingTop: 20 },
     titleRow: { position: 'relative', alignItems: 'center', justifyContent: 'center', marginBottom: 20 },
     title: { fontSize: 32, fontWeight: '700', color: t.text, textAlign: 'center' },
     gearButton: { position: 'absolute', right: 0, top: 10, padding: 6 },
