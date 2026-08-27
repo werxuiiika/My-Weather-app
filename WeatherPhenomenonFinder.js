@@ -64,8 +64,6 @@ function SearchTabIcon({ color = '#fbbf24', size = 26 }) {
   );
 }
 
-const PHENOMENA_KEYS = ['clear', 'rain', 'snow', 'cloudy', 'fog'];
-
 export default function WeatherPhenomenonFinder() {
   const navigation = useNavigation();
   const { t } = useTranslation();
