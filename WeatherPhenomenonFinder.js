@@ -84,33 +84,28 @@ export default function WeatherPhenomenonFinder() {
             city.latitude +
             '&longitude=' +
             city.longitude +
-            '&current-weather=true';
+            '&current=weather_code,temperature_2m';
           const res = await fetch(url);
           const data = await res.json();
-          if (!data.current_weather) {
+          if (!data.current) {
             return { ...city, temperature: null, weathercode: null };
           }
           return {
             ...city,
-            temperature: Math.round(data.current_weather.temperature),
-            weathercode: data.current_weather.weathercode,
+            temperature: Math.round(data.current.temperature_2m),
+            weathercode: data.current.weather_code,
           };
         } catch (e) {
           return { ...city, temperature: null, weathercode: null };
         }
       });
       const allResults = await Promise.all(fetchPromises);
-      console.log('[PhenomenaSearch] filtering for key:', phenomenon, 'WMO codes:', PHENOMENON_WMO_MAP[phenomenon]);
       const matched = allResults
         .filter((r) => {
           const matches = r.weathercode !== null && isCodeInPhenomenon(r.weathercode, phenomenon);
-          if (r.weathercode !== null) {
-            console.log('[PhenomenaSearch] city:', r.name, 'weathercode:', r.weathercode, 'matches:', matches);
-          }
           return matches;
         })
         .slice(0, 5);
-      console.log('[PhenomenaSearch] matched count:', matched.length);
       setResults(matched);
     } catch (e) {
       setResults([]);
