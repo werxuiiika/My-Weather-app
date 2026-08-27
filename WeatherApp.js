@@ -1189,10 +1189,10 @@ export default function App() {
         borderTopColor: '#1e293b',
         height: 70,
         paddingBottom: 8,
-        display: settingsOpen || isLoading ? 'none' : 'flex',
+        display: settingsOpen ? 'none' : 'flex',
       },
     });
-  }, [settingsOpen, isLoading, navigation]);
+  }, [settingsOpen, navigation]);
   const currentIsNight =
     weather &&
     weather.data &&

@@ -57,7 +57,6 @@ export default function App() {
                 borderTopColor: '#1e293b',
                 height: 70,
                 paddingBottom: 8,
-                display: isLoading ? 'none' : 'flex',
               },
               headerShown: false,
             })}
