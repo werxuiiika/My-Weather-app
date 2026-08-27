@@ -41,7 +41,7 @@ const APP_ICON_SOURCE = require('./assets/icon.png');
 const GITHUB_URL = 'https://github.com/werxuiiika/My-Weather-app';
 const VALID_THEME_MODES = ['author', 'dark', 'light'];
 
-const ThemeContext = createContext(authorTheme);
+export const ThemeContext = createContext(authorTheme);
 
 const loadLastCity = async () => { try { return await AsyncStorage.getItem('lastCity'); } catch (e) { return null; } };
 const saveLastCity = async (name) => { try { await AsyncStorage.setItem('lastCity', name); } catch (e) {} };

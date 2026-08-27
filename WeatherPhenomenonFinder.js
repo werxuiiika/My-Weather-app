@@ -1,9 +1,10 @@
-import React, { useState } from 'react';
+import React, { useState, useContext, useMemo } from 'react';
 import { View, Text, FlatList, TouchableOpacity, ActivityIndicator, StyleSheet } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
 import { useTranslation } from 'react-i18next';
 import Svg, { Circle, Path } from 'react-native-svg';
+import { ThemeContext } from './WeatherApp';
 
 const CITIES = [
   { name: 'Москва', latitude: 55.7558, longitude: 37.6173 },
@@ -67,10 +68,93 @@ function SearchTabIcon({ color = '#fbbf24', size = 26 }) {
 export default function WeatherPhenomenonFinder() {
   const navigation = useNavigation();
   const { t } = useTranslation();
+  const theme = useContext(ThemeContext);
   const [selectedPhenomenon, setSelectedPhenomenon] = useState('clear');
   const [loading, setLoading] = useState(false);
   const [results, setResults] = useState([]);
   const [hasSearched, setHasSearched] = useState(false);
+
+  const styles = useMemo(() => StyleSheet.create({
+    container: {
+      flex: 1,
+      backgroundColor: theme.background,
+      padding: 20,
+    },
+    title: {
+      fontSize: 24,
+      fontWeight: '700',
+      color: theme.text,
+      textAlign: 'center',
+      marginBottom: 24,
+    },
+    buttonContainer: {
+      gap: 12,
+      marginBottom: 20,
+    },
+    phenomenonButton: {
+      backgroundColor: theme.surface,
+      borderRadius: 12,
+      paddingVertical: 16,
+      paddingHorizontal: 20,
+      alignItems: 'center',
+    },
+    phenomenonButtonActive: {
+      backgroundColor: theme.surfaceAlt,
+      borderWidth: 2,
+      borderColor: theme.accent,
+    },
+    phenomenonButtonText: {
+      color: theme.textSecondary,
+      fontSize: 16,
+      fontWeight: '600',
+    },
+    phenomenonButtonTextActive: {
+      color: theme.accent,
+    },
+    loadingContainer: {
+      alignItems: 'center',
+      justifyContent: 'center',
+      flex: 1,
+    },
+    loadingText: {
+      color: theme.textMuted,
+      marginTop: 16,
+      fontSize: 14,
+    },
+    listContent: {
+      gap: 12,
+    },
+    resultCard: {
+      flexDirection: 'row',
+      justifyContent: 'space-between',
+      alignItems: 'center',
+      backgroundColor: theme.surface,
+      borderRadius: 12,
+      paddingVertical: 16,
+      paddingHorizontal: 20,
+    },
+    resultCity: {
+      color: theme.text,
+      fontSize: 18,
+      fontWeight: '600',
+    },
+    resultTemp: {
+      color: theme.accent,
+      fontSize: 22,
+      fontWeight: '500',
+    },
+    hintContainer: {
+      flex: 1,
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    hint: {
+      color: theme.textMuted,
+      fontSize: 16,
+      textAlign: 'center',
+      paddingHorizontal: 32,
+    },
+  }), [theme]);
 
   const handleSearch = async (phenomenon = selectedPhenomenon) => {
     setLoading(true);
@@ -154,7 +238,7 @@ export default function WeatherPhenomenonFinder() {
       </View>
       {loading && (
         <View style={styles.loadingContainer}>
-          <ActivityIndicator size="large" color="#fbbf24" />
+          <ActivityIndicator size="large" color={theme.accent} />
           <Text style={styles.loadingText}>{t('loadingText')}</Text>
         </View>
       )}
@@ -178,87 +262,5 @@ export default function WeatherPhenomenonFinder() {
     </SafeAreaView>
   );
 }
-
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#0f172a',
-    padding: 20,
-  },
-  title: {
-    fontSize: 24,
-    fontWeight: '700',
-    color: '#ffffff',
-    textAlign: 'center',
-    marginBottom: 24,
-  },
-  buttonContainer: {
-    gap: 12,
-    marginBottom: 20,
-  },
-  phenomenonButton: {
-    backgroundColor: '#1e293b',
-    borderRadius: 12,
-    paddingVertical: 16,
-    paddingHorizontal: 20,
-    alignItems: 'center',
-  },
-  phenomenonButtonActive: {
-    backgroundColor: '#334155',
-    borderWidth: 2,
-    borderColor: '#fbbf24',
-  },
-  phenomenonButtonText: {
-    color: '#cbd5e1',
-    fontSize: 16,
-    fontWeight: '600',
-  },
-  phenomenonButtonTextActive: {
-    color: '#fbbf24',
-  },
-  loadingContainer: {
-    alignItems: 'center',
-    justifyContent: 'center',
-    flex: 1,
-  },
-  loadingText: {
-    color: '#94a3b8',
-    marginTop: 16,
-    fontSize: 14,
-  },
-  listContent: {
-    gap: 12,
-  },
-  resultCard: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    backgroundColor: '#1e293b',
-    borderRadius: 12,
-    paddingVertical: 16,
-    paddingHorizontal: 20,
-  },
-  resultCity: {
-    color: '#ffffff',
-    fontSize: 18,
-    fontWeight: '600',
-  },
-  resultTemp: {
-    color: '#fbbf24',
-    fontSize: 22,
-    fontWeight: '500',
-  },
-  hintContainer: {
-    flex: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  hint: {
-    color: '#94a3b8',
-    fontSize: 16,
-    textAlign: 'center',
-    paddingHorizontal: 32,
-  },
-});
 
 export { SunTabIcon, SearchTabIcon };
