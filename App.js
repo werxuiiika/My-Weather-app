@@ -37,10 +37,10 @@ export default function App() {
                 }
                 return <SearchTabIcon color={color} size={size} />;
               },
-              tabBarLabel: ({ focused }) => {
+              tabBarLabel: ({ focused, color }) => {
                 const label = route.name === 'weather' ? t('weather') : t('phenomena');
                 return (
-                  <Text style={{ fontSize: 14, fontWeight: '600', paddingBottom: 4, color: focused ? '#fbbf24' : '#94a3b8' }}>
+                  <Text style={{ fontSize: 14, fontWeight: '600', paddingBottom: 4, color: color }}>
                     {label}
                   </Text>
                 );

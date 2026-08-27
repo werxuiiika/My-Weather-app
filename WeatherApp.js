@@ -1183,16 +1183,23 @@ export default function App() {
     setAppLoading(busy);
   }, [isSplashVisible, themeLoaded, loading, locating, weather]);
   useLayoutEffect(() => {
+    const hideTabs =
+      settingsOpen ||
+      isSplashVisible ||
+      !themeLoaded ||
+      ((loading || locating) && weather === null);
     navigation.setOptions({
       tabBarStyle: {
-        backgroundColor: '#0f172a',
-        borderTopColor: '#1e293b',
+        backgroundColor: t.mode === 'light' ? '#ffffff' : '#0f172a',
+        borderTopColor: t.mode === 'light' ? '#cbd5e1' : '#1e293b',
         height: 70,
         paddingBottom: 8,
-        display: settingsOpen ? 'none' : 'flex',
+        display: hideTabs ? 'none' : 'flex',
       },
+      tabBarActiveTintColor: t.mode === 'light' ? '#3b82f6' : '#fbbf24',
+      tabBarInactiveTintColor: t.mode === 'light' ? '#94a3b8' : '#94a3b8',
     });
-  }, [settingsOpen, navigation]);
+  }, [settingsOpen, isSplashVisible, themeLoaded, loading, locating, weather, t, navigation]);
   const currentIsNight =
     weather &&
     weather.data &&

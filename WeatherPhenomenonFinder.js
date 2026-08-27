@@ -30,23 +30,20 @@ const CITIES = [
   { name: 'Сидней', latitude: -33.8688, longitude: 151.2093 },
 ];
 
+const PHENOMENA_KEYS = ['clear', 'rain', 'snow', 'cloudy', 'fog'];
+
+const PHENOMENON_WMO_MAP = {
+  clear: [0],
+  cloudy: [1, 2, 3],
+  fog: [45, 48],
+  rain: [51, 52, 53, 54, 55, 56, 57, 58, 59, 60, 61, 63, 64, 65, 66, 67, 80, 81, 82],
+  snow: [71, 72, 73, 75, 77, 85, 86],
+  thunder: [95, 96, 99],
+};
+
 function isCodeInPhenomenon(code, phenomenon) {
-  switch (phenomenon) {
-    case 'thunder':
-      return code === 95 || code === 96 || code === 99;
-    case 'clear':
-      return code === 0;
-    case 'rain':
-      return (code >= 51 && code <= 67) || (code >= 80 && code <= 82);
-    case 'snow':
-      return (code >= 71 && code <= 77) || code === 85 || code === 86;
-    case 'fog':
-      return code === 45 || code === 48;
-    case 'cloudy':
-      return code === 1 || code === 2 || code === 3;
-    default:
-      return false;
-  }
+  const codes = PHENOMENON_WMO_MAP[phenomenon];
+  return codes ? codes.includes(code) : false;
 }
 
 function SunTabIcon({ color = '#fbbf24', size = 26 }) {
