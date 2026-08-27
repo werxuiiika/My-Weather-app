@@ -72,7 +72,7 @@ export default function WeatherPhenomenonFinder() {
   const [results, setResults] = useState([]);
   const [hasSearched, setHasSearched] = useState(false);
 
-  const handleSearch = async () => {
+  const handleSearch = async (phenomenon = selectedPhenomenon) => {
     setLoading(true);
     setResults([]);
     setHasSearched(true);
@@ -100,13 +100,17 @@ export default function WeatherPhenomenonFinder() {
         }
       });
       const allResults = await Promise.all(fetchPromises);
+      console.log('[PhenomenaSearch] filtering for key:', phenomenon, 'WMO codes:', PHENOMENON_WMO_MAP[phenomenon]);
       const matched = allResults
-        .filter(
-          (r) =>
-            r.weathercode !== null &&
-            isCodeInPhenomenon(r.weathercode, selectedPhenomenon)
-        )
+        .filter((r) => {
+          const matches = r.weathercode !== null && isCodeInPhenomenon(r.weathercode, phenomenon);
+          if (r.weathercode !== null) {
+            console.log('[PhenomenaSearch] city:', r.name, 'weathercode:', r.weathercode, 'matches:', matches);
+          }
+          return matches;
+        })
         .slice(0, 5);
+      console.log('[PhenomenaSearch] matched count:', matched.length);
       setResults(matched);
     } catch (e) {
       setResults([]);
@@ -117,7 +121,7 @@ export default function WeatherPhenomenonFinder() {
 
   const handlePress = (key) => {
     setSelectedPhenomenon(key);
-    handleSearch();
+    handleSearch(key);
   };
 
   const renderButton = (key) => {

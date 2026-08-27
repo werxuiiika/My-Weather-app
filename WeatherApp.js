@@ -1188,10 +1188,10 @@ export default function App() {
       isSplashVisible ||
       !themeLoaded ||
       ((loading || locating) && weather === null);
-    navigation.setOptions({
+     navigation.setOptions({
       tabBarStyle: {
-        backgroundColor: t.mode === 'light' ? '#ffffff' : '#0f172a',
-        borderTopColor: t.mode === 'light' ? '#cbd5e1' : '#1e293b',
+        backgroundColor: t.background,
+        borderTopColor: t.border,
         height: 70,
         paddingBottom: 8,
         display: hideTabs ? 'none' : 'flex',
