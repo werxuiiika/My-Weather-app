@@ -32,7 +32,6 @@ import { useTranslation } from 'react-i18next';
 import i18n, { changeLanguage } from './i18n';
 import { LoadingContext } from './App';
 import { SettingsContext } from './SettingsContext';
-import DynamicBackground from './DynamicBackground';
 
 const BASE_URL = 'https://api.open-meteo.com/v1/forecast';
 const TIMEOUT_MS = 10000;
@@ -750,7 +749,7 @@ export default function App() {
   const navigation = useNavigation();
   const cityParam = route.params?.city;
   const { isLoading, setLoading: setAppLoading } = useContext(LoadingContext);
-  const { tempUnit, windUnit, setTempUnit, setWindUnit, dynamicBgEnabled, setDynamicBgEnabled } = useContext(SettingsContext);
+  const { tempUnit, windUnit, setTempUnit, setWindUnit } = useContext(SettingsContext);
   const refreshColors =
     t.mode === 'light' ? ['#3573c2', '#25945a'] : ['#4a90d9', '#38b06b'];
   const switchTrackOff = t.mode === 'light' ? '#c9d3e6' : '#3a4560';
@@ -915,9 +914,6 @@ export default function App() {
     setRememberCity(value);
     rememberRef.current = value;
     await saveRememberCity(value);
-  };
-  const toggleDynamicBg = async (value) => {
-    await setDynamicBgEnabled(value);
   };
   const showUnitPicker = (mode) => {
     setUnitPickerMode(mode);
@@ -1214,12 +1210,6 @@ export default function App() {
   const currentType = weather
     ? weathercodeToType(weather.data.current_weather.weathercode)
     : 'clear';
-  const currentWeatherCode =
-    weather &&
-    weather.data &&
-    weather.data.current_weather
-      ? weather.data.current_weather.weathercode
-      : null;
   const conditionFor = (code) => {
     if (code === 0) return tr('condition.clear');
     if (code <= 3) return tr('condition.cloudy');
@@ -1240,11 +1230,6 @@ export default function App() {
     <ThemeContext.Provider value={t}>
       <SafeAreaView style={styles.safe}>
         <Animated.View style={[styles.container, { opacity: contentOpacity }]}>
-          <DynamicBackground
-            weatherCode={currentWeatherCode}
-            isDay={!currentIsNight}
-            isEnabled={dynamicBgEnabled}
-          />
           <View style={styles.titleRow}>
             <Text style={styles.title}>{tr('weather')}</Text>
             <TouchableOpacity style={styles.gearButton} onPress={openSettings} activeOpacity={0.7}>
@@ -1447,24 +1432,9 @@ export default function App() {
                          thumbColor="#ffffff"
                          ios_backgroundColor={switchTrackOff}
                        />
-                     </View>
-                     <View style={styles.aboutCard}>
-                       <View style={styles.aboutCardTextWrap}>
-                         <Text style={styles.aboutCardTitle}>{tr('dynamicBackground')}</Text>
-                         <Text style={styles.aboutCardDesc}>
-                           {tr('dynamicBackgroundDesc')}
-                         </Text>
-                       </View>
-                       <Switch
-                         value={dynamicBgEnabled}
-                         onValueChange={toggleDynamicBg}
-                         trackColor={{ false: switchTrackOff, true: t.accent2 }}
-                         thumbColor="#ffffff"
-                         ios_backgroundColor={switchTrackOff}
-                       />
-                     </View>
-                   </View>
-                   <Text style={styles.settingsSectionTitle}>{tr('interface')}</Text>
+                      </View>
+                    </View>
+                    <Text style={styles.settingsSectionTitle}>{tr('interface')}</Text>
                    <View style={styles.cardStack}>
                      <TouchableOpacity
                        style={styles.aboutCard}
@@ -1758,7 +1728,7 @@ const buildStyles = (t) =>
     splash: { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: t.background, alignItems: 'center', justifyContent: 'center' },
     splashIconWrap: { marginBottom: 24 },
     splashText: { color: t.textSecondary, fontSize: 18 },
-    container: { flex: 1, position: 'relative', overflow: 'hidden', paddingHorizontal: 20, paddingTop: 20 },
+    container: { flex: 1, position: 'relative', paddingHorizontal: 20, paddingTop: 20 },
     titleRow: { position: 'relative', alignItems: 'center', justifyContent: 'center', marginBottom: 20 },
     title: { fontSize: 32, fontWeight: '700', color: t.text, textAlign: 'center' },
     gearButton: { position: 'absolute', right: 0, top: 10, padding: 6 },
@@ -1782,7 +1752,7 @@ const buildStyles = (t) =>
     skyIconWrap: { marginBottom: 16 },
     loadingText: { color: t.textMuted, marginTop: 10, fontSize: 16 },
     hint: { color: t.textMuted, fontSize: 16, textAlign: 'center' },
-    result: { flex: 1, backgroundColor: 'rgba(15, 23, 42, 0.85)' },
+    result: { flex: 1 },
     resultContent: { paddingBottom: 30 },
     cityName: { fontSize: 26, fontWeight: '700', color: t.text, textAlign: 'center' },
     subLabel: { fontSize: 13, color: t.textMuted, textAlign: 'center', marginTop: 2 },

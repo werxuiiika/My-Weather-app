@@ -32,8 +32,6 @@
   "units": "Units of measurement",
   "temperature": "Temperature",
   "windSpeed": "Wind speed",
-  "dynamicBackground": "Dynamic background",
-  "dynamicBackgroundDesc": "Change background color based on weather",
   "sourceCode": "Source code",
   "githubDesc": "Bugs, suggestions and code on GitHub",
   "loadingText": "Polling weather in 20 cities…",
