@@ -3,10 +3,10 @@ import { Animated, Easing, StyleSheet } from 'react-native';
 
 const BASE_COLOR = '#0f172a';
 
-const BG_CLEAR_DAY = '#1e3a8a';
+const BG_CLEAR_DAY = '#172554';
 const BG_CLEAR_NIGHT = '#020617';
 const BG_CLOUDY = '#1e293b';
-const BG_FOG = '#64748b';
+const BG_FOG = '#475569';
 const BG_RAIN = '#334155';
 const BG_SNOW = '#475569';
 
@@ -59,9 +59,14 @@ function DynamicBackground({ weatherCode, isDay, isEnabled }) {
 }
 
 const styles = StyleSheet.create({
-  background: {
+    background: {
     position: 'absolute',
-    inset: 0,
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    width: '100%',
+    height: '100%',
     zIndex: -1,
   },
 });
