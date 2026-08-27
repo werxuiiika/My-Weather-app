@@ -28,6 +28,8 @@ import {
   authorTheme,
 } from './themes';
 import { useRoute, useNavigation } from '@react-navigation/native';
+import { useTranslation } from 'react-i18next';
+import i18n, { changeLanguage } from './i18n';
 import { LoadingContext } from './App';
 import { SettingsContext } from './SettingsContext';
 
@@ -37,9 +39,6 @@ const SCREEN_WIDTH = Dimensions.get('window').width;
 const APP_VERSION = require('./package.json').version;
 const APP_ICON_SOURCE = require('./assets/icon.png');
 const GITHUB_URL = 'https://github.com/werxuiiika/My-Weather-app';
-const NETWORK_ERROR = 'Нет подключения к интернету. Проверьте настройки сети.';
-const TIMEOUT_ERROR = 'Сервер не отвечает. Проверьте подключение или отключите VPN.';
-const VPN_WARNING = 'VPN может блокировать подключение. Попробуйте отключить его.';
 const VALID_THEME_MODES = ['author', 'dark', 'light'];
 
 const ThemeContext = createContext(authorTheme);
@@ -67,7 +66,7 @@ const fetchJson = async (url) => {
     return await res.json();
   } catch (e) {
     if (e instanceof TypeError || (e && e.name === 'AbortError')) {
-      const err = new Error(e instanceof TypeError ? NETWORK_ERROR : TIMEOUT_ERROR);
+      const err = new Error(e instanceof TypeError ? i18n.t('noInternet') : i18n.t('serverTimeout'));
       err.kind = 'network';
       throw err;
     }
@@ -642,25 +641,22 @@ function weathercodeToType(code) {
 }
 
 const TEMP_UNIT_OPTIONS = [
-  { value: 'C', label: '°C', desc: 'Цельсий' },
-  { value: 'F', label: '°F', desc: 'Фаренгейт' },
+  { value: 'C', labelKey: 'tempUnits.C.label', descKey: 'tempUnits.C.desc' },
+  { value: 'F', labelKey: 'tempUnits.F.label', descKey: 'tempUnits.F.desc' },
 ];
 
 const WIND_UNIT_OPTIONS = [
-  { value: 'kmh', label: 'Километры в час', desc: 'km/h' },
-  { value: 'ms', label: 'Метры в секунду', desc: 'м/с' },
-  { value: 'mph', label: 'Мили в час', desc: 'mph' },
-  { value: 'knots', label: 'Узлы', desc: 'узл.' },
-  { value: 'beaufort', label: 'Шкала Бофорта', desc: 'Bft' },
+  { value: 'kmh', labelKey: 'windUnits.kmh.label', descKey: 'windUnits.kmh.desc' },
+  { value: 'ms', labelKey: 'windUnits.ms.label', descKey: 'windUnits.ms.desc' },
+  { value: 'mph', labelKey: 'windUnits.mph.label', descKey: 'windUnits.mph.desc' },
+  { value: 'knots', labelKey: 'windUnits.knots.label', descKey: 'windUnits.knots.desc' },
+  { value: 'beaufort', labelKey: 'windUnits.beaufort.label', descKey: 'windUnits.beaufort.desc' },
 ];
 
-const WIND_UNIT_LABEL = {
-  kmh: 'км/ч',
-  ms: 'м/с',
-  mph: 'mph',
-  knots: 'узл.',
-  beaufort: 'Bft',
-};
+const LANGUAGE_OPTIONS = [
+  { value: 'ru', labelKey: 'russian' },
+  { value: 'en', labelKey: 'english' },
+];
 
 function beaufortFromMs(ms) {
   const v = Math.abs(ms);
@@ -697,13 +693,14 @@ function formatTemp(celsius, unit) {
 }
 
 function formatWind(speedKmh, unit) {
-  if (unit === 'beaufort') return `${beaufortFromMs(speedKmh / 3.6)} Bft`;
+  if (unit === 'beaufort') return `${beaufortFromMs(speedKmh / 3.6)} ${i18n.t('windLabels.beaufort')}`;
   const v = convertWind(speedKmh, unit);
-  if (unit === 'kmh') return `${Math.round(v)} ${WIND_UNIT_LABEL.kmh}`;
-  return `${v.toFixed(1)} ${WIND_UNIT_LABEL[unit] || 'км/ч'}`;
+  if (unit === 'kmh') return `${Math.round(v)} ${i18n.t('windLabels.kmh')}`;
+  return `${v.toFixed(1)} ${i18n.t(`windLabels.${unit}`) || i18n.t('windLabels.kmh')}`;
 }
 
 export default function App() {
+  const { t: tr } = useTranslation();
   const [isConnected, setIsConnected] = useState(null);
   const isConnectedRef = useRef(null);
   const updateConnection = (value) => {
@@ -730,6 +727,7 @@ export default function App() {
   const [themePickerVisible, setThemePickerVisible] = useState(false);
   const [unitPickerVisible, setUnitPickerVisible] = useState(false);
   const [unitPickerMode, setUnitPickerMode] = useState('temp');
+  const [languagePickerVisible, setLanguagePickerVisible] = useState(false);
   const [tempPickerAnim] = useState(() => new Animated.Value(0));
   const lastRequest = useRef(null);
   const rememberRef = useRef(true);
@@ -740,12 +738,13 @@ export default function App() {
   const settingsOverlayOpacity = useRef(new Animated.Value(0)).current;
   const settingsScreenX = useRef(new Animated.Value(SCREEN_WIDTH)).current;
   const pickerAnim = useRef(new Animated.Value(0)).current;
+  const languagePickerAnim = useRef(new Animated.Value(0)).current;
   const t = useMemo(() => resolveTheme(appThemeMode), [appThemeMode]);
   const styles = useMemo(() => buildStyles(t), [t]);
   const currentThemeLabel = useMemo(() => {
     const found = THEME_MODES.find((m) => m.value === appThemeMode);
-    return found ? found.label : 'Оригинальная';
-  }, [appThemeMode]);
+    return found ? tr(found.labelKey) : tr('themeModes.author.label');
+  }, [appThemeMode, tr]);
   const route = useRoute();
   const navigation = useNavigation();
   const cityParam = route.params?.city;
@@ -860,11 +859,21 @@ export default function App() {
       useNativeDriver: true,
     }).start();
   }, [unitPickerVisible]);
+  useEffect(() => {
+    if (!languagePickerVisible) return;
+    Animated.timing(languagePickerAnim, {
+      toValue: 1,
+      duration: 200,
+      easing: Easing.out(Easing.cubic),
+      useNativeDriver: true,
+    }).start();
+  }, [languagePickerVisible]);
   const openSettings = () => {
     setSettingsOpen(true);
   };
   const closeSettings = () => {
     if (themePickerVisible) closeThemePicker();
+    if (languagePickerVisible) closeLanguagePicker();
     Animated.parallel([
       Animated.timing(settingsOverlayOpacity, {
         toValue: 0,
@@ -929,6 +938,24 @@ export default function App() {
     }
     hideUnitPicker();
   };
+  const openLanguagePicker = () => {
+    languagePickerAnim.setValue(0);
+    setLanguagePickerVisible(true);
+  };
+  const closeLanguagePicker = () => {
+    Animated.timing(languagePickerAnim, {
+      toValue: 0,
+      duration: 180,
+      easing: Easing.in(Easing.quad),
+      useNativeDriver: true,
+    }).start(({ finished }) => {
+      if (finished) setLanguagePickerVisible(false);
+    });
+  };
+  const selectLanguage = async (value) => {
+    await changeLanguage(value);
+    closeLanguagePicker();
+  };
   const openGitHub = async () => {
     try {
       await Linking.openURL(GITHUB_URL);
@@ -936,29 +963,29 @@ export default function App() {
   };
   const geocode = async (query) => {
     const data = await fetchJson(
-      `https://geocoding-api.open-meteo.com/v1/search?name=${encodeURIComponent(query)}&count=1&language=ru&format=json`
+      `https://geocoding-api.open-meteo.com/v1/search?name=${encodeURIComponent(query)}&count=1&language=${i18n.language}&format=json`
     );
     if (!data.results || data.results.length === 0) {
-      throw new Error('Город не найден');
+      throw new Error(tr('cityNotFound'));
     }
     return data.results[0];
   };
   const reverseGeocode = async (lat, lon) => {
     const data = await fetchJson(
-      `https://geocoding-api.open-meteo.com/v1/reverse?latitude=${lat}&longitude=${lon}&count=1&language=ru&format=json`
+      `https://geocoding-api.open-meteo.com/v1/reverse?latitude=${lat}&longitude=${lon}&count=1&language=${i18n.language}&format=json`
     );
     if (data.results && data.results.length > 0) {
       const p = data.results[0];
       return {
-        name: p.name || p.admin1 || 'Текущее местоположение',
-        country: p.country || '',
-        latitude: lat,
-        longitude: lon,
-      };
-    }
-    return {
-      name: 'Текущее местоположение',
-      country: `${lat.toFixed(2)}, ${lon.toFixed(2)}`,
+         name: p.name || p.admin1 || tr('currentLocation'),
+         country: p.country || '',
+         latitude: lat,
+         longitude: lon,
+       };
+     }
+     return {
+       name: tr('currentLocation'),
+       country: `${lat.toFixed(2)}, ${lon.toFixed(2)}`,
       latitude: lat,
       longitude: lon,
     };
@@ -976,34 +1003,34 @@ export default function App() {
       const [place, data] = await Promise.all([reverseGeocode(lat, lon), fetchWeather(lat, lon)]);
       setWeather({ place, data });
       lastRequest.current = { type: 'coords', lat, lon };
-      if (rememberRef.current && place.name && place.name !== 'Текущее местоположение') {
+      if (rememberRef.current && place.name && place.name !== tr('currentLocation')) {
         await saveLastCity(place.name);
       }
     } catch (e) {
-      if (isConnectedRef.current === false) {
-        setError(NETWORK_ERROR);
-      } else if (e.kind === 'network') {
-        setError(null);
-        setHostUnreachable(true);
-      } else {
-        setError(e.message || 'Не удалось получить погоду');
-      }
-      if (!silent) setWeather(null);
-    } finally {
-      setLoading(false);
-    }
-  };
-  const detectMyLocation = async () => {
-    if (isConnectedRef.current === false) {
-      setError(NETWORK_ERROR);
-      return;
-    }
-    setLocating(true);
-    setError(null);
-    try {
-      const { status } = await Location.requestForegroundPermissionsAsync();
-      if (status !== 'granted') {
-        setError('Доступ к геолокации запрещён. Включите его в настройках или введите город вручную.');
+       if (isConnectedRef.current === false) {
+         setError(tr('noInternet'));
+       } else if (e.kind === 'network') {
+         setError(null);
+         setHostUnreachable(true);
+       } else {
+         setError(e.message || tr('weatherFetchFailed'));
+       }
+       if (!silent) setWeather(null);
+     } finally {
+       setLoading(false);
+     }
+   };
+   const detectMyLocation = async () => {
+     if (isConnectedRef.current === false) {
+       setError(tr('noInternet'));
+       return;
+     }
+     setLocating(true);
+     setError(null);
+     try {
+       const { status } = await Location.requestForegroundPermissionsAsync();
+       if (status !== 'granted') {
+        setError(tr('locationPermissionDenied'));
         return;
       }
       const position = await Location.getCurrentPositionAsync({
@@ -1012,7 +1039,7 @@ export default function App() {
       const { latitude, longitude } = position.coords;
       await loadByCoords(latitude, longitude);
     } catch (e) {
-      setError('Не удалось определить местоположение. Проверьте, что GPS включён, или введите город вручную.');
+       setError(tr('locationFailed'));
     } finally {
       setLocating(false);
     }
@@ -1030,12 +1057,12 @@ export default function App() {
       }
     } catch (e) {
       if (isConnectedRef.current === false) {
-        setError(NETWORK_ERROR);
+        setError(tr('noInternet'));
       } else if (e.kind === 'network') {
         setError(null);
         setHostUnreachable(true);
       } else {
-        setError(e.message || 'Не удалось получить погоду');
+        setError(e.message || tr('weatherFetchFailed'));
       }
       if (!silent) setWeather(null);
     } finally {
@@ -1051,7 +1078,7 @@ export default function App() {
   const search = () => {
     const query = city.trim();
     if (!query) {
-      Alert.alert('Введите город', 'Пожалуйста, укажите название города.');
+      Alert.alert(tr('enterCity'), tr('enterCityMessage'));
       return;
     }
     doSearch(query);
@@ -1120,10 +1147,10 @@ export default function App() {
   let bannerMessage = null;
   if (isConnected === false) {
     bannerType = 'offline';
-    bannerMessage = NETWORK_ERROR;
+    bannerMessage = tr('noInternet');
   } else if (hostUnreachable) {
     bannerType = 'vpn';
-    bannerMessage = VPN_WARNING;
+    bannerMessage = tr('vpnWarning');
   } else if (error) {
     bannerType = 'gps';
     bannerMessage = error;
@@ -1177,13 +1204,13 @@ export default function App() {
     ? weathercodeToType(weather.data.current_weather.weathercode)
     : 'clear';
   const conditionFor = (code) => {
-    if (code === 0) return 'Ясно';
-    if (code <= 3) return 'Облачно';
-    if (code <= 48) return 'Туман';
-    if (code <= 67) return 'Дождь';
-    if (code <= 77) return 'Снег';
-    if (code <= 86) return 'Ливень';
-    return 'Гроза';
+    if (code === 0) return tr('condition.clear');
+    if (code <= 3) return tr('condition.cloudy');
+    if (code <= 48) return tr('condition.fog');
+    if (code <= 67) return tr('condition.rain');
+    if (code <= 77) return tr('condition.snow');
+    if (code <= 86) return tr('condition.showers');
+    return tr('condition.thunder');
   };
   if (!themeLoaded) {
     return (
@@ -1197,7 +1224,7 @@ export default function App() {
       <SafeAreaView style={styles.safe}>
         <Animated.View style={[styles.container, { opacity: contentOpacity }]}>
           <View style={styles.titleRow}>
-            <Text style={styles.title}>Погода</Text>
+            <Text style={styles.title}>{tr('weather')}</Text>
             <TouchableOpacity style={styles.gearButton} onPress={openSettings} activeOpacity={0.7}>
               <Text style={styles.gearIcon}>⚙️</Text>
             </TouchableOpacity>
@@ -1205,7 +1232,7 @@ export default function App() {
           <View style={styles.searchRow}>
             <TextInput
               style={styles.input}
-              placeholder="Введите город"
+              placeholder={tr('enterCity')}
               placeholderTextColor={switchTrackOff}
               value={city}
               onChangeText={setCity}
@@ -1213,7 +1240,7 @@ export default function App() {
               returnKeyType="search"
             />
             <TouchableOpacity style={styles.button} onPress={search} activeOpacity={0.7}>
-              <Text style={styles.buttonText}>Поиск</Text>
+              <Text style={styles.buttonText}>{tr('search')}</Text>
             </TouchableOpacity>
           </View>
           <TouchableOpacity
@@ -1222,7 +1249,7 @@ export default function App() {
             disabled={locating}
             activeOpacity={0.7}
           >
-            <Text style={styles.buttonText}>Определить моё местоположение</Text>
+            <Text style={styles.buttonText}>{tr('detectLocation')}</Text>
           </TouchableOpacity>
           {showBanner && (
             <View
@@ -1241,7 +1268,7 @@ export default function App() {
                 {bannerMessage}
               </Text>
               <TouchableOpacity style={styles.bannerButton} onPress={retryConnection} disabled={retrying}>
-                <Text style={styles.bannerButtonText}>{retrying ? '…' : 'Повторить'}</Text>
+                <Text style={styles.bannerButtonText}>{retrying ? '…' : tr('retry')}</Text>
               </TouchableOpacity>
               <TouchableOpacity style={styles.bannerClose} onPress={() => setDismissedMsg(bannerMessage)}>
                 <Text style={styles.bannerCloseText}>✕</Text>
@@ -1260,7 +1287,7 @@ export default function App() {
               </Animated.View>
               <ActivityIndicator size="large" color={t.accent} />
               <Text style={styles.loadingText}>
-                {locating ? 'Определение местоположения...' : 'Загрузка...'}
+                {locating ? tr('locating') : tr('loading')}
               </Text>
             </View>
           )}
@@ -1284,7 +1311,7 @@ export default function App() {
                 {weather.place.country} · {weather.place.latitude.toFixed(2)},
                 {weather.place.longitude.toFixed(2)}
               </Text>
-              {cityTime && <Text style={styles.cityTime}>Местное время: {cityTime}</Text>}
+              {cityTime && <Text style={styles.cityTime}>{tr('localTime')} {cityTime}</Text>}
               <View style={styles.bigIconWrap}>
                 {currentType === 'clear' ? (
                   <SunAnimation size={100} />
@@ -1303,16 +1330,16 @@ export default function App() {
               <View style={styles.detailRow}>
                 <View style={styles.detailCard}>
                    <Text style={styles.detailValue}>{formatWind(weather.data.current_weather.windspeed, windUnit)}</Text>
-                  <Text style={styles.detailLabel}>Ветер</Text>
+                   <Text style={styles.detailLabel}>{tr('wind')}</Text>
                 </View>
                 <View style={styles.detailCard}>
                   <Text style={styles.detailValue}>
-                    {weather.data.current_weather.is_day ? 'День' : 'Ночь'}
+                     {weather.data.current_weather.is_day ? tr('day') : tr('night')}
                   </Text>
-                  <Text style={styles.detailLabel}>Время суток</Text>
+                   <Text style={styles.detailLabel}>{tr('timeOfDay')}</Text>
                 </View>
               </View>
-              <Text style={styles.sectionTitle}>Прогноз на неделю</Text>
+               <Text style={styles.sectionTitle}>{tr('weeklyForecast')}</Text>
               {weather.data.daily.time.map((day, i) => (
                 <View key={day} style={styles.forecastRow}>
                   <Text style={styles.forecastDay}>{formatDay(day)}</Text>
@@ -1331,13 +1358,13 @@ export default function App() {
               ))}
             </ScrollView>
           )}
-          {!loading && !locating && !weather && (
-            <View style={styles.center}>
-              <Text style={styles.hint}>
-                Введите название города или определите местоположение
-              </Text>
-            </View>
-          )}
+           {!loading && !locating && !weather && (
+             <View style={styles.center}>
+               <Text style={styles.hint}>
+                 {tr('enterCityOrLocation')}
+               </Text>
+             </View>
+           )}
         </Animated.View>
         {splashRendered && (
           <Animated.View
@@ -1352,7 +1379,7 @@ export default function App() {
             >
               <WeatherIcon type="clear" isNight={skyIsNight} size={120} />
             </Animated.View>
-            <Text style={styles.splashText}>Определяем погоду...</Text>
+            <Text style={styles.splashText}>{tr('splashText')}</Text>
           </Animated.View>
         )}
         {settingsOpen && (
@@ -1370,7 +1397,7 @@ export default function App() {
                   >
                     <Text style={styles.settingsBackIcon}>←</Text>
                   </TouchableOpacity>
-                  <Text style={styles.settingsHeaderTitle}>О приложении</Text>
+                   <Text style={styles.settingsHeaderTitle}>{tr('about')}</Text>
                 </View>
                 <ScrollView
                   style={styles.settingsBody}
@@ -1378,19 +1405,19 @@ export default function App() {
                 >
                   <View style={styles.settingsHero}>
                     <Image source={APP_ICON_SOURCE} style={styles.heroAppIcon} resizeMode="cover" />
-                    <Text style={styles.heroTitle}>Погода</Text>
-                    <Text style={styles.heroAuthor}>от werxuiiika</Text>
-                    <Text style={styles.heroVersion}>Версия {APP_VERSION}</Text>
+                     <Text style={styles.heroTitle}>{tr('weather')}</Text>
+                     <Text style={styles.heroAuthor}>{tr('byAuthor')}</Text>
+                     <Text style={styles.heroVersion}>{tr('version', { version: APP_VERSION })}</Text>
                   </View>
-                  <Text style={styles.settingsSectionTitle}>Настройки</Text>
-                  <View style={styles.cardStack}>
-                    <View style={styles.aboutCard}>
-                      <View style={styles.aboutCardTextWrap}>
-                        <Text style={styles.aboutCardTitle}>Запоминать город</Text>
-                        <Text style={styles.aboutCardDesc}>
-                          Автоматически открывать сохранённый город при запуске
-                        </Text>
-                      </View>
+                   <Text style={styles.settingsSectionTitle}>{tr('settings')}</Text>
+                   <View style={styles.cardStack}>
+                     <View style={styles.aboutCard}>
+                       <View style={styles.aboutCardTextWrap}>
+                         <Text style={styles.aboutCardTitle}>{tr('rememberCity')}</Text>
+                         <Text style={styles.aboutCardDesc}>
+                           {tr('rememberCityDesc')}
+                         </Text>
+                       </View>
                       <Switch
                         value={rememberCity}
                         onValueChange={toggleRemember}
@@ -1400,72 +1427,88 @@ export default function App() {
                       />
                     </View>
                   </View>
-                  <Text style={styles.settingsSectionTitle}>Интерфейс</Text>
-                  <View style={styles.cardStack}>
-                    <TouchableOpacity
-                      style={styles.aboutCard}
-                      onPress={openThemePicker}
-                      activeOpacity={0.6}
-                    >
-                      <View style={styles.interfaceIconWrap}>
-                        <Text style={styles.interfaceIconEmoji}>🎨</Text>
-                      </View>
-                      <View style={styles.aboutCardTextWrap}>
-                        <Text style={styles.aboutCardTitle}>Тема приложения</Text>
-                        <Text style={styles.aboutCardDesc}>{currentThemeLabel}</Text>
-                      </View>
-                      <Text style={styles.settingsChevron}>›</Text>
-                    </TouchableOpacity>
-                  </View>
-                  <Text style={styles.settingsSectionTitle}>Единицы измерения</Text>
-                  <View style={styles.cardStack}>
-                    <TouchableOpacity
-                      style={styles.aboutCard}
-                      onPress={() => showUnitPicker('temp')}
-                      activeOpacity={0.6}
-                    >
-                      <View style={styles.interfaceIconWrap}>
-                        <Text style={styles.interfaceIconEmoji}>🌡️</Text>
-                      </View>
-                      <View style={styles.aboutCardTextWrap}>
-                        <Text style={styles.aboutCardTitle}>Температура</Text>
-                        <Text style={styles.aboutCardDesc}>
-                          {TEMP_UNIT_OPTIONS.find((o) => o.value === tempUnit)?.label ?? '°C'}
-                        </Text>
-                      </View>
-                      <Text style={styles.settingsChevron}>›</Text>
-                    </TouchableOpacity>
-                    <TouchableOpacity
-                      style={styles.aboutCard}
-                      onPress={() => showUnitPicker('wind')}
-                      activeOpacity={0.6}
-                    >
-                      <View style={styles.interfaceIconWrap}>
-                        <Text style={styles.interfaceIconEmoji}>💨</Text>
-                      </View>
-                      <View style={styles.aboutCardTextWrap}>
-                        <Text style={styles.aboutCardTitle}>Скорость ветра</Text>
-                        <Text style={styles.aboutCardDesc}>
-                          {WIND_UNIT_OPTIONS.find((o) => o.value === windUnit)?.label ?? 'Километры в час'}
-                        </Text>
-                      </View>
-                      <Text style={styles.settingsChevron}>›</Text>
-                    </TouchableOpacity>
-                  </View>
-                  <Text style={styles.settingsSectionTitle}>О проекте</Text>
-                  <View style={styles.cardStack}>
-                    <TouchableOpacity
-                      style={styles.aboutCard}
-                      onPress={openGitHub}
-                      activeOpacity={0.6}
-                    >
-                      <View style={styles.githubIconWrap}>
-                        <GithubIcon size={22} color={t.text} />
-                      </View>
-                      <View style={styles.aboutCardTextWrap}>
-                        <Text style={styles.aboutCardTitle}>Исходный код</Text>
-                        <Text style={styles.aboutCardDesc}>
-                          Баги, предложения и код на GitHub
+                   <Text style={styles.settingsSectionTitle}>{tr('interface')}</Text>
+                   <View style={styles.cardStack}>
+                     <TouchableOpacity
+                       style={styles.aboutCard}
+                       onPress={openThemePicker}
+                       activeOpacity={0.6}
+                     >
+                       <View style={styles.interfaceIconWrap}>
+                         <Text style={styles.interfaceIconEmoji}>🎨</Text>
+                       </View>
+                       <View style={styles.aboutCardTextWrap}>
+                         <Text style={styles.aboutCardTitle}>{tr('appTheme')}</Text>
+                         <Text style={styles.aboutCardDesc}>{currentThemeLabel}</Text>
+                       </View>
+                       <Text style={styles.settingsChevron}>›</Text>
+                     </TouchableOpacity>
+                     <TouchableOpacity
+                       style={styles.aboutCard}
+                       onPress={openLanguagePicker}
+                       activeOpacity={0.6}
+                     >
+                       <View style={styles.interfaceIconWrap}>
+                         <Text style={styles.interfaceIconEmoji}>🌐</Text>
+                       </View>
+                       <View style={styles.aboutCardTextWrap}>
+                         <Text style={styles.aboutCardTitle}>{tr('language')}</Text>
+                         <Text style={styles.aboutCardDesc}>
+                           {i18n.language === 'ru' ? tr('russian') : tr('english')}
+                         </Text>
+                       </View>
+                       <Text style={styles.settingsChevron}>›</Text>
+                     </TouchableOpacity>
+                   </View>
+                   <Text style={styles.settingsSectionTitle}>{tr('units')}</Text>
+                   <View style={styles.cardStack}>
+                     <TouchableOpacity
+                       style={styles.aboutCard}
+                       onPress={() => showUnitPicker('temp')}
+                       activeOpacity={0.6}
+                     >
+                       <View style={styles.interfaceIconWrap}>
+                         <Text style={styles.interfaceIconEmoji}>🌡️</Text>
+                       </View>
+                       <View style={styles.aboutCardTextWrap}>
+                         <Text style={styles.aboutCardTitle}>{tr('temperature')}</Text>
+                         <Text style={styles.aboutCardDesc}>
+                           {tr(TEMP_UNIT_OPTIONS.find((o) => o.value === tempUnit)?.labelKey ?? 'tempUnits.C.label')}
+                         </Text>
+                       </View>
+                       <Text style={styles.settingsChevron}>›</Text>
+                     </TouchableOpacity>
+                     <TouchableOpacity
+                       style={styles.aboutCard}
+                       onPress={() => showUnitPicker('wind')}
+                       activeOpacity={0.6}
+                     >
+                       <View style={styles.interfaceIconWrap}>
+                         <Text style={styles.interfaceIconEmoji}>💨</Text>
+                       </View>
+                       <View style={styles.aboutCardTextWrap}>
+                         <Text style={styles.aboutCardTitle}>{tr('windSpeed')}</Text>
+                         <Text style={styles.aboutCardDesc}>
+                           {tr(WIND_UNIT_OPTIONS.find((o) => o.value === windUnit)?.labelKey ?? 'windUnits.kmh.label')}
+                         </Text>
+                       </View>
+                       <Text style={styles.settingsChevron}>›</Text>
+                     </TouchableOpacity>
+                   </View>
+                   <Text style={styles.settingsSectionTitle}>{tr('aboutProject')}</Text>
+                   <View style={styles.cardStack}>
+                     <TouchableOpacity
+                       style={styles.aboutCard}
+                       onPress={openGitHub}
+                       activeOpacity={0.6}
+                     >
+                       <View style={styles.githubIconWrap}>
+                         <GithubIcon size={22} color={t.text} />
+                       </View>
+                       <View style={styles.aboutCardTextWrap}>
+                         <Text style={styles.aboutCardTitle}>{tr('sourceCode')}</Text>
+                         <Text style={styles.aboutCardDesc}>
+                           {tr('githubDesc')}
                         </Text>
                       </View>
                       <Text style={styles.settingsChevron}>›</Text>
@@ -1497,7 +1540,7 @@ export default function App() {
                         },
                       ]}
                     >
-                      <Text style={styles.pickerTitle}>Тема приложения</Text>
+                      <Text style={styles.pickerTitle}>{tr('appTheme')}</Text>
                       {THEME_MODES.map((m) => {
                         const selected = m.value === appThemeMode;
                         return (
@@ -1517,8 +1560,8 @@ export default function App() {
                               )}
                             </View>
                             <View style={styles.pickerOptionTextWrap}>
-                              <Text style={styles.pickerOptionLabel}>{m.label}</Text>
-                              <Text style={styles.pickerOptionDesc}>{m.desc}</Text>
+                              <Text style={styles.pickerOptionLabel}>{tr(m.labelKey)}</Text>
+                              <Text style={styles.pickerOptionDesc}>{tr(m.descKey)}</Text>
                             </View>
                           </TouchableOpacity>
                         );
@@ -1551,20 +1594,75 @@ export default function App() {
                          },
                        ]}
                      >
-                       <Text style={styles.pickerTitle}>
-                         {unitPickerMode === 'temp' ? 'Температура' : 'Скорость ветра'}
-                       </Text>
-                       {(unitPickerMode === 'temp' ? TEMP_UNIT_OPTIONS : WIND_UNIT_OPTIONS).map(
-                         (o) => {
-                           const selected =
-                             (unitPickerMode === 'temp'
-                               ? o.value === tempUnit
-                               : o.value === windUnit) || false;
+                        <Text style={styles.pickerTitle}>
+                          {unitPickerMode === 'temp' ? tr('temperature') : tr('windSpeed')}
+                        </Text>
+                        {(unitPickerMode === 'temp' ? TEMP_UNIT_OPTIONS : WIND_UNIT_OPTIONS).map(
+                          (o) => {
+                            const selected =
+                              (unitPickerMode === 'temp'
+                                ? o.value === tempUnit
+                                : o.value === windUnit) || false;
+                            return (
+                              <TouchableOpacity
+                                key={o.value}
+                                style={styles.pickerOption}
+                                onPress={() => onSelectUnit(o.value)}
+                                activeOpacity={0.6}
+                              >
+                                <View
+                                  style={[styles.radioOuter, selected && { borderColor: t.accent }]}
+                                >
+                                  {selected && (
+                                    <View
+                                      style={[styles.radioInner, { backgroundColor: t.accent }]}
+                                    />
+                                  )}
+                                </View>
+                                <View style={styles.pickerOptionTextWrap}>
+                                  <Text style={styles.pickerOptionLabel}>{tr(o.labelKey)}</Text>
+                                  <Text style={styles.pickerOptionDesc}>{tr(o.descKey)}</Text>
+                                </View>
+                              </TouchableOpacity>
+                            );
+                          },
+                        )}
+                     </Animated.View>
+                   </View>
+                 )}
+                   {languagePickerVisible && (
+                     <View style={styles.pickerLayer} pointerEvents="box-none">
+                       <Animated.View style={[styles.pickerBackdrop, { opacity: languagePickerAnim }]}>
+                         <TouchableOpacity
+                           style={StyleSheet.absoluteFill}
+                           activeOpacity={1}
+                           onPress={closeLanguagePicker}
+                         />
+                       </Animated.View>
+                       <Animated.View
+                         style={[
+                           styles.pickerCard,
+                           {
+                             opacity: languagePickerAnim,
+                             transform: [
+                               {
+                                 scale: languagePickerAnim.interpolate({
+                                   inputRange: [0, 1],
+                                   outputRange: [0.92, 1],
+                                 }),
+                               },
+                             ],
+                           },
+                         ]}
+                       >
+                         <Text style={styles.pickerTitle}>{tr('language')}</Text>
+                         {LANGUAGE_OPTIONS.map((lang) => {
+                           const selected = lang.value === i18n.language;
                            return (
                              <TouchableOpacity
-                               key={o.value}
+                               key={lang.value}
                                style={styles.pickerOption}
-                               onPress={() => onSelectUnit(o.value)}
+                               onPress={() => selectLanguage(lang.value)}
                                activeOpacity={0.6}
                              >
                                <View
@@ -1577,17 +1675,15 @@ export default function App() {
                                  )}
                                </View>
                                <View style={styles.pickerOptionTextWrap}>
-                                 <Text style={styles.pickerOptionLabel}>{o.label}</Text>
-                                 <Text style={styles.pickerOptionDesc}>{o.desc}</Text>
+                                 <Text style={styles.pickerOptionLabel}>{tr(lang.labelKey)}</Text>
                                </View>
                              </TouchableOpacity>
                            );
-                         },
-                       )}
-                     </Animated.View>
-                   </View>
-                 )}
-                </SafeAreaView>
+                         })}
+                       </Animated.View>
+                     </View>
+                   )}
+                 </SafeAreaView>
             </Animated.View>
           </View>
         )}
@@ -1598,7 +1694,8 @@ export default function App() {
 
 function formatDay(iso) {
   const d = new Date(iso + 'T00:00:00');
-  return d.toLocaleDateString('ru-RU', { weekday: 'short', day: 'numeric' });
+  const locale = i18n.language === 'en' ? 'en-US' : 'ru-RU';
+  return d.toLocaleDateString(locale, { weekday: 'short', day: 'numeric' });
 }
 
 function computeCityClock(data) {

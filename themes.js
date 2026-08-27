@@ -1,9 +1,9 @@
 export const APP_THEME_KEY = 'appTheme';
 
 export const THEME_MODES = [
-  { value: 'author', label: 'Оригинальная', desc: 'Тема, созданная разработчиком' },
-  { value: 'dark', label: 'Тёмная', desc: 'Нейтральная графитовая тема' },
-  { value: 'light', label: 'Светлая', desc: 'Светлая версия оригинальной темы' },
+  { value: 'author', labelKey: 'themeModes.author.label', descKey: 'themeModes.author.desc' },
+  { value: 'dark', labelKey: 'themeModes.dark.label', descKey: 'themeModes.dark.desc' },
+  { value: 'light', labelKey: 'themeModes.light.label', descKey: 'themeModes.light.desc' },
 ];
 
 export const authorTheme = {

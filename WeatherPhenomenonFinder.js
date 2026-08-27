@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { View, Text, FlatList, TouchableOpacity, ActivityIndicator, StyleSheet } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
+import { useTranslation } from 'react-i18next';
 import Svg, { Circle, Path } from 'react-native-svg';
 
 const CITIES = [
@@ -29,21 +30,19 @@ const CITIES = [
   { name: 'Сидней', latitude: -33.8688, longitude: 151.2093 },
 ];
 
-const PHENOMENA_BUTTONS = ['Ясно', 'Дождь', 'Снег', 'Облачно', 'Туман'];
-
 function isCodeInPhenomenon(code, phenomenon) {
   switch (phenomenon) {
-    case 'Гроза':
+    case 'thunder':
       return code === 95 || code === 96 || code === 99;
-    case 'Ясно':
+    case 'clear':
       return code === 0;
-    case 'Дождь':
+    case 'rain':
       return (code >= 51 && code <= 67) || (code >= 80 && code <= 82);
-    case 'Снег':
+    case 'snow':
       return (code >= 71 && code <= 77) || code === 85 || code === 86;
-    case 'Туман':
+    case 'fog':
       return code === 45 || code === 48;
-    case 'Облачно':
+    case 'cloudy':
       return code === 1 || code === 2 || code === 3;
     default:
       return false;
@@ -68,9 +67,12 @@ function SearchTabIcon({ color = '#fbbf24', size = 26 }) {
   );
 }
 
+const PHENOMENA_KEYS = ['clear', 'rain', 'snow', 'cloudy', 'fog'];
+
 export default function WeatherPhenomenonFinder() {
   const navigation = useNavigation();
-  const [selectedPhenomenon, setSelectedPhenomenon] = useState('Ясно');
+  const { t } = useTranslation();
+  const [selectedPhenomenon, setSelectedPhenomenon] = useState('clear');
   const [loading, setLoading] = useState(false);
   const [results, setResults] = useState([]);
   const [hasSearched, setHasSearched] = useState(false);
@@ -87,7 +89,7 @@ export default function WeatherPhenomenonFinder() {
             city.latitude +
             '&longitude=' +
             city.longitude +
-            '&current_weather=true';
+            '&current-weather=true';
           const res = await fetch(url);
           const data = await res.json();
           if (!data.current_weather) {
@@ -118,22 +120,22 @@ export default function WeatherPhenomenonFinder() {
     }
   };
 
-  const handlePress = (label) => {
-    setSelectedPhenomenon(label);
+  const handlePress = (key) => {
+    setSelectedPhenomenon(key);
     handleSearch();
   };
 
-  const renderButton = (label) => {
-    const isActive = selectedPhenomenon === label;
+  const renderButton = (key) => {
+    const isActive = selectedPhenomenon === key;
     return (
       <TouchableOpacity
-        key={label}
+        key={key}
         style={[styles.phenomenonButton, isActive && styles.phenomenonButtonActive]}
-        onPress={() => handlePress(label)}
+        onPress={() => handlePress(key)}
         activeOpacity={0.7}
       >
         <Text style={[styles.phenomenonButtonText, isActive && styles.phenomenonButtonTextActive]}>
-          {label}
+          {t(`phenomenon.${key}`)}
         </Text>
       </TouchableOpacity>
     );
@@ -142,7 +144,7 @@ export default function WeatherPhenomenonFinder() {
   const renderItem = ({ item }) => (
     <TouchableOpacity
       style={styles.resultCard}
-      onPress={() => navigation.navigate('Погода', { city: item.name }, { merge: true })}
+      onPress={() => navigation.navigate('weather', { city: item.name })}
       activeOpacity={0.7}
     >
       <Text style={styles.resultCity}>{item.name}</Text>
@@ -152,14 +154,14 @@ export default function WeatherPhenomenonFinder() {
 
   return (
     <SafeAreaView style={styles.container} edges={['top', 'left', 'right']}>
-      <Text style={styles.title}>Поиск погоды по явлениям</Text>
+      <Text style={styles.title}>{t('weatherByPhenomena')}</Text>
       <View style={styles.buttonContainer}>
-        {PHENOMENA_BUTTONS.map((label) => renderButton(label))}
+        {PHENOMENA_KEYS.map((key) => renderButton(key))}
       </View>
       {loading && (
         <View style={styles.loadingContainer}>
           <ActivityIndicator size="large" color="#fbbf24" />
-          <Text style={styles.loadingText}>Опрос погоды в 20 городах…</Text>
+          <Text style={styles.loadingText}>{t('loadingText')}</Text>
         </View>
       )}
       {!loading && results.length > 0 && (
@@ -174,8 +176,8 @@ export default function WeatherPhenomenonFinder() {
         <View style={styles.hintContainer}>
           <Text style={styles.hint}>
             {hasSearched
-              ? 'Сейчас такого явления нет в базе городов. Попробуйте позже.'
-              : 'Нажмите кнопку для поиска погоды в 20 городах'}
+              ? t('noResultsAfterSearch')
+              : t('noResultsBeforeSearch')}
           </Text>
         </View>
       )}
