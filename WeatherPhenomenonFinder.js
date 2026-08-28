@@ -5,6 +5,7 @@ import { useNavigation } from '@react-navigation/native';
 import { useTranslation } from 'react-i18next';
 import Svg, { Circle, Path } from 'react-native-svg';
 import { useTheme } from './ThemeContext';
+import { SharedElement } from 'react-navigation-shared-element';
 
 const CITIES = [
   { name: 'Москва', latitude: 55.7558, longitude: 37.6173 },
@@ -232,7 +233,9 @@ export default function WeatherPhenomenonFinder() {
 
   return (
     <SafeAreaView style={styles.container} edges={['top', 'left', 'right']}>
-      <Text style={styles.title}>{t('weatherByPhenomena')}</Text>
+      <SharedElement id="tab-title">
+        <Text style={styles.title}>{t('weatherByPhenomena')}</Text>
+      </SharedElement>
       <View style={styles.buttonContainer}>
         {PHENOMENA_KEYS.map((key) => renderButton(key))}
       </View>

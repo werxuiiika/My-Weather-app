@@ -1,7 +1,7 @@
-import React, { createContext, useState, useEffect } from 'react';
+import React, { createContext, useState, useEffect, useRef } from 'react';
 import { NavigationContainer } from '@react-navigation/native';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
-import { Text } from 'react-native';
+import { Text, View, TouchableOpacity, Animated } from 'react-native';
 import { useTranslation } from 'react-i18next';
 import WeatherApp from './WeatherApp';
 import WeatherPhenomenonFinder, { SunTabIcon, SearchTabIcon } from './WeatherPhenomenonFinder';
@@ -17,7 +17,7 @@ function AppContent() {
   const { t } = useTranslation();
   const [isLoading, setIsLoading] = useState(true);
   const [isI18nReady, setIsI18nReady] = useState(false);
-  const { theme, loaded } = useTheme();
+  const { loaded } = useTheme();
 
   useEffect(() => {
     initI18n().then(() => setIsI18nReady(true));
@@ -33,35 +33,9 @@ function AppContent() {
         <NavigationContainer>
           <Tab.Navigator
             screenOptions={({ route }) => ({
-              tabBarIcon: ({ color, size }) => {
-                if (route.name === 'weather') {
-                  return <SunTabIcon color={color} size={size} />;
-                }
-                return <SearchTabIcon color={color} size={size} />;
-              },
-              tabBarLabel: ({ focused, color }) => {
-                const label = route.name === 'weather' ? t('weather') : t('phenomena');
-                return (
-                  <Text style={{ fontSize: 14, fontWeight: '600', paddingBottom: 4, color: color }}>
-                    {label}
-                  </Text>
-                );
-              },
-              tabBarActiveTintColor: theme.accent,
-              tabBarInactiveTintColor: theme.textMuted,
-              tabBarLabelStyle: {
-                fontSize: 14,
-                fontWeight: '600',
-                paddingBottom: 4,
-              },
-              tabBarStyle: {
-                backgroundColor: theme.background,
-                borderTopColor: theme.border,
-                height: 70,
-                paddingBottom: 8,
-              },
               headerShown: false,
             })}
+            tabBar={(props) => <AnimatedTabBar {...props} />}
           >
             <Tab.Screen name="weather" component={WeatherApp} />
             <Tab.Screen name="phenomena" component={WeatherPhenomenonFinder} />
@@ -69,6 +43,72 @@ function AppContent() {
         </NavigationContainer>
       </SettingsProvider>
     </LoadingContext.Provider>
+  );
+}
+
+function AnimatedTabBar({ state, descriptors, navigation }) {
+  const { theme } = useTheme();
+  const { t } = useTranslation();
+  const animationValues = useRef(state.routes.map(() => new Animated.Value(1))).current;
+
+  useEffect(() => {
+    state.routes.forEach((route, index) => {
+      Animated.spring(animationValues[index], {
+        toValue: index === state.index ? 1.15 : 1,
+        friction: 3,
+        useNativeDriver: true,
+      }).start();
+    });
+  }, [state.index]);
+
+  return (
+    <View
+      style={{
+        flexDirection: 'row',
+        backgroundColor: theme.background,
+        borderTopColor: theme.border,
+        borderTopWidth: 1,
+        height: 70,
+        paddingBottom: 8,
+      }}
+    >
+      {state.routes.map((route, index) => {
+        const { options } = descriptors[route.key];
+        const isFocused = state.index === index;
+        const IconComponent = route.name === 'weather' ? SunTabIcon : SearchTabIcon;
+        const label = route.name === 'weather' ? t('weather') : t('phenomena');
+        const iconColor = isFocused ? theme.accent : theme.textMuted;
+
+        const onPress = () => {
+          if (!isFocused) {
+            navigation.navigate(route.name);
+          }
+        };
+
+        return (
+          <TouchableOpacity
+            key={route.key}
+            style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}
+            onPress={onPress}
+            activeOpacity={0.7}
+          >
+            <Animated.View style={{ transform: [{ scale: animationValues[index] }] }}>
+              <IconComponent color={iconColor} size={26} />
+            </Animated.View>
+            <Text
+              style={{
+                fontSize: 12,
+                fontWeight: '600',
+                color: iconColor,
+                marginTop: 4,
+              }}
+            >
+              {label}
+            </Text>
+          </TouchableOpacity>
+        );
+      })}
+    </View>
   );
 }
 

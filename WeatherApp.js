@@ -30,6 +30,7 @@ import i18n, { changeLanguage } from './i18n';
 import { LoadingContext } from './App';
 import { SettingsContext } from './SettingsContext';
 import { useTheme } from './ThemeContext';
+import { SharedElement } from 'react-navigation-shared-element';
 
 const BASE_URL = 'https://api.open-meteo.com/v1/forecast';
 const TIMEOUT_MS = 10000;
@@ -1208,7 +1209,9 @@ export default function App() {
     <SafeAreaView style={styles.safe}>
         <Animated.View style={[styles.container, { opacity: contentOpacity }]}>
           <View style={styles.titleRow}>
-            <Text style={styles.title}>{tr('weather')}</Text>
+            <SharedElement id="tab-title">
+              <Text style={styles.title}>{tr('weather')}</Text>
+            </SharedElement>
             <TouchableOpacity style={styles.gearButton} onPress={openSettings} activeOpacity={0.7}>
               <Text style={styles.gearIcon}>⚙️</Text>
             </TouchableOpacity>
