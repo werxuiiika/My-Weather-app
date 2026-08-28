@@ -1,11 +1,10 @@
-import React, { useState, useMemo } from 'react';
-import { View, Text, FlatList, TouchableOpacity, ActivityIndicator, StyleSheet } from 'react-native';
+import React, { useState, useRef, useEffect, useMemo } from 'react';
+import { View, Text, FlatList, TouchableOpacity, ActivityIndicator, StyleSheet, Animated } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
 import { useTranslation } from 'react-i18next';
 import Svg, { Circle, Path } from 'react-native-svg';
 import { useTheme } from './ThemeContext';
-import { SharedElement } from 'react-navigation-shared-element';
 
 const CITIES = [
   { name: 'Москва', latitude: 55.7558, longitude: 37.6173 },
@@ -70,6 +69,14 @@ export default function WeatherPhenomenonFinder() {
   const navigation = useNavigation();
   const { t } = useTranslation();
   const { theme } = useTheme();
+  const titleOpacity = useRef(new Animated.Value(0)).current;
+  useEffect(() => {
+    Animated.timing(titleOpacity, {
+      toValue: 1,
+      duration: 300,
+      useNativeDriver: true,
+    }).start();
+  }, []);
   const [selectedPhenomenon, setSelectedPhenomenon] = useState('clear');
   const [loading, setLoading] = useState(false);
   const [results, setResults] = useState([]);
@@ -233,9 +240,7 @@ export default function WeatherPhenomenonFinder() {
 
   return (
     <SafeAreaView style={styles.container} edges={['top', 'left', 'right']}>
-      <SharedElement id="tab-title">
-        <Text style={styles.title}>{t('weatherByPhenomena')}</Text>
-      </SharedElement>
+      <Animated.Text style={[styles.title, { opacity: titleOpacity }]}>{t('weatherByPhenomena')}</Animated.Text>
       <View style={styles.buttonContainer}>
         {PHENOMENA_KEYS.map((key) => renderButton(key))}
       </View>
