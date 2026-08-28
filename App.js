@@ -1,10 +1,12 @@
 import React, { createContext, useState, useEffect, useRef } from 'react';
 import { NavigationContainer } from '@react-navigation/native';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
+import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { Text, View, TouchableOpacity, Animated } from 'react-native';
 import { useTranslation } from 'react-i18next';
 import WeatherApp from './WeatherApp';
 import WeatherPhenomenonFinder, { SunTabIcon, SearchTabIcon } from './WeatherPhenomenonFinder';
+import SettingsScreen from './SettingsScreen';
 import { SettingsProvider } from './SettingsContext';
 import { ThemeProvider, useTheme } from './ThemeContext';
 import { initI18n } from './i18n';
@@ -12,6 +14,7 @@ import { initI18n } from './i18n';
 export const LoadingContext = createContext({ isLoading: true, setLoading: () => {} });
 
 const Tab = createBottomTabNavigator();
+const Stack = createNativeStackNavigator();
 
 function AppContent() {
   const { t } = useTranslation();
@@ -31,22 +34,40 @@ function AppContent() {
     <LoadingContext.Provider value={{ isLoading, setLoading: () => {} }}>
       <SettingsProvider>
         <NavigationContainer>
-          <Tab.Navigator
+          <Stack.Navigator
             screenOptions={{
               headerShown: false,
-              tabBarStyle: {
-                height: 70,
-                paddingBottom: 8,
-              },
+              animation: 'slide_from_right',
             }}
-            tabBar={(props) => <AnimatedTabBar {...props} />}
           >
-            <Tab.Screen name="weather" component={WeatherApp} />
-            <Tab.Screen name="phenomena" component={WeatherPhenomenonFinder} />
-          </Tab.Navigator>
+            <Stack.Screen name="Tabs" component={TabScreens} />
+            <Stack.Screen
+              name="Settings"
+              component={SettingsScreen}
+              options={{ animation: 'slide_from_right' }}
+            />
+          </Stack.Navigator>
         </NavigationContainer>
       </SettingsProvider>
     </LoadingContext.Provider>
+  );
+}
+
+function TabScreens() {
+  return (
+    <Tab.Navigator
+      screenOptions={{
+        headerShown: false,
+        tabBarStyle: {
+          height: 70,
+          paddingBottom: 8,
+        },
+      }}
+      tabBar={(props) => <AnimatedTabBar {...props} />}
+    >
+      <Tab.Screen name="weather" component={WeatherApp} />
+      <Tab.Screen name="phenomena" component={WeatherPhenomenonFinder} />
+    </Tab.Navigator>
   );
 }
 

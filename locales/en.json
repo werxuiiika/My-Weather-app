@@ -24,6 +24,7 @@
   "weeklyForecast": "Weekly forecast",
   "enterCityOrLocation": "Enter a city name or determine your location",
   "about": "About",
+  "aboutProject": "About the project",
   "settings": "Settings",
   "rememberCity": "Remember city",
   "rememberCityDesc": "Automatically open the saved city on startup",

@@ -848,7 +848,7 @@ export default function App() {
     }).start();
   }, [languagePickerVisible]);
   const openSettings = () => {
-    setSettingsOpen(true);
+    navigation.getParent()?.navigate('Settings');
   };
   const closeSettings = () => {
     if (themePickerVisible) closeThemePicker();
