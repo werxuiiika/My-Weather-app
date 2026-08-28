@@ -1,4 +1,4 @@
-import { useState, useEffect, useLayoutEffect, useRef, useMemo, createContext, useContext } from 'react';
+import { useState, useEffect, useLayoutEffect, useRef, useMemo, useContext } from 'react';
 import NetInfo from '@react-native-community/netinfo';
 import * as Location from 'expo-location';
 import {
@@ -22,16 +22,14 @@ import {
 import Svg, { Circle, Defs, G, Line, Path, RadialGradient, Rect, Stop } from 'react-native-svg';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import {
-  APP_THEME_KEY,
   THEME_MODES,
-  resolveTheme,
-  authorTheme,
 } from './themes';
 import { useRoute, useNavigation } from '@react-navigation/native';
 import { useTranslation } from 'react-i18next';
 import i18n, { changeLanguage } from './i18n';
 import { LoadingContext } from './App';
 import { SettingsContext } from './SettingsContext';
+import { useTheme } from './ThemeContext';
 
 const BASE_URL = 'https://api.open-meteo.com/v1/forecast';
 const TIMEOUT_MS = 10000;
@@ -39,24 +37,11 @@ const SCREEN_WIDTH = Dimensions.get('window').width;
 const APP_VERSION = require('./package.json').version;
 const APP_ICON_SOURCE = require('./assets/icon.png');
 const GITHUB_URL = 'https://github.com/werxuiiika/My-Weather-app';
-const VALID_THEME_MODES = ['author', 'dark', 'light'];
-
-export const ThemeContext = createContext(authorTheme);
 
 const loadLastCity = async () => { try { return await AsyncStorage.getItem('lastCity'); } catch (e) { return null; } };
 const saveLastCity = async (name) => { try { await AsyncStorage.setItem('lastCity', name); } catch (e) {} };
 const loadRememberCity = async () => { try { const v = await AsyncStorage.getItem('rememberCity'); return v === null ? true : v === 'true'; } catch (e) { return true; } };
 const saveRememberCity = async (value) => { try { await AsyncStorage.setItem('rememberCity', value ? 'true' : 'false'); } catch (e) {} };
-const loadAppTheme = async () => {
-  try {
-    const v = await AsyncStorage.getItem(APP_THEME_KEY);
-    if (v === 'auto') return 'author';
-    return VALID_THEME_MODES.includes(v) ? v : 'author';
-  } catch (e) {
-    return 'author';
-  }
-};
-const saveAppTheme = async (value) => { try { await AsyncStorage.setItem(APP_THEME_KEY, value); } catch (e) {} };
 
 const fetchJson = async (url) => {
   const controller = new AbortController();
@@ -123,8 +108,8 @@ function SunCore({ x = 0, y = 0, s = 1 }) {
 }
 
 function MoonCrescent({ transform }) {
-  const t = useContext(ThemeContext);
-  const fill = t.mode === 'light' ? '#6b7c9e' : '#eaf0fc';
+  const { theme } = useTheme();
+  const fill = theme.mode === 'light' ? '#6b7c9e' : '#eaf0fc';
   return (
     <Path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"
       fill={fill} transform={transform} />
@@ -199,9 +184,9 @@ function RainLayer({ size, heavy }) {
 }
 
 function SnowLayer({ size }) {
-  const t = useContext(ThemeContext);
+  const { theme } = useTheme();
   const scale = size / 64;
-  const fill = t.mode === 'light' ? '#8fa4c9' : ICON_COLORS.snow;
+  const fill = theme.mode === 'light' ? '#8fa4c9' : ICON_COLORS.snow;
   const flakesRef = useRef(null);
   if (flakesRef.current === null) {
     flakesRef.current = Array.from({ length: 10 }, (_, i) => ({
@@ -701,6 +686,7 @@ function formatWind(speedKmh, unit) {
 
 export default function App() {
   const { t: tr } = useTranslation();
+  const { theme, setThemeMode, themeMode, loaded: themeLoaded } = useTheme();
   const [isConnected, setIsConnected] = useState(null);
   const isConnectedRef = useRef(null);
   const updateConnection = (value) => {
@@ -722,8 +708,6 @@ export default function App() {
   const [splashRendered, setSplashRendered] = useState(true);
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [rememberCity, setRememberCity] = useState(true);
-  const [appThemeMode, setAppThemeMode] = useState('author');
-  const [themeLoaded, setThemeLoaded] = useState(false);
   const [themePickerVisible, setThemePickerVisible] = useState(false);
   const [unitPickerVisible, setUnitPickerVisible] = useState(false);
   const [unitPickerMode, setUnitPickerMode] = useState('temp');
@@ -739,20 +723,19 @@ export default function App() {
   const settingsScreenX = useRef(new Animated.Value(SCREEN_WIDTH)).current;
   const pickerAnim = useRef(new Animated.Value(0)).current;
   const languagePickerAnim = useRef(new Animated.Value(0)).current;
-  const t = useMemo(() => resolveTheme(appThemeMode), [appThemeMode]);
-  const styles = useMemo(() => buildStyles(t), [t]);
+  const styles = useMemo(() => buildStyles(theme), [theme]);
   const currentThemeLabel = useMemo(() => {
-    const found = THEME_MODES.find((m) => m.value === appThemeMode);
+    const found = THEME_MODES.find((m) => m.value === themeMode);
     return found ? tr(found.labelKey) : tr('themeModes.author.label');
-  }, [appThemeMode, tr]);
+  }, [themeMode, tr]);
   const route = useRoute();
   const navigation = useNavigation();
   const cityParam = route.params?.city;
   const { isLoading, setLoading: setAppLoading } = useContext(LoadingContext);
   const { tempUnit, windUnit, setTempUnit, setWindUnit } = useContext(SettingsContext);
   const refreshColors =
-    t.mode === 'light' ? ['#3573c2', '#25945a'] : ['#4a90d9', '#38b06b'];
-  const switchTrackOff = t.mode === 'light' ? '#c9d3e6' : '#3a4560';
+    theme.mode === 'light' ? ['#3573c2', '#25945a'] : ['#4a90d9', '#38b06b'];
+  const switchTrackOff = theme.mode === 'light' ? '#c9d3e6' : '#3a4560';
   useEffect(() => {
     const spin = Animated.loop(
       Animated.timing(sunRotate, { toValue: 1, duration: 6000, useNativeDriver: true })
@@ -778,10 +761,6 @@ export default function App() {
   useEffect(() => {
     let active = true;
     const init = async () => {
-      const savedMode = await loadAppTheme();
-      if (!active) return;
-      setAppThemeMode(savedMode);
-      setThemeLoaded(true);
       const state = await NetInfo.fetch();
       if (!active) return;
       updateConnection(!!state.isConnected);
@@ -906,8 +885,7 @@ export default function App() {
     });
   };
   const selectThemeMode = async (value) => {
-    setAppThemeMode(value);
-    await saveAppTheme(value);
+    setThemeMode(value);
     closeThemePicker();
   };
   const toggleRemember = async (value) => {
@@ -1190,16 +1168,16 @@ export default function App() {
       ((loading || locating) && weather === null);
      navigation.setOptions({
       tabBarStyle: {
-        backgroundColor: t.background,
-        borderTopColor: t.border,
+        backgroundColor: theme.background,
+        borderTopColor: theme.border,
         height: 70,
         paddingBottom: 8,
         display: hideTabs ? 'none' : 'flex',
       },
-      tabBarActiveTintColor: t.mode === 'light' ? '#3b82f6' : '#fbbf24',
-      tabBarInactiveTintColor: t.mode === 'light' ? '#94a3b8' : '#94a3b8',
+      tabBarActiveTintColor: theme.mode === 'light' ? '#3b82f6' : '#fbbf24',
+      tabBarInactiveTintColor: theme.mode === 'light' ? '#94a3b8' : '#94a3b8',
     });
-  }, [settingsOpen, isSplashVisible, themeLoaded, loading, locating, weather, t, navigation]);
+  }, [settingsOpen, isSplashVisible, themeLoaded, loading, locating, weather, theme, navigation]);
   const currentIsNight =
     weather &&
     weather.data &&
@@ -1227,8 +1205,7 @@ export default function App() {
     );
   }
   return (
-    <ThemeContext.Provider value={t}>
-      <SafeAreaView style={styles.safe}>
+    <SafeAreaView style={styles.safe}>
         <Animated.View style={[styles.container, { opacity: contentOpacity }]}>
           <View style={styles.titleRow}>
             <Text style={styles.title}>{tr('weather')}</Text>
@@ -1292,7 +1269,7 @@ export default function App() {
               >
                 <WeatherIcon type="clear" isNight={skyIsNight} size={72} />
               </Animated.View>
-              <ActivityIndicator size="large" color={t.accent} />
+              <ActivityIndicator size="large" color={theme.accent} />
               <Text style={styles.loadingText}>
                 {locating ? tr('locating') : tr('loading')}
               </Text>
@@ -1308,8 +1285,8 @@ export default function App() {
                   onRefresh={onRefresh}
                   tintColor={refreshColors[0]}
                   colors={refreshColors}
-                  progressBackgroundColor={t.surface}
-                  titleColor={t.textSecondary}
+                  progressBackgroundColor={theme.surface}
+                  titleColor={theme.textSecondary}
                 />
               }
             >
@@ -1428,7 +1405,7 @@ export default function App() {
                        <Switch
                          value={rememberCity}
                          onValueChange={toggleRemember}
-                         trackColor={{ false: switchTrackOff, true: t.accent2 }}
+                         trackColor={{ false: switchTrackOff, true: theme.accent2 }}
                          thumbColor="#ffffff"
                          ios_backgroundColor={switchTrackOff}
                        />
@@ -1510,7 +1487,7 @@ export default function App() {
                        activeOpacity={0.6}
                      >
                        <View style={styles.githubIconWrap}>
-                         <GithubIcon size={22} color={t.text} />
+                         <GithubIcon size={22} color={theme.text} />
                        </View>
                        <View style={styles.aboutCardTextWrap}>
                          <Text style={styles.aboutCardTitle}>{tr('sourceCode')}</Text>
@@ -1549,7 +1526,7 @@ export default function App() {
                     >
                       <Text style={styles.pickerTitle}>{tr('appTheme')}</Text>
                       {THEME_MODES.map((m) => {
-                        const selected = m.value === appThemeMode;
+                        const selected = m.value === themeMode;
                         return (
                           <TouchableOpacity
                             key={m.value}
@@ -1558,11 +1535,11 @@ export default function App() {
                             activeOpacity={0.6}
                           >
                             <View
-                              style={[styles.radioOuter, selected && { borderColor: t.accent }]}
+                              style={[styles.radioOuter, selected && { borderColor: theme.accent }]}
                             >
                               {selected && (
                                 <View
-                                  style={[styles.radioInner, { backgroundColor: t.accent }]}
+                                  style={[styles.radioInner, { backgroundColor: theme.accent }]}
                                 />
                               )}
                             </View>
@@ -1618,11 +1595,11 @@ export default function App() {
                                 activeOpacity={0.6}
                               >
                                 <View
-                                  style={[styles.radioOuter, selected && { borderColor: t.accent }]}
+                                  style={[styles.radioOuter, selected && { borderColor: theme.accent }]}
                                 >
                                   {selected && (
                                     <View
-                                      style={[styles.radioInner, { backgroundColor: t.accent }]}
+                                      style={[styles.radioInner, { backgroundColor: theme.accent }]}
                                     />
                                   )}
                                 </View>
@@ -1673,11 +1650,11 @@ export default function App() {
                                activeOpacity={0.6}
                              >
                                <View
-                                 style={[styles.radioOuter, selected && { borderColor: t.accent }]}
+                                 style={[styles.radioOuter, selected && { borderColor: theme.accent }]}
                                >
                                  {selected && (
                                    <View
-                                     style={[styles.radioInner, { backgroundColor: t.accent }]}
+                                     style={[styles.radioInner, { backgroundColor: theme.accent }]}
                                    />
                                  )}
                                </View>
@@ -1695,7 +1672,6 @@ export default function App() {
           </View>
         )}
       </SafeAreaView>
-    </ThemeContext.Provider>
   );
 }
 
@@ -1722,23 +1698,23 @@ const preloadStyles = StyleSheet.create({
   fill: { flex: 1 },
 });
 
-const buildStyles = (t) =>
+const buildStyles = (theme) =>
   StyleSheet.create({
-    safe: { flex: 1, backgroundColor: t.background },
-    splash: { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: t.background, alignItems: 'center', justifyContent: 'center' },
+    safe: { flex: 1, backgroundColor: theme.background },
+    splash: { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: theme.background, alignItems: 'center', justifyContent: 'center' },
     splashIconWrap: { marginBottom: 24 },
-    splashText: { color: t.textSecondary, fontSize: 18 },
+    splashText: { color: theme.textSecondary, fontSize: 18 },
     container: { flex: 1, position: 'relative', paddingHorizontal: 20, paddingTop: 20 },
     titleRow: { position: 'relative', alignItems: 'center', justifyContent: 'center', marginBottom: 20 },
-    title: { fontSize: 32, fontWeight: '700', color: t.text, textAlign: 'center' },
+    title: { fontSize: 32, fontWeight: '700', color: theme.text, textAlign: 'center' },
     gearButton: { position: 'absolute', right: 0, top: 10, padding: 6 },
     gearIcon: { fontSize: 26 },
     searchRow: { flexDirection: 'row', marginBottom: 10 },
-    input: { flex: 1, height: 48, backgroundColor: t.surface, borderRadius: 10, paddingHorizontal: 14, color: t.text, fontSize: 16, marginRight: 10 },
-    button: { height: 48, paddingHorizontal: 20, backgroundColor: t.accent, borderRadius: 10, alignItems: 'center', justifyContent: 'center' },
-    locButton: { backgroundColor: t.accent2, marginBottom: 16 },
+    input: { flex: 1, height: 48, backgroundColor: theme.surface, borderRadius: 10, paddingHorizontal: 14, color: theme.text, fontSize: 16, marginRight: 10 },
+    button: { height: 48, paddingHorizontal: 20, backgroundColor: theme.accent, borderRadius: 10, alignItems: 'center', justifyContent: 'center' },
+    locButton: { backgroundColor: theme.accent2, marginBottom: 16 },
     buttonDisabled: { opacity: 0.5 },
-    buttonText: { color: t.onAccent, fontSize: 16, fontWeight: '600' },
+    buttonText: { color: theme.onAccent, fontSize: 16, fontWeight: '600' },
     infoBanner: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#fff9c4', borderRadius: 10, paddingVertical: 10, paddingHorizontal: 12, marginBottom: 16 },
     infoBannerVpn: { backgroundColor: '#ffe0b2' },
     infoBannerOffline: { backgroundColor: '#fdecea' },
@@ -1750,58 +1726,58 @@ const buildStyles = (t) =>
     bannerCloseText: { color: '#4a3000', fontSize: 16, fontWeight: '700' },
     center: { alignItems: 'center', justifyContent: 'center', flex: 1 },
     skyIconWrap: { marginBottom: 16 },
-    loadingText: { color: t.textMuted, marginTop: 10, fontSize: 16 },
-    hint: { color: t.textMuted, fontSize: 16, textAlign: 'center' },
+    loadingText: { color: theme.textMuted, marginTop: 10, fontSize: 16 },
+    hint: { color: theme.textMuted, fontSize: 16, textAlign: 'center' },
     result: { flex: 1 },
     resultContent: { paddingBottom: 30 },
-    cityName: { fontSize: 26, fontWeight: '700', color: t.text, textAlign: 'center' },
-    subLabel: { fontSize: 13, color: t.textMuted, textAlign: 'center', marginTop: 2 },
-    cityTime: { fontSize: 14, color: t.textSecondary, textAlign: 'center', marginTop: 4 },
+    cityName: { fontSize: 26, fontWeight: '700', color: theme.text, textAlign: 'center' },
+    subLabel: { fontSize: 13, color: theme.textMuted, textAlign: 'center', marginTop: 2 },
+    cityTime: { fontSize: 14, color: theme.textSecondary, textAlign: 'center', marginTop: 4 },
     bigIconWrap: { alignItems: 'center', marginTop: 20 },
-    temperature: { fontSize: 72, fontWeight: '300', color: t.text, textAlign: 'center' },
-    condition: { fontSize: 20, color: t.textSecondary, textAlign: 'center', marginBottom: 20 },
+    temperature: { fontSize: 72, fontWeight: '300', color: theme.text, textAlign: 'center' },
+    condition: { fontSize: 20, color: theme.textSecondary, textAlign: 'center', marginBottom: 20 },
     detailRow: { flexDirection: 'row', justifyContent: 'space-around', marginVertical: 16 },
-    detailCard: { backgroundColor: t.surface, borderRadius: 12, paddingVertical: 14, paddingHorizontal: 20, alignItems: 'center' },
-    detailValue: { color: t.text, fontSize: 16, fontWeight: '600' },
-    detailLabel: { color: t.textMuted, fontSize: 12, marginTop: 4 },
-    sectionTitle: { fontSize: 18, fontWeight: '600', color: t.text, marginTop: 10, marginBottom: 8 },
-    forecastRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', backgroundColor: t.surfaceAlt, borderRadius: 8, paddingHorizontal: 14, paddingVertical: 10, marginBottom: 6 },
-    forecastDay: { color: t.textSecondary, fontSize: 15, flex: 1 },
+    detailCard: { backgroundColor: theme.surface, borderRadius: 12, paddingVertical: 14, paddingHorizontal: 20, alignItems: 'center' },
+    detailValue: { color: theme.text, fontSize: 16, fontWeight: '600' },
+    detailLabel: { color: theme.textMuted, fontSize: 12, marginTop: 4 },
+    sectionTitle: { fontSize: 18, fontWeight: '600', color: theme.text, marginTop: 10, marginBottom: 8 },
+    forecastRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', backgroundColor: theme.surfaceAlt, borderRadius: 8, paddingHorizontal: 14, paddingVertical: 10, marginBottom: 6 },
+    forecastDay: { color: theme.textSecondary, fontSize: 15, flex: 1 },
     forecastIconCell: { width: 32, alignItems: 'center', marginRight: 12 },
-    forecastTemp: { color: t.text, fontSize: 15, fontWeight: '600' },
+    forecastTemp: { color: theme.text, fontSize: 15, fontWeight: '600' },
     settingsLayer: { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, zIndex: 100 },
-    settingsDim: { ...StyleSheet.absoluteFillObject, backgroundColor: t.dim },
-    settingsScreen: { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: t.background },
+    settingsDim: { ...StyleSheet.absoluteFillObject, backgroundColor: theme.dim },
+    settingsScreen: { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: theme.background },
     settingsSafe: { flex: 1 },
-    settingsHeader: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 16, paddingTop: 46, paddingBottom: 12, borderBottomWidth: 1, borderBottomColor: t.border },
-    settingsBackButton: { width: 40, height: 40, borderRadius: 12, backgroundColor: t.surfaceRaised, alignItems: 'center', justifyContent: 'center', marginRight: 10 },
-    settingsBackIcon: { fontSize: 22, color: t.textSecondary },
-    settingsHeaderTitle: { fontSize: 22, fontWeight: '700', color: t.text },
+    settingsHeader: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 16, paddingTop: 46, paddingBottom: 12, borderBottomWidth: 1, borderBottomColor: theme.border },
+    settingsBackButton: { width: 40, height: 40, borderRadius: 12, backgroundColor: theme.surfaceRaised, alignItems: 'center', justifyContent: 'center', marginRight: 10 },
+    settingsBackIcon: { fontSize: 22, color: theme.textSecondary },
+    settingsHeaderTitle: { fontSize: 22, fontWeight: '700', color: theme.text },
     settingsBody: { flex: 1 },
     settingsBodyContent: { paddingHorizontal: 20, paddingTop: 8, paddingBottom: 34 },
     settingsHero: { alignItems: 'center', paddingTop: 14, paddingBottom: 8, marginBottom: 16 },
-    heroAppIcon: { width: 80, height: 80, borderRadius: 20, backgroundColor: t.surfaceRaised, borderWidth: 1, borderColor: t.border, marginBottom: 12 },
-    heroTitle: { fontSize: 26, fontWeight: '700', color: t.text },
-    heroAuthor: { fontSize: 13, color: t.textMuted, marginTop: 4 },
-    heroVersion: { fontSize: 11, color: t.textMuted, marginTop: 2 },
-    settingsSectionTitle: { fontSize: 13, fontWeight: '700', color: t.textMuted, letterSpacing: 0.8, marginBottom: 10, marginTop: 22 },
+    heroAppIcon: { width: 80, height: 80, borderRadius: 20, backgroundColor: theme.surfaceRaised, borderWidth: 1, borderColor: theme.border, marginBottom: 12 },
+    heroTitle: { fontSize: 26, fontWeight: '700', color: theme.text },
+    heroAuthor: { fontSize: 13, color: theme.textMuted, marginTop: 4 },
+    heroVersion: { fontSize: 11, color: theme.textMuted, marginTop: 2 },
+    settingsSectionTitle: { fontSize: 13, fontWeight: '700', color: theme.textMuted, letterSpacing: 0.8, marginBottom: 10, marginTop: 22 },
     cardStack: { gap: 10 },
-    aboutCard: { flexDirection: 'row', alignItems: 'center', backgroundColor: t.surface, borderRadius: 16, paddingHorizontal: 16, paddingVertical: 14 },
+    aboutCard: { flexDirection: 'row', alignItems: 'center', backgroundColor: theme.surface, borderRadius: 16, paddingHorizontal: 16, paddingVertical: 14 },
     aboutCardTextWrap: { flex: 1, marginRight: 12 },
-    aboutCardTitle: { fontSize: 16, fontWeight: '600', color: t.text },
-    aboutCardDesc: { fontSize: 13, color: t.textMuted, marginTop: 4, lineHeight: 18 },
-    interfaceIconWrap: { width: 42, height: 42, borderRadius: 12, backgroundColor: t.background, alignItems: 'center', justifyContent: 'center', marginRight: 12 },
+    aboutCardTitle: { fontSize: 16, fontWeight: '600', color: theme.text },
+    aboutCardDesc: { fontSize: 13, color: theme.textMuted, marginTop: 4, lineHeight: 18 },
+    interfaceIconWrap: { width: 42, height: 42, borderRadius: 12, backgroundColor: theme.background, alignItems: 'center', justifyContent: 'center', marginRight: 12 },
     interfaceIconEmoji: { fontSize: 20 },
-    githubIconWrap: { width: 42, height: 42, borderRadius: 12, backgroundColor: t.background, alignItems: 'center', justifyContent: 'center', marginRight: 12 },
-    settingsChevron: { fontSize: 24, color: t.textMuted, marginLeft: 6 },
+    githubIconWrap: { width: 42, height: 42, borderRadius: 12, backgroundColor: theme.background, alignItems: 'center', justifyContent: 'center', marginRight: 12 },
+    settingsChevron: { fontSize: 24, color: theme.textMuted, marginLeft: 6 },
     pickerLayer: { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, zIndex: 20, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 24 },
     pickerBackdrop: { ...StyleSheet.absoluteFillObject, backgroundColor: 'rgba(0, 0, 0, 0.45)' },
-    pickerCard: { width: '100%', maxWidth: 360, backgroundColor: t.surface, borderRadius: 20, borderWidth: 1, borderColor: t.border, padding: 18 },
-    pickerTitle: { fontSize: 18, fontWeight: '700', color: t.text, marginBottom: 12 },
+    pickerCard: { width: '100%', maxWidth: 360, backgroundColor: theme.surface, borderRadius: 20, borderWidth: 1, borderColor: theme.border, padding: 18 },
+    pickerTitle: { fontSize: 18, fontWeight: '700', color: theme.text, marginBottom: 12 },
     pickerOption: { flexDirection: 'row', alignItems: 'center', paddingVertical: 11 },
-    radioOuter: { width: 22, height: 22, borderRadius: 11, borderWidth: 2, borderColor: t.border, alignItems: 'center', justifyContent: 'center', marginRight: 12 },
+    radioOuter: { width: 22, height: 22, borderRadius: 11, borderWidth: 2, borderColor: theme.border, alignItems: 'center', justifyContent: 'center', marginRight: 12 },
     radioInner: { width: 10, height: 10, borderRadius: 5 },
     pickerOptionTextWrap: { flex: 1 },
-    pickerOptionLabel: { fontSize: 15, fontWeight: '600', color: t.text },
-    pickerOptionDesc: { fontSize: 12, color: t.textMuted, marginTop: 2 },
+    pickerOptionLabel: { fontSize: 15, fontWeight: '600', color: theme.text },
+    pickerOptionDesc: { fontSize: 12, color: theme.textMuted, marginTop: 2 },
   });

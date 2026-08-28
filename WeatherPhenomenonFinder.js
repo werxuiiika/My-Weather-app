@@ -1,10 +1,10 @@
-import React, { useState, useContext, useMemo } from 'react';
+import React, { useState, useMemo } from 'react';
 import { View, Text, FlatList, TouchableOpacity, ActivityIndicator, StyleSheet } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
 import { useTranslation } from 'react-i18next';
 import Svg, { Circle, Path } from 'react-native-svg';
-import { ThemeContext } from './WeatherApp';
+import { useTheme } from './ThemeContext';
 
 const CITIES = [
   { name: 'Москва', latitude: 55.7558, longitude: 37.6173 },
@@ -68,7 +68,7 @@ function SearchTabIcon({ color = '#fbbf24', size = 26 }) {
 export default function WeatherPhenomenonFinder() {
   const navigation = useNavigation();
   const { t } = useTranslation();
-  const theme = useContext(ThemeContext);
+  const { theme } = useTheme();
   const [selectedPhenomenon, setSelectedPhenomenon] = useState('clear');
   const [loading, setLoading] = useState(false);
   const [results, setResults] = useState([]);

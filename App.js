@@ -6,22 +6,24 @@ import { useTranslation } from 'react-i18next';
 import WeatherApp from './WeatherApp';
 import WeatherPhenomenonFinder, { SunTabIcon, SearchTabIcon } from './WeatherPhenomenonFinder';
 import { SettingsProvider } from './SettingsContext';
+import { ThemeProvider, useTheme } from './ThemeContext';
 import { initI18n } from './i18n';
 
 export const LoadingContext = createContext({ isLoading: true, setLoading: () => {} });
 
 const Tab = createBottomTabNavigator();
 
-export default function App() {
+function AppContent() {
   const { t } = useTranslation();
   const [isLoading, setIsLoading] = useState(true);
   const [isI18nReady, setIsI18nReady] = useState(false);
+  const { theme, loaded } = useTheme();
 
   useEffect(() => {
     initI18n().then(() => setIsI18nReady(true));
   }, []);
 
-  if (!isI18nReady) {
+  if (!isI18nReady || !loaded) {
     return null;
   }
 
@@ -45,16 +47,16 @@ export default function App() {
                   </Text>
                 );
               },
-              tabBarActiveTintColor: '#fbbf24',
-              tabBarInactiveTintColor: '#94a3b8',
+              tabBarActiveTintColor: theme.accent,
+              tabBarInactiveTintColor: theme.textMuted,
               tabBarLabelStyle: {
                 fontSize: 14,
                 fontWeight: '600',
                 paddingBottom: 4,
               },
               tabBarStyle: {
-                backgroundColor: '#0f172a',
-                borderTopColor: '#1e293b',
+                backgroundColor: theme.background,
+                borderTopColor: theme.border,
                 height: 70,
                 paddingBottom: 8,
               },
@@ -67,5 +69,13 @@ export default function App() {
         </NavigationContainer>
       </SettingsProvider>
     </LoadingContext.Provider>
+  );
+}
+
+export default function App() {
+  return (
+    <ThemeProvider>
+      <AppContent />
+    </ThemeProvider>
   );
 }
