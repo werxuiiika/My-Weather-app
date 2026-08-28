@@ -21,6 +21,7 @@ import i18n, { changeLanguage } from './i18n';
 import { useTheme } from './ThemeContext';
 import { useSettings } from './SettingsContext';
 import { THEME_MODES } from './themes';
+import { Ionicons } from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
 const TEMP_UNIT_OPTIONS = [
@@ -41,19 +42,21 @@ const LANGUAGE_OPTIONS = [
   { value: 'en', labelKey: 'english' },
 ];
 
+const MENU_STYLE_OPTIONS = [
+  { value: 'center', labelKey: 'menuStyle.center' },
+  { value: 'bottom', labelKey: 'menuStyle.bottom' },
+  { value: 'inline', labelKey: 'menuStyle.inline' },
+];
+
 const APP_VERSION = require('./package.json').version;
 const APP_ICON_SOURCE = require('./assets/icon.png');
 const GITHUB_URL = 'https://github.com/werxuiiika/My-Weather-app';
+const MENU_STYLE_KEY = 'menuStyle';
+const DEFAULT_MENU_STYLE = 'center';
 
 function GithubIcon({ size = 22, color }) {
   const { theme } = useTheme();
-  return (
-    <Image
-      source={APP_ICON_SOURCE}
-      style={{ width: size, height: size, tintColor: color || theme.text }}
-      resizeMode="contain"
-    />
-  );
+  return <Ionicons name="logo-github" size={size} color={color || theme.text} />;
 }
 
 function buildStyles(theme) {
@@ -115,106 +118,39 @@ function buildStyles(theme) {
       width: 22, height: 22, borderRadius: 11,
       borderWidth: 2, borderColor: theme.accent,
       alignItems: 'center', justifyContent: 'center',
+      marginRight: 10,
     },
     radioOuterInactive: {
       width: 22, height: 22, borderRadius: 11,
       borderWidth: 2, borderColor: theme.border,
       alignItems: 'center', justifyContent: 'center',
+      marginRight: 10,
     },
     radioInner: { width: 10, height: 10, borderRadius: 5, backgroundColor: theme.accent },
     pickerOption: { flexDirection: 'row', alignItems: 'center', paddingVertical: 11 },
-    pickerOptionLabel: { fontSize: 15, fontWeight: '600', color: theme.text, flex: 1, marginLeft: 10 },
-    pickerOptionDesc: { fontSize: 12, color: theme.textMuted, marginTop: 2, marginLeft: 10 },
-    modalOverlay: {
-      flex: 1,
-      backgroundColor: 'rgba(0, 0, 0, 0.45)',
-    },
-    sheetContainer: {
-      position: 'absolute',
-      bottom: 0,
-      left: 0,
-      right: 0,
-      backgroundColor: theme.background,
-      borderTopLeftRadius: 22,
-      borderTopRightRadius: 22,
-      shadowColor: '#000',
-      shadowOffset: { width: 0, height: -4 },
-      shadowOpacity: 0.15,
-      shadowRadius: 12,
-      elevation: 20,
-    },
-    sheetHandle: {
-      width: 48,
-      height: 6,
-      borderRadius: 3,
-      backgroundColor: theme.border,
-      alignSelf: 'center',
-      marginTop: 10,
-      marginBottom: 12,
-    },
-    sheetTitle: {
-      fontSize: 15,
-      fontWeight: '600',
-      color: theme.textMuted,
-      textAlign: 'center',
-      marginBottom: 14,
-    },
-    sheetOptionsWrap: {
-      paddingHorizontal: 16,
-    },
   });
 }
 
-function BottomSheet({
-  visible,
-  onClose,
-  title,
-  options,
-  selectedValue,
-  onSelect,
-  tr,
-  theme,
-  insets,
-}) {
+function BottomSheet({ visible, onClose, title, options, selectedValue, onSelect, tr, theme, insets }) {
   const translateY = useRef(new Animated.Value(0)).current;
   const opacity = useRef(new Animated.Value(0)).current;
   const screenHeight = Dimensions.get('window').height;
-  const sheetHeight = useMemo(() => Math.min(options.length * 60 + 100, screenHeight * 0.6), [options.length, screenHeight]);
 
   useEffect(() => {
     if (visible) {
-      translateY.setValue(sheetHeight);
+      translateY.setValue(screenHeight);
       opacity.setValue(0);
       Animated.parallel([
-        Animated.timing(opacity, {
-          toValue: 1,
-          duration: 220,
-          easing: Easing.out(Easing.cubic),
-          useNativeDriver: true,
-        }),
-        Animated.spring(translateY, {
-          toValue: 0,
-          friction: 22,
-          useNativeDriver: true,
-        }),
+        Animated.timing(opacity, { toValue: 1, duration: 220, easing: Easing.out(Easing.cubic), useNativeDriver: true }),
+        Animated.spring(translateY, { toValue: 0, friction: 22, useNativeDriver: true }),
       ]).start();
     } else {
       Animated.parallel([
-        Animated.timing(opacity, {
-          toValue: 0,
-          duration: 160,
-          easing: Easing.in(Easing.cubic),
-          useNativeDriver: true,
-        }),
-        Animated.timing(translateY, {
-          toValue: sheetHeight,
-          duration: 200,
-          easing: Easing.in(Easing.cubic),
-          useNativeDriver: true,
-        }),
+        Animated.timing(opacity, { toValue: 0, duration: 160, easing: Easing.in(Easing.cubic), useNativeDriver: true }),
+        Animated.timing(translateY, { toValue: screenHeight, duration: 200, easing: Easing.in(Easing.cubic), useNativeDriver: true }),
       ]).start(onClose);
     }
-  }, [visible, sheetHeight, translateY, opacity, onClose]);
+  }, [visible, translateY, opacity, onClose, screenHeight]);
 
   if (!visible) return null;
 
@@ -223,7 +159,6 @@ function BottomSheet({
       <TouchableWithoutFeedback onPress={onClose}>
         <Animated.View style={{ flex: 1, backgroundColor: 'rgba(0, 0, 0, 0.45)', opacity }} />
       </TouchableWithoutFeedback>
-
       <Animated.View
         style={{
           position: 'absolute',
@@ -242,54 +177,93 @@ function BottomSheet({
           paddingBottom: insets.bottom + 12,
         }}
       >
+        <View style={{ width: 48, height: 6, borderRadius: 3, backgroundColor: theme.border, alignSelf: 'center', marginTop: 10, marginBottom: 12 }} />
+        <Text style={{ fontSize: 15, fontWeight: '600', color: theme.textMuted, textAlign: 'center', marginBottom: 14 }}>{title}</Text>
+        {options.map((opt) => (
+          <TouchableOpacity
+            key={opt.value}
+            style={{ flexDirection: 'row', alignItems: 'center', paddingVertical: 11, paddingHorizontal: 16 }}
+            onPress={() => { onSelect(opt.value); onClose(); }}
+            activeOpacity={0.6}
+          >
+            <View style={selectedValue === opt.value ? {
+              width: 22, height: 22, borderRadius: 11, borderWidth: 2, borderColor: theme.accent, alignItems: 'center', justifyContent: 'center', marginRight: 10,
+            } : {
+              width: 22, height: 22, borderRadius: 11, borderWidth: 2, borderColor: theme.border, alignItems: 'center', justifyContent: 'center', marginRight: 10,
+            }}>
+              {selectedValue === opt.value && <View style={{ width: 10, height: 10, borderRadius: 5, backgroundColor: theme.accent }} />}
+            </View>
+            <Text style={{ fontSize: 15, fontWeight: '600', color: theme.text, flex: 1 }}>{tr(opt.labelKey)}</Text>
+          </TouchableOpacity>
+        ))}
+      </Animated.View>
+    </Modal>
+  );
+}
+
+function CenteredModal({ visible, onClose, title, options, selectedValue, onSelect, tr, theme }) {
+  const scale = useRef(new Animated.Value(0)).current;
+  const opacity = useRef(new Animated.Value(0)).current;
+
+  useEffect(() => {
+    if (visible) {
+      Animated.parallel([
+        Animated.timing(opacity, { toValue: 1, duration: 200, easing: Easing.out(Easing.cubic), useNativeDriver: true }),
+        Animated.spring(scale, { toValue: 1, friction: 12, useNativeDriver: true }),
+      ]).start();
+    } else {
+      Animated.parallel([
+        Animated.timing(opacity, { toValue: 0, duration: 140, easing: Easing.in(Easing.cubic), useNativeDriver: true }),
+        Animated.timing(scale, { toValue: 0.92, duration: 160, easing: Easing.in(Easing.cubic), useNativeDriver: true }),
+      ]).start(onClose);
+    }
+  }, [visible, scale, opacity, onClose]);
+
+  if (!visible) return null;
+
+  return (
+    <Modal transparent visible animationType="none">
+      <TouchableWithoutFeedback onPress={onClose}>
+        <Animated.View style={{ flex: 1, backgroundColor: 'rgba(0, 0, 0, 0.45)', alignItems: 'center', justifyContent: 'center', opacity }} />
+      </TouchableWithoutFeedback>
+      <Animated.View style={{
+        position: 'absolute',
+        top: 0,
+        left: 0,
+        right: 0,
+        bottom: 0,
+        alignItems: 'center',
+        justifyContent: 'center',
+        transform: [{ scale }],
+      }}>
         <View style={{
-          width: 48,
-          height: 6,
-          borderRadius: 3,
-          backgroundColor: theme.border,
-          alignSelf: 'center',
-          marginTop: 10,
-          marginBottom: 12,
-        }} />
-        <Text style={{
-          fontSize: 15,
-          fontWeight: '600',
-          color: theme.textMuted,
-          textAlign: 'center',
-          marginBottom: 14,
-        }}>{title}</Text>
-        <View>
+          backgroundColor: theme.surface,
+          borderRadius: 20,
+          width: '80%',
+          maxWidth: 300,
+          shadowColor: '#000',
+          shadowOffset: { width: 0, height: 8 },
+          shadowOpacity: 0.25,
+          shadowRadius: 20,
+          elevation: 24,
+        }}>
+          <View style={{ width: 48, height: 6, borderRadius: 3, backgroundColor: theme.border, alignSelf: 'center', marginTop: 14, marginBottom: 16 }} />
+          <Text style={{ fontSize: 15, fontWeight: '600', color: theme.textMuted, textAlign: 'center', marginBottom: 14 }}>{title}</Text>
           {options.map((opt) => (
             <TouchableOpacity
               key={opt.value}
-              style={{
-                flexDirection: 'row',
-                alignItems: 'center',
-                paddingVertical: 11,
-                paddingHorizontal: 16,
-              }}
-              onPress={() => {
-                onSelect(opt.value);
-                onClose();
-              }}
+              style={{ flexDirection: 'row', alignItems: 'center', paddingVertical: 11, paddingHorizontal: 16 }}
+              onPress={() => { onSelect(opt.value); onClose(); }}
               activeOpacity={0.6}
             >
               <View style={selectedValue === opt.value ? {
-                width: 22, height: 22, borderRadius: 11,
-                borderWidth: 2, borderColor: theme.accent,
-                alignItems: 'center', justifyContent: 'center',
+                width: 22, height: 22, borderRadius: 11, borderWidth: 2, borderColor: theme.accent, alignItems: 'center', justifyContent: 'center', marginRight: 10,
               } : {
-                width: 22, height: 22, borderRadius: 11,
-                borderWidth: 2, borderColor: theme.border,
-                alignItems: 'center', justifyContent: 'center',
+                width: 22, height: 22, borderRadius: 11, borderWidth: 2, borderColor: theme.border, alignItems: 'center', justifyContent: 'center', marginRight: 10,
               }}>
-                {selectedValue === opt.value && (
-                  <View style={{ width: 10, height: 10, borderRadius: 5, backgroundColor: theme.accent }} />
-                )}
+                {selectedValue === opt.value && <View style={{ width: 10, height: 10, borderRadius: 5, backgroundColor: theme.accent }} />}
               </View>
-              <Text style={{ fontSize: 15, fontWeight: '600', color: theme.text, marginLeft: 10, flex: 1 }}>
-                {tr(opt.labelKey)}
-              </Text>
+              <Text style={{ fontSize: 15, fontWeight: '600', color: theme.text, flex: 1 }}>{tr(opt.labelKey)}</Text>
             </TouchableOpacity>
           ))}
         </View>
@@ -298,22 +272,133 @@ function BottomSheet({
   );
 }
 
+function InlinePicker({ visible, options, selectedValue, onSelect, onClose, tr, theme, styles }) {
+  if (!visible) return null;
+  return (
+    <View style={{ backgroundColor: theme.surfaceAlt, borderRadius: 16, overflow: 'hidden', marginTop: 6 }}>
+      {options.map((opt) => (
+        <TouchableOpacity
+          key={opt.value}
+          style={styles.pickerOption}
+          onPress={() => { onSelect(opt.value); onClose(); }}
+          activeOpacity={0.6}
+        >
+          <View style={selectedValue === opt.value ? styles.radioOuter : styles.radioOuterInactive}>
+            {selectedValue === opt.value && <View style={styles.radioInner} />}
+          </View>
+          <Text style={{ fontSize: 15, fontWeight: '600', color: theme.text, flex: 1 }}>{tr(opt.labelKey)}</Text>
+        </TouchableOpacity>
+      ))}
+    </View>
+  );
+}
+
+function SettingsMenuWrapper({
+  menuStyle, visible, onClose, title, options, selectedValue, onSelect, tr, theme, insets, styles, icon, desc,
+}) {
+  const chevronDir = visible && menuStyle === 'inline' ? '▲' : '›';
+
+  return (
+    <>
+      <TouchableOpacity
+        style={styles.card}
+        activeOpacity={0.6}
+        onPress={() => {
+          if (menuStyle === 'inline') {
+            if (visible) onClose(); else onSelect(null);
+          } else {
+            onSelect(null);
+          }
+        }}
+      >
+        <View style={styles.iconWrap}>
+          <Text style={styles.iconEmoji}>{icon}</Text>
+        </View>
+        <View style={styles.cardTextWrap}>
+          <Text style={styles.cardTitle}>{title}</Text>
+          <Text style={styles.cardDesc}>{desc}</Text>
+        </View>
+        <Text style={styles.chevron}>{chevronDir}</Text>
+      </TouchableOpacity>
+
+      {menuStyle === 'inline' && visible && (
+        <InlinePicker
+          visible={visible}
+          options={options}
+          selectedValue={selectedValue}
+          onSelect={onSelect}
+          onClose={onClose}
+          tr={tr}
+          theme={theme}
+          styles={styles}
+        />
+      )}
+
+      {menuStyle === 'bottom' && (
+        <BottomSheet
+          visible={visible}
+          onClose={onClose}
+          title={title}
+          options={options}
+          selectedValue={selectedValue}
+          onSelect={onSelect}
+          tr={tr}
+          theme={theme}
+          insets={insets}
+        />
+      )}
+
+      {menuStyle === 'center' && (
+        <CenteredModal
+          visible={visible}
+          onClose={onClose}
+          title={title}
+          options={options}
+          selectedValue={selectedValue}
+          onSelect={onSelect}
+          tr={tr}
+          theme={theme}
+        />
+      )}
+    </>
+  );
+}
+
+async function loadMenuStyle() {
+  try {
+    const v = await AsyncStorage.getItem(MENU_STYLE_KEY);
+    return (v && ['center', 'bottom', 'inline'].includes(v)) ? v : DEFAULT_MENU_STYLE;
+  } catch (e) {
+    return DEFAULT_MENU_STYLE;
+  }
+}
+
+async function saveMenuStyle(value) {
+  try {
+    await AsyncStorage.setItem(MENU_STYLE_KEY, value);
+  } catch (e) {}
+}
+
 export default function SettingsScreen() {
   const navigation = useNavigation();
   const { t: tr, i18n: i18nInstance } = useTranslation();
-  const { theme, setThemeMode, themeMode, loaded } = useTheme();
+  const { theme, setThemeMode, themeMode } = useTheme();
   const { tempUnit, windUnit, setTempUnit, setWindUnit } = useSettings();
   const styles = useMemo(() => buildStyles(theme), [theme]);
   const insets = useSafeAreaInsets();
 
-  const [rememberCit, setRememberCity] = useState(true);
+  const [rememberCity, setRememberCity] = useState(true);
+  const [menuStyle, setMenuStyle] = useState(DEFAULT_MENU_STYLE);
   const [showThemePicker, setShowThemePicker] = useState(false);
+  const [showLanguagePicker, setShowLanguagePicker] = useState(false);
   const [showTempPicker, setShowTempPicker] = useState(false);
   const [showWindPicker, setShowWindPicker] = useState(false);
-  const [showLanguagePicker, setShowLanguagePicker] = useState(false);
+  const [showMenuStylePicker, setShowMenuStylePicker] = useState(false);
 
   useEffect(() => {
     (async () => {
+      const saved = await loadMenuStyle();
+      setMenuStyle(saved);
       try {
         const v = await AsyncStorage.getItem('rememberCity');
         if (v !== null) setRememberCity(v === 'true');
@@ -328,24 +413,50 @@ export default function SettingsScreen() {
     } catch (e) {}
   };
 
-  const selectLanguage = async (value) => {
-    await changeLanguage(value);
-    setShowLanguagePicker(false);
+  const handleThemeSelect = async (value) => {
+    if (value !== null) {
+      await setThemeMode(value);
+      setShowThemePicker(false);
+    } else {
+      setShowThemePicker(true);
+    }
   };
 
-  const selectTempUnit = async (value) => {
-    await setTempUnit(value);
-    setShowTempPicker(false);
+  const handleLanguageSelect = async (value) => {
+    if (value !== null) {
+      await changeLanguage(value);
+      setShowLanguagePicker(false);
+    } else {
+      setShowLanguagePicker(true);
+    }
   };
 
-  const selectWindUnit = async (value) => {
-    await setWindUnit(value);
-    setShowWindPicker(false);
+  const handleTempSelect = async (value) => {
+    if (value !== null) {
+      await setTempUnit(value);
+      setShowTempPicker(false);
+    } else {
+      setShowTempPicker(true);
+    }
   };
 
-  const selectThemeMode = async (value) => {
-    await setThemeMode(value);
-    setShowThemePicker(false);
+  const handleWindSelect = async (value) => {
+    if (value !== null) {
+      await setWindUnit(value);
+      setShowWindPicker(false);
+    } else {
+      setShowWindPicker(true);
+    }
+  };
+
+  const handleMenuStyleSelect = async (value) => {
+    if (value !== null) {
+      await saveMenuStyle(value);
+      setMenuStyle(value);
+      setShowMenuStylePicker(false);
+    } else {
+      setShowMenuStylePicker(true);
+    }
   };
 
   const openGitHub = async () => {
@@ -368,6 +479,16 @@ export default function SettingsScreen() {
     const found = WIND_UNIT_OPTIONS.find((o) => o.value === windUnit);
     return found ? tr(found.labelKey) : tr('windUnits.kmh.label');
   }, [windUnit, tr]);
+
+  const currentMenuStyleLabel = useMemo(() => {
+    const found = MENU_STYLE_OPTIONS.find((o) => o.value === menuStyle);
+    return found ? tr(found.labelKey) : tr('menuStyle.center');
+  }, [menuStyle, tr]);
+
+  const currentLanguageLabel = useMemo(() => {
+    const found = LANGUAGE_OPTIONS.find((o) => o.value === i18nInstance.language);
+    return found ? tr(found.labelKey) : tr('english');
+  }, [i18nInstance.language, tr]);
 
   return (
     <View style={styles.safe}>
@@ -396,7 +517,7 @@ export default function SettingsScreen() {
               <Text style={styles.cardDesc}>{tr('rememberCityDesc')}</Text>
             </View>
             <Switch
-              value={rememberCit}
+              value={rememberCity}
               onValueChange={toggleRemember}
               trackColor={{ false: theme.textMuted, true: theme.accent2 }}
               thumbColor="#ffffff"
@@ -407,70 +528,88 @@ export default function SettingsScreen() {
 
         <Text style={styles.sectionTitle}>{tr('interface')}</Text>
         <View style={styles.cardStack}>
-          <TouchableOpacity
-            style={styles.card}
-            activeOpacity={0.6}
-            onPress={() => setShowThemePicker(true)}
-          >
-            <View style={styles.iconWrap}>
-              <Text style={styles.iconEmoji}>🎨</Text>
-            </View>
-            <View style={styles.cardTextWrap}>
-              <Text style={styles.cardTitle}>{tr('appTheme')}</Text>
-              <Text style={styles.cardDesc}>{currentThemeLabel}</Text>
-            </View>
-            <Text style={styles.chevron}>›</Text>
-          </TouchableOpacity>
+          <SettingsMenuWrapper
+            menuStyle={menuStyle}
+            visible={showThemePicker}
+            onClose={() => setShowThemePicker(false)}
+            onSelect={handleThemeSelect}
+            title={tr('appTheme')}
+            icon="🎨"
+            desc={currentThemeLabel}
+            options={THEME_MODES}
+            selectedValue={themeMode}
+            tr={tr}
+            theme={theme}
+            insets={insets}
+            styles={styles}
+          />
 
-          <TouchableOpacity
-            style={styles.card}
-            activeOpacity={0.6}
-            onPress={() => setShowLanguagePicker(true)}
-          >
-            <View style={styles.iconWrap}>
-              <Text style={styles.iconEmoji}>🌐</Text>
-            </View>
-            <View style={styles.cardTextWrap}>
-              <Text style={styles.cardTitle}>{tr('language')}</Text>
-              <Text style={styles.cardDesc}>
-                {tr(LANGUAGE_OPTIONS.find((o) => o.value === i18nInstance.language)?.labelKey ?? 'english')}
-              </Text>
-            </View>
-            <Text style={styles.chevron}>›</Text>
-          </TouchableOpacity>
+          <SettingsMenuWrapper
+            menuStyle={menuStyle}
+            visible={showLanguagePicker}
+            onClose={() => setShowLanguagePicker(false)}
+            onSelect={handleLanguageSelect}
+            title={tr('language')}
+            icon="🌐"
+            desc={currentLanguageLabel}
+            options={LANGUAGE_OPTIONS}
+            selectedValue={i18nInstance.language}
+            tr={tr}
+            theme={theme}
+            insets={insets}
+            styles={styles}
+          />
+
+          <SettingsMenuWrapper
+            menuStyle={menuStyle}
+            visible={showMenuStylePicker}
+            onClose={() => setShowMenuStylePicker(false)}
+            onSelect={handleMenuStyleSelect}
+            title={tr('menuStyle')}
+            icon="📋"
+            desc={currentMenuStyleLabel}
+            options={MENU_STYLE_OPTIONS}
+            selectedValue={menuStyle}
+            tr={tr}
+            theme={theme}
+            insets={insets}
+            styles={styles}
+          />
         </View>
 
         <Text style={styles.sectionTitle}>{tr('units')}</Text>
         <View style={styles.cardStack}>
-          <TouchableOpacity
-            style={styles.card}
-            activeOpacity={0.6}
-            onPress={() => setShowTempPicker(true)}
-          >
-            <View style={styles.iconWrap}>
-              <Text style={styles.iconEmoji}>🌡️</Text>
-            </View>
-            <View style={styles.cardTextWrap}>
-              <Text style={styles.cardTitle}>{tr('temperature')}</Text>
-              <Text style={styles.cardDesc}>{currentTempLabel}</Text>
-            </View>
-            <Text style={styles.chevron}>›</Text>
-          </TouchableOpacity>
+          <SettingsMenuWrapper
+            menuStyle={menuStyle}
+            visible={showTempPicker}
+            onClose={() => setShowTempPicker(false)}
+            onSelect={handleTempSelect}
+            title={tr('temperature')}
+            icon="🌡️"
+            desc={currentTempLabel}
+            options={TEMP_UNIT_OPTIONS}
+            selectedValue={tempUnit}
+            tr={tr}
+            theme={theme}
+            insets={insets}
+            styles={styles}
+          />
 
-          <TouchableOpacity
-            style={styles.card}
-            activeOpacity={0.6}
-            onPress={() => setShowWindPicker(true)}
-          >
-            <View style={styles.iconWrap}>
-              <Text style={styles.iconEmoji}>💨</Text>
-            </View>
-            <View style={styles.cardTextWrap}>
-              <Text style={styles.cardTitle}>{tr('windSpeed')}</Text>
-              <Text style={styles.cardDesc}>{currentWindLabel}</Text>
-            </View>
-            <Text style={styles.chevron}>›</Text>
-          </TouchableOpacity>
+          <SettingsMenuWrapper
+            menuStyle={menuStyle}
+            visible={showWindPicker}
+            onClose={() => setShowWindPicker(false)}
+            onSelect={handleWindSelect}
+            title={tr('windSpeed')}
+            icon="💨"
+            desc={currentWindLabel}
+            options={WIND_UNIT_OPTIONS}
+            selectedValue={windUnit}
+            tr={tr}
+            theme={theme}
+            insets={insets}
+            styles={styles}
+          />
         </View>
 
         <Text style={styles.sectionTitle}>{tr('aboutProject')}</Text>
@@ -491,51 +630,6 @@ export default function SettingsScreen() {
           </TouchableOpacity>
         </View>
       </ScrollView>
-
-      <BottomSheet
-        visible={showThemePicker}
-        onClose={() => setShowThemePicker(false)}
-        title={tr('appTheme')}
-        options={THEME_MODES}
-        selectedValue={themeMode}
-        onSelect={selectThemeMode}
-        tr={tr}
-        theme={theme}
-        insets={insets}
-      />
-      <BottomSheet
-        visible={showLanguagePicker}
-        onClose={() => setShowLanguagePicker(false)}
-        title={tr('language')}
-        options={LANGUAGE_OPTIONS}
-        selectedValue={i18nInstance.language}
-        onSelect={selectLanguage}
-        tr={tr}
-        theme={theme}
-        insets={insets}
-      />
-      <BottomSheet
-        visible={showTempPicker}
-        onClose={() => setShowTempPicker(false)}
-        title={tr('temperature')}
-        options={TEMP_UNIT_OPTIONS}
-        selectedValue={tempUnit}
-        onSelect={selectTempUnit}
-        tr={tr}
-        theme={theme}
-        insets={insets}
-      />
-      <BottomSheet
-        visible={showWindPicker}
-        onClose={() => setShowWindPicker(false)}
-        title={tr('windSpeed')}
-        options={WIND_UNIT_OPTIONS}
-        selectedValue={windUnit}
-        onSelect={selectWindUnit}
-        tr={tr}
-        theme={theme}
-        insets={insets}
-      />
     </View>
   );
 }
