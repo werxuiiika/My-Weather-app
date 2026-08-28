@@ -9,6 +9,7 @@ import {
   Linking,
   StyleSheet,
 } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
 import { useTranslation } from 'react-i18next';
 import i18n, { changeLanguage } from './i18n';
@@ -129,6 +130,7 @@ export default function SettingsScreen() {
   const { theme, setThemeMode, themeMode, loaded } = useTheme();
   const { tempUnit, windUnit, setTempUnit, setWindUnit } = useSettings();
   const styles = useMemo(() => buildStyles(theme), [theme]);
+  const insets = useSafeAreaInsets();
 
   const [rememberCity, setRememberCity] = useState(true);
   const [showThemePicker, setShowThemePicker] = useState(false);
@@ -190,7 +192,7 @@ export default function SettingsScreen() {
 
   return (
     <View style={styles.safe}>
-      <View style={styles.header}>
+         <View style={[styles.header, { paddingTop: insets.top }]}>
         <TouchableOpacity style={styles.headerBtn} onPress={() => navigation.goBack()} activeOpacity={0.7}>
           <Text style={styles.headerBtnText}>←</Text>
         </TouchableOpacity>
