@@ -32,9 +32,13 @@ function AppContent() {
       <SettingsProvider>
         <NavigationContainer>
           <Tab.Navigator
-            screenOptions={({ route }) => ({
+            screenOptions={{
               headerShown: false,
-            })}
+              tabBarStyle: {
+                height: 70,
+                paddingBottom: 8,
+              },
+            }}
             tabBar={(props) => <AnimatedTabBar {...props} />}
           >
             <Tab.Screen name="weather" component={WeatherApp} />
