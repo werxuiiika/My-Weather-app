@@ -2,7 +2,7 @@ import React, { createContext, useState, useEffect, useRef } from 'react';
 import { NavigationContainer } from '@react-navigation/native';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
-import { Text, View, TouchableOpacity, Animated } from 'react-native';
+import { Text, View, TouchableOpacity, Animated, StatusBar } from 'react-native';
 import { useTranslation } from 'react-i18next';
 import WeatherApp from './WeatherApp';
 import WeatherPhenomenonFinder, { SunTabIcon, SearchTabIcon } from './WeatherPhenomenonFinder';
@@ -63,9 +63,10 @@ function TabScreens() {
     <Tab.Navigator
       screenOptions={{
         headerShown: false,
-        tabBarStyle: {
-          height: 70,
+         tabBarStyle: {
+          height: 70 + (StatusBar.currentHeight || 0),
           paddingBottom: 8,
+          paddingTop: StatusBar.currentHeight || 0,
         },
       }}
       tabBar={(props) => <AnimatedTabBar {...props} />}
@@ -99,8 +100,9 @@ function AnimatedTabBar({ state, descriptors, navigation }) {
         backgroundColor: theme.background,
         borderTopColor: theme.border,
         borderTopWidth: 1,
-        height: 70,
+        height: 70 + (StatusBar.currentHeight || 0),
         paddingBottom: 8,
+        paddingTop: StatusBar.currentHeight || 0,
       }}
     >
       {state.routes.map((route, index) => {

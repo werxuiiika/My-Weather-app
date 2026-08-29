@@ -14,6 +14,8 @@ import {
   Dimensions,
   StyleSheet,
   PanResponder,
+  StatusBar,
+  SafeAreaView,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
@@ -83,14 +85,15 @@ function buildStyles(theme, fs) {
     bodyContent: { paddingHorizontal: fs.spacing * 1.25, paddingTop: fs.spacing * 0.5, paddingBottom: fs.spacing * 2.125 },
     hero: { alignItems: 'center', paddingTop: fs.spacing * 0.875, paddingBottom: fs.spacing * 0.5, marginBottom: fs.spacing },
     heroIcon: {
-      width: 96,
-      height: 96,
-      borderRadius: 28,
+      width: 90,
+      height: 90,
+      borderRadius: 22,
       backgroundColor: '#FFFFFF',
       marginBottom: fs.spacing * 0.75,
       alignItems: 'center',
       justifyContent: 'center',
-      padding: fs.spacing * 0.5,
+      padding: 18,
+      overflow: 'hidden',
     },
     heroTitle: { fontSize: fs.large * 1.15, fontWeight: '700', color: theme.text },
     heroAuthor: { fontSize: fs.small, color: theme.textMuted, marginTop: fs.spacing * 0.25 },
@@ -101,15 +104,15 @@ function buildStyles(theme, fs) {
     },
     cardStack: { gap: fs.spacing * 0.625 },
     card: {
-      flexDirection: 'row', alignItems: 'center',
+      flexDirection: 'row',
+      alignItems: 'flex-start',
       backgroundColor: theme.surface,
       borderRadius: 16,
       paddingHorizontal: fs.spacing,
       paddingVertical: fs.spacing * 0.875,
       paddingRight: fs.spacing * 0.75,
-      minHeight: fs.cardHeight,
     },
-    cardTextWrap: { flex: 1, marginRight: fs.spacing * 0.75 },
+    cardTextWrap: { flex: 1, marginRight: fs.spacing * 0.75, flexWrap: 'wrap' },
     cardTitle: { fontSize: fs.base, fontWeight: '600', color: theme.text },
     cardDesc: { fontSize: fs.small, color: theme.textMuted, marginTop: fs.spacing * 0.25, lineHeight: fs.small * 1.384 },
     iconWrap: {
@@ -668,7 +671,7 @@ export default function SettingsScreen() {
   }, [i18nInstance.language, tr]);
 
   return (
-    <View style={styles.safe}>
+    <SafeAreaView style={styles.safe}>
          <View style={[styles.header, { paddingTop: insets.top }]}>
         <TouchableOpacity style={styles.headerBtn} onPress={() => navigation.goBack()} activeOpacity={0.7}>
           <Text style={styles.headerBtnText}>←</Text>
@@ -679,7 +682,7 @@ export default function SettingsScreen() {
       <ScrollView style={styles.body} contentContainerStyle={styles.bodyContent}>
         <View style={styles.hero}>
           <View style={styles.heroIcon}>
-            <Image source={APP_ICON_SOURCE} style={{ width: 56, height: 56 }} resizeMode="contain" />
+            <Image source={APP_ICON_SOURCE} style={{ width: '100%', height: '100%' }} resizeMode="contain" />
           </View>
           <Text style={styles.heroTitle}>{tr('weather')}</Text>
           <Text style={styles.heroAuthor}>— {tr('byAuthor')}</Text>
@@ -753,7 +756,7 @@ export default function SettingsScreen() {
             styles={styles}
           />
 
-          <View style={[styles.card, { paddingVertical: 14 }]}>
+          <View style={[styles.card, { paddingVertical: fs.spacing * 0.875 }]}>
             <View style={styles.iconWrap}>
               <Text style={styles.iconEmoji}>🔤</Text>
             </View>
@@ -835,6 +838,6 @@ export default function SettingsScreen() {
         theme={theme}
         fs={fs}
       />
-    </View>
+    </SafeAreaView>
   );
 }
