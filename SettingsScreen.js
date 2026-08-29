@@ -81,11 +81,13 @@ function buildStyles(theme) {
     bodyContent: { paddingHorizontal: 20, paddingTop: 8, paddingBottom: 34 },
     hero: { alignItems: 'center', paddingTop: 14, paddingBottom: 8, marginBottom: 16 },
     heroIcon: {
-      width: 80, height: 80, borderRadius: 20,
-      backgroundColor: theme.surfaceRaised,
-      borderWidth: 1, borderColor: theme.border,
+      width: 96,
+      height: 96,
+      borderRadius: 28,
+      backgroundColor: '#FFFFFF',
       marginBottom: 12,
-      alignItems: 'center', justifyContent: 'center',
+      alignItems: 'center',
+      justifyContent: 'center',
     },
     heroTitle: { fontSize: 26, fontWeight: '700', color: theme.text },
     heroAuthor: { fontSize: 13, color: theme.textMuted, marginTop: 4 },
@@ -230,7 +232,7 @@ function CenteredModal({ visible, onClose, title, options, selectedValue, onSele
   if (!mounted) return null;
 
   const { width: sw, height: sh } = Dimensions.get('window');
-  const CARD_W = Math.min(sw * 0.6, 230);
+  const CARD_W = Math.min(sw * 0.55, 210);
   const GAP = 8;
   const estHeight = 36 + options.length * 42;
   let left = sw / 2 - CARD_W / 2;
@@ -263,7 +265,7 @@ function CenteredModal({ visible, onClose, title, options, selectedValue, onSele
           width: CARD_W,
           backgroundColor: theme.surface,
           borderRadius: 12,
-          paddingHorizontal: 10,
+          paddingHorizontal: 8,
           paddingVertical: 6,
           shadowColor: '#000',
           shadowOffset: { width: 0, height: 4 },
