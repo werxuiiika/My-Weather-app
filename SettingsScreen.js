@@ -207,18 +207,21 @@ function BottomSheet({ visible, onClose, title, options, selectedValue, onSelect
 function CenteredModal({ visible, onClose, title, options, selectedValue, onSelect, tr, theme, anchorRect }) {
   const scale = useRef(new Animated.Value(0.9)).current;
   const opacity = useRef(new Animated.Value(0)).current;
+  const translateY = useRef(new Animated.Value(12)).current;
   const [mounted, setMounted] = useState(visible);
 
   useEffect(() => {
     if (visible) {
       setMounted(true);
       Animated.parallel([
-        Animated.timing(opacity, { toValue: 1, duration: 150, easing: Easing.out(Easing.quad), useNativeDriver: true }),
-        Animated.timing(scale, { toValue: 1, duration: 150, easing: Easing.out(Easing.quad), useNativeDriver: true }),
+        Animated.timing(opacity, { toValue: 1, duration: 200, easing: Easing.out(Easing.cubic), useNativeDriver: true }),
+        Animated.timing(scale, { toValue: 1, duration: 200, easing: Easing.out(Easing.cubic), useNativeDriver: true }),
+        Animated.timing(translateY, { toValue: 0, duration: 200, easing: Easing.out(Easing.cubic), useNativeDriver: true }),
       ]).start();
     } else if (mounted) {
       opacity.setValue(0);
       scale.setValue(0.9);
+      translateY.setValue(12);
       setMounted(false);
       onClose();
     }
@@ -227,9 +230,9 @@ function CenteredModal({ visible, onClose, title, options, selectedValue, onSele
   if (!mounted) return null;
 
   const { width: sw, height: sh } = Dimensions.get('window');
-  const CARD_W = Math.min(sw * 0.68, 280);
+  const CARD_W = Math.min(sw * 0.6, 230);
   const GAP = 8;
-  const estHeight = 44 + options.length * 46;
+  const estHeight = 36 + options.length * 42;
   let left = sw / 2 - CARD_W / 2;
   let top = sh / 2 - estHeight / 2;
   if (anchorRect) {
@@ -252,40 +255,40 @@ function CenteredModal({ visible, onClose, title, options, selectedValue, onSele
           position: 'absolute',
           left,
           top,
-          transform: [{ scale }],
+          transform: [{ scale }, { translateY }],
           opacity,
         }}
       >
         <View style={{
           width: CARD_W,
           backgroundColor: theme.surface,
-          borderRadius: 16,
-          paddingHorizontal: 12,
-          paddingVertical: 8,
+          borderRadius: 12,
+          paddingHorizontal: 10,
+          paddingVertical: 6,
           shadowColor: '#000',
-          shadowOffset: { width: 0, height: 6 },
-          shadowOpacity: 0.18,
-          shadowRadius: 16,
-          elevation: 16,
+          shadowOffset: { width: 0, height: 4 },
+          shadowOpacity: 0.2,
+          shadowRadius: 14,
+          elevation: 20,
         }}>
-          <Text style={{ fontSize: 13, fontWeight: '600', color: theme.textMuted, textAlign: 'center', marginBottom: 6 }}>{title}</Text>
+          <Text style={{ fontSize: 12, fontWeight: '600', color: theme.textMuted, textAlign: 'center', marginBottom: 4 }}>{title}</Text>
           {options.map((opt) => (
             <TouchableOpacity
               key={opt.value}
-              style={{ flexDirection: 'row', alignItems: 'center', paddingVertical: 8 }}
+              style={{ flexDirection: 'row', alignItems: 'center', paddingVertical: 6 }}
               onPress={() => { onSelect(opt.value); onClose(); }}
               activeOpacity={0.6}
             >
               <View style={selectedValue === opt.value ? {
-                width: 20, height: 20, borderRadius: 10, borderWidth: 2, borderColor: theme.accent, alignItems: 'center', justifyContent: 'center', marginRight: 10,
+                width: 18, height: 18, borderRadius: 9, borderWidth: 2, borderColor: theme.accent, alignItems: 'center', justifyContent: 'center', marginRight: 8,
               } : {
-                width: 20, height: 20, borderRadius: 10, borderWidth: 2, borderColor: theme.border, alignItems: 'center', justifyContent: 'center', marginRight: 10,
+                width: 18, height: 18, borderRadius: 9, borderWidth: 2, borderColor: theme.border, alignItems: 'center', justifyContent: 'center', marginRight: 8,
               }}>
-                {selectedValue === opt.value && <View style={{ width: 8, height: 8, borderRadius: 4, backgroundColor: theme.accent }} />}
+                {selectedValue === opt.value && <View style={{ width: 7, height: 7, borderRadius: 3.5, backgroundColor: theme.accent }} />}
               </View>
               <View style={{ flex: 1 }}>
-                <Text style={{ fontSize: 15, fontWeight: '600', color: theme.text }}>{tr(opt.labelKey)}</Text>
-                {opt.descKey ? <Text style={{ fontSize: 12, color: theme.textMuted, marginTop: 2 }}>{tr(opt.descKey)}</Text> : null}
+                <Text style={{ fontSize: 14, fontWeight: '600', color: theme.text }}>{tr(opt.labelKey)}</Text>
+                {opt.descKey ? <Text style={{ fontSize: 11, color: theme.textMuted, marginTop: 1 }}>{tr(opt.descKey)}</Text> : null}
               </View>
             </TouchableOpacity>
           ))}
