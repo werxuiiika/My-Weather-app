@@ -25,16 +25,16 @@ import { Ionicons } from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
 const TEMP_UNIT_OPTIONS = [
-  { value: 'C', labelKey: 'tempUnits.C.label' },
-  { value: 'F', labelKey: 'tempUnits.F.label' },
+  { value: 'C', labelKey: 'tempUnits.C.label', descKey: 'tempUnits.C.desc' },
+  { value: 'F', labelKey: 'tempUnits.F.label', descKey: 'tempUnits.F.desc' },
 ];
 
 const WIND_UNIT_OPTIONS = [
-  { value: 'kmh', labelKey: 'windUnits.kmh.label' },
-  { value: 'ms', labelKey: 'windUnits.ms.label' },
-  { value: 'mph', labelKey: 'windUnits.mph.label' },
-  { value: 'knots', labelKey: 'windUnits.knots.label' },
-  { value: 'beaufort', labelKey: 'windUnits.beaufort.label' },
+  { value: 'kmh', labelKey: 'windUnits.kmh.label', descKey: 'windUnits.kmh.desc' },
+  { value: 'ms', labelKey: 'windUnits.ms.label', descKey: 'windUnits.ms.desc' },
+  { value: 'mph', labelKey: 'windUnits.mph.label', descKey: 'windUnits.mph.desc' },
+  { value: 'knots', labelKey: 'windUnits.knots.label', descKey: 'windUnits.knots.desc' },
+  { value: 'beaufort', labelKey: 'windUnits.beaufort.label', descKey: 'windUnits.beaufort.desc' },
 ];
 
 const LANGUAGE_OPTIONS = [
@@ -127,9 +127,12 @@ function buildStyles(theme) {
       marginRight: 10,
     },
     radioInner: { width: 10, height: 10, borderRadius: 5, backgroundColor: theme.accent },
-    pickerOption: { flexDirection: 'row', alignItems: 'center', paddingVertical: 11 },
-  });
-}
+     pickerOption: { flexDirection: 'row', alignItems: 'center', paddingVertical: 11 },
+     pickerOptionTextWrap: { flex: 1 },
+     pickerOptionLabel: { fontSize: 15, fontWeight: '600', color: theme.text },
+     pickerOptionDesc: { fontSize: 12, color: theme.textMuted, marginTop: 2 },
+   });
+ }
 
 function BottomSheet({ visible, onClose, title, options, selectedValue, onSelect, tr, theme, insets }) {
   const translateY = useRef(new Animated.Value(0)).current;
@@ -246,24 +249,28 @@ function CenteredModal({ visible, onClose, title, options, selectedValue, onSele
           shadowOpacity: 0.25,
           shadowRadius: 20,
           elevation: 24,
+          paddingHorizontal: 18,
+          paddingVertical: 16,
         }}>
-          <View style={{ width: 48, height: 6, borderRadius: 3, backgroundColor: theme.border, alignSelf: 'center', marginTop: 14, marginBottom: 16 }} />
           <Text style={{ fontSize: 15, fontWeight: '600', color: theme.textMuted, textAlign: 'center', marginBottom: 14 }}>{title}</Text>
           {options.map((opt) => (
             <TouchableOpacity
               key={opt.value}
-              style={{ flexDirection: 'row', alignItems: 'center', paddingVertical: 11, paddingHorizontal: 16 }}
+              style={{ flexDirection: 'row', alignItems: 'center', paddingVertical: 11 }}
               onPress={() => { onSelect(opt.value); onClose(); }}
               activeOpacity={0.6}
             >
               <View style={selectedValue === opt.value ? {
-                width: 22, height: 22, borderRadius: 11, borderWidth: 2, borderColor: theme.accent, alignItems: 'center', justifyContent: 'center', marginRight: 10,
+                width: 22, height: 22, borderRadius: 11, borderWidth: 2, borderColor: theme.accent, alignItems: 'center', justifyContent: 'center', marginRight: 12,
               } : {
-                width: 22, height: 22, borderRadius: 11, borderWidth: 2, borderColor: theme.border, alignItems: 'center', justifyContent: 'center', marginRight: 10,
+                width: 22, height: 22, borderRadius: 11, borderWidth: 2, borderColor: theme.border, alignItems: 'center', justifyContent: 'center', marginRight: 12,
               }}>
                 {selectedValue === opt.value && <View style={{ width: 10, height: 10, borderRadius: 5, backgroundColor: theme.accent }} />}
               </View>
-              <Text style={{ fontSize: 15, fontWeight: '600', color: theme.text, flex: 1 }}>{tr(opt.labelKey)}</Text>
+              <View style={{ flex: 1 }}>
+                <Text style={{ fontSize: 15, fontWeight: '600', color: theme.text }}>{tr(opt.labelKey)}</Text>
+                {opt.descKey ? <Text style={{ fontSize: 12, color: theme.textMuted, marginTop: 2 }}>{tr(opt.descKey)}</Text> : null}
+              </View>
             </TouchableOpacity>
           ))}
         </View>
