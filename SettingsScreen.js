@@ -219,8 +219,8 @@ function CenteredModal({ visible, onClose, title, options, selectedValue, onSele
       ]).start();
     } else if (mounted) {
       Animated.parallel([
-        Animated.spring(opacity, { toValue: 0, ...SPRING }),
-        Animated.spring(scale, { toValue: 0.9, ...SPRING }),
+        Animated.timing(opacity, { toValue: 0, duration: 200, easing: Easing.inOut(Easing.quad), useNativeDriver: true }),
+        Animated.timing(scale, { toValue: 0.9, duration: 200, easing: Easing.inOut(Easing.quad), useNativeDriver: true }),
       ]).start(() => {
         setMounted(false);
         onClose();
