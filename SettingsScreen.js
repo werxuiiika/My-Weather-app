@@ -111,6 +111,7 @@ function buildStyles(theme, fs) {
       paddingHorizontal: fs.spacing,
       paddingVertical: fs.spacing * 0.875,
       paddingRight: fs.spacing * 0.75,
+      minHeight: 60 * fs.fontScale,
     },
     cardTextWrap: { flex: 1, marginRight: fs.spacing * 0.75, flexWrap: 'wrap' },
     cardTitle: { fontSize: fs.base, fontWeight: '600', color: theme.text },
@@ -238,16 +239,19 @@ function CenteredModal({ visible, onClose, title, options, selectedValue, onSele
       <TouchableWithoutFeedback onPress={onClose}>
         <Animated.View style={{ flex: 1, backgroundColor: 'rgba(0, 0, 0, 0.45)', alignItems: 'center', justifyContent: 'center', opacity }} />
       </TouchableWithoutFeedback>
-      <Animated.View style={{
-        position: 'absolute',
-        top: 0,
-        left: 0,
-        right: 0,
-        bottom: 0,
-        alignItems: 'center',
-        justifyContent: 'center',
-        transform: [{ scale }],
-      }}>
+      <Animated.View
+        pointerEvents="box-none"
+        style={{
+          position: 'absolute',
+          top: 0,
+          left: 0,
+          right: 0,
+          bottom: 0,
+          alignItems: 'center',
+          justifyContent: 'center',
+          transform: [{ scale }],
+        }}
+      >
         <View style={{
           backgroundColor: theme.surface,
           borderRadius: 20,
@@ -401,16 +405,18 @@ function FontSizeModal({ visible, onClose, fontScale, setFontScale, tr, theme, f
       <TouchableWithoutFeedback onPress={onClose}>
         <Animated.View style={{ flex: 1, backgroundColor: 'rgba(0, 0, 0, 0.45)', alignItems: 'center', justifyContent: 'center', opacity }} />
       </TouchableWithoutFeedback>
-      <Animated.View style={{
-        position: 'absolute',
-        top: 0,
-        left: 0,
-        right: 0,
-        bottom: 0,
-        alignItems: 'center',
-        justifyContent: 'center',
-        transform: [{ scale }],
-      }}>
+      <Animated.View
+        pointerEvents="box-none"
+        style={{
+          position: 'absolute',
+          top: 0,
+          left: 0,
+          right: 0,
+          bottom: 0,
+          alignItems: 'center',
+          justifyContent: 'center',
+          transform: [{ scale }],
+        }}>
         <View style={{
           backgroundColor: theme.surface,
           borderRadius: 20,
@@ -658,7 +664,7 @@ export default function SettingsScreen() {
             <Image source={APP_ICON_SOURCE} style={{ width: '100%', height: '100%' }} resizeMode="contain" />
           </View>
           <Text style={styles.heroTitle}>{tr('weather')}</Text>
-          <Text style={styles.heroAuthor}>— {tr('byAuthor')}</Text>
+          <Text style={styles.heroAuthor}>{tr('byAuthor')}</Text>
           <Text style={styles.heroVersion}>{tr('version', { version: APP_VERSION })}</Text>
         </View>
 
@@ -734,7 +740,7 @@ export default function SettingsScreen() {
 
           <View style={[styles.card, { paddingVertical: fs.spacing * 0.875 }]}>
             <View style={styles.iconWrap}>
-              <Text style={styles.iconEmoji}>🔤</Text>
+              <Ionicons name="text" size={fs.iconSize * 0.77} color={theme.textSecondary} />
             </View>
             <View style={styles.cardTextWrap}>
               <Text style={styles.cardTitle}>{tr('fontSize')}</Text>

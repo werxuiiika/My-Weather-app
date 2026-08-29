@@ -1708,7 +1708,7 @@ const buildStyles = (theme, fs) =>
     splashIconWrap: { marginBottom: fs.spacing },
     splashText: { color: theme.textSecondary, fontSize: fs.small },
     container: { flex: 1, position: 'relative', paddingHorizontal: fs.spacing * 1.25, paddingTop: fs.spacing },
-    titleRow: { position: 'relative', alignItems: 'center', justifyContent: 'center', marginBottom: fs.spacing * 1.25, marginTop: (StatusBar.currentHeight || 0) + fs.spacing * 0.75 },
+    titleRow: { position: 'relative', alignItems: 'center', justifyContent: 'center', marginBottom: fs.spacing * 1.25, marginTop: (StatusBar.currentHeight || 0) + fs.spacing * 0.25 },
     title: { fontSize: fs.large * 1.15, fontWeight: '700', color: theme.text, textAlign: 'center' },
     gearButton: { position: 'absolute', right: 0, top: fs.spacing * 0.6, padding: fs.spacing * 0.375 },
     gearIcon: { fontSize: fs.iconSize },
