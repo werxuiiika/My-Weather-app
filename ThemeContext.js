@@ -1,28 +1,20 @@
-import React, { createContext, useState, useEffect, useContext, useCallback, useMemo } from 'react';
-import { LayoutAnimation, Platform, UIManager } from 'react-native';
+import React, { createContext, useState, useEffect, useContext, useCallback, useMemo, useRef } from 'react';
+import { Animated, Easing } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { resolveTheme, authorTheme, APP_THEME_KEY, THEME_MODES } from './themes';
 
-if (Platform.OS === 'android' && UIManager && typeof UIManager.setLayoutAnimationEnabledExperimental === 'function') {
-  UIManager.setLayoutAnimationEnabledExperimental(true);
-}
-
-const THEME_TRANSITION_CONFIG = {
-  duration: 380,
-  update: { type: LayoutAnimation.Types.easeInEaseOut },
-  create: { type: LayoutAnimation.Types.easeInEaseOut, property: LayoutAnimation.Properties.opacity },
-  delete: { type: LayoutAnimation.Types.easeInEaseOut, property: LayoutAnimation.Properties.opacity },
-};
-
-const animateThemeChange = () => {
-  LayoutAnimation.configureNext(THEME_TRANSITION_CONFIG);
-};
-
-const ThemeContext = createContext({ theme: authorTheme, setThemeMode: () => {}, themeMode: 'author', loaded: false });
+const ThemeContext = createContext({
+  theme: authorTheme,
+  setThemeMode: () => {},
+  themeMode: 'author',
+  loaded: false,
+  themeOverlayOpacity: new Animated.Value(1),
+});
 
 export const ThemeProvider = ({ children }) => {
   const [themeMode, setThemeModeState] = useState('author');
   const [loaded, setLoaded] = useState(false);
+  const themeOverlayOpacity = useRef(new Animated.Value(1)).current;
 
   useEffect(() => {
     const loadTheme = async () => {
@@ -42,18 +34,30 @@ export const ThemeProvider = ({ children }) => {
   }, []);
 
   const setThemeMode = useCallback(async (value) => {
-    animateThemeChange();
-    setThemeModeState(value);
-    try {
-      await AsyncStorage.setItem(APP_THEME_KEY, value);
-    } catch (e) {
-    }
-  }, []);
+    Animated.timing(themeOverlayOpacity, {
+      toValue: 0.9,
+      duration: 150,
+      easing: Easing.inOut(Easing.quad),
+      useNativeDriver: true,
+    }).start(() => {
+      setThemeModeState(value);
+      try {
+        AsyncStorage.setItem(APP_THEME_KEY, value);
+      } catch (e) {
+      }
+      Animated.timing(themeOverlayOpacity, {
+        toValue: 1,
+        duration: 150,
+        easing: Easing.inOut(Easing.quad),
+        useNativeDriver: true,
+      }).start();
+    });
+  }, [themeOverlayOpacity]);
 
   const theme = useMemo(() => resolveTheme(themeMode), [themeMode]);
 
   return (
-    <ThemeContext.Provider value={{ theme, setThemeMode, themeMode, loaded }}>
+    <ThemeContext.Provider value={{ theme, setThemeMode, themeMode, loaded, themeOverlayOpacity }}>
       {children}
     </ThemeContext.Provider>
   );

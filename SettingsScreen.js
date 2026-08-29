@@ -205,27 +205,33 @@ function BottomSheet({ visible, onClose, title, options, selectedValue, onSelect
 }
 
 function CenteredModal({ visible, onClose, title, options, selectedValue, onSelect, tr, theme }) {
-  const scale = useRef(new Animated.Value(0)).current;
+  const scale = useRef(new Animated.Value(0.9)).current;
   const opacity = useRef(new Animated.Value(0)).current;
+  const [mounted, setMounted] = useState(visible);
+  const SPRING = { friction: 8, tension: 40, useNativeDriver: true };
 
   useEffect(() => {
     if (visible) {
+      setMounted(true);
       Animated.parallel([
-        Animated.timing(opacity, { toValue: 1, duration: 200, easing: Easing.out(Easing.cubic), useNativeDriver: true }),
-        Animated.spring(scale, { toValue: 1, friction: 12, useNativeDriver: true }),
+        Animated.spring(opacity, { toValue: 1, ...SPRING }),
+        Animated.spring(scale, { toValue: 1, ...SPRING }),
       ]).start();
-    } else {
+    } else if (mounted) {
       Animated.parallel([
-        Animated.timing(opacity, { toValue: 0, duration: 140, easing: Easing.in(Easing.cubic), useNativeDriver: true }),
-        Animated.timing(scale, { toValue: 0.92, duration: 160, easing: Easing.in(Easing.cubic), useNativeDriver: true }),
-      ]).start(onClose);
+        Animated.spring(opacity, { toValue: 0, ...SPRING }),
+        Animated.spring(scale, { toValue: 0.9, ...SPRING }),
+      ]).start(() => {
+        setMounted(false);
+        onClose();
+      });
     }
-  }, [visible, scale, opacity, onClose]);
+  }, [visible]);
 
-  if (!visible) return null;
+  if (!mounted) return null;
 
   return (
-    <Modal transparent visible animationType="none">
+    <Modal transparent visible={mounted} animationType="none">
       <TouchableWithoutFeedback onPress={onClose}>
         <Animated.View style={{ flex: 1, backgroundColor: 'rgba(0, 0, 0, 0.45)', alignItems: 'center', justifyContent: 'center', opacity }} />
       </TouchableWithoutFeedback>

@@ -20,7 +20,7 @@ function AppContent() {
   const { t } = useTranslation();
   const [isLoading, setIsLoading] = useState(true);
   const [isI18nReady, setIsI18nReady] = useState(false);
-  const { loaded } = useTheme();
+  const { loaded, themeOverlayOpacity } = useTheme();
 
   useEffect(() => {
     initI18n().then(() => setIsI18nReady(true));
@@ -32,23 +32,25 @@ function AppContent() {
 
   return (
     <LoadingContext.Provider value={{ isLoading, setLoading: () => {} }}>
-      <SettingsProvider>
-        <NavigationContainer>
-          <Stack.Navigator
-            screenOptions={{
-              headerShown: false,
-              animation: 'slide_from_right',
-            }}
-          >
-            <Stack.Screen name="Tabs" component={TabScreens} />
-            <Stack.Screen
-              name="Settings"
-              component={SettingsScreen}
-              options={{ animation: 'slide_from_right' }}
-            />
-          </Stack.Navigator>
-        </NavigationContainer>
-      </SettingsProvider>
+      <Animated.View style={{ flex: 1, opacity: themeOverlayOpacity }}>
+        <SettingsProvider>
+          <NavigationContainer>
+            <Stack.Navigator
+              screenOptions={{
+                headerShown: false,
+                animation: 'slide_from_right',
+              }}
+            >
+              <Stack.Screen name="Tabs" component={TabScreens} />
+              <Stack.Screen
+                name="Settings"
+                component={SettingsScreen}
+                options={{ animation: 'slide_from_right' }}
+              />
+            </Stack.Navigator>
+          </NavigationContainer>
+        </SettingsProvider>
+      </Animated.View>
     </LoadingContext.Provider>
   );
 }
