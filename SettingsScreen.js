@@ -695,6 +695,7 @@ export default function SettingsScreen() {
             theme={theme}
             insets={insets}
             styles={styles}
+            fs={fs}
           />
 
           <SettingsMenuWrapper
@@ -711,6 +712,7 @@ export default function SettingsScreen() {
             theme={theme}
             insets={insets}
             styles={styles}
+            fs={fs}
           />
 
           <SettingsMenuWrapper
@@ -727,6 +729,7 @@ export default function SettingsScreen() {
             theme={theme}
             insets={insets}
             styles={styles}
+            fs={fs}
           />
 
           <View style={[styles.card, { paddingVertical: fs.spacing * 0.875 }]}>
@@ -764,6 +767,7 @@ export default function SettingsScreen() {
             theme={theme}
             insets={insets}
             styles={styles}
+            fs={fs}
           />
 
           <SettingsMenuWrapper
@@ -780,6 +784,7 @@ export default function SettingsScreen() {
             theme={theme}
             insets={insets}
             styles={styles}
+            fs={fs}
           />
         </View>
 
