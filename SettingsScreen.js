@@ -206,7 +206,7 @@ function BottomSheet({ visible, onClose, title, options, selectedValue, onSelect
   );
 }
 
-function CenteredModal({ visible, onClose, title, options, selectedValue, onSelect, tr, theme, anchorRect }) {
+function CenteredModal({ visible, onClose, title, options, selectedValue, onSelect, tr, theme, anchorPoint }) {
   const scale = useRef(new Animated.Value(0.9)).current;
   const opacity = useRef(new Animated.Value(0)).current;
   const translateY = useRef(new Animated.Value(12)).current;
@@ -237,11 +237,11 @@ function CenteredModal({ visible, onClose, title, options, selectedValue, onSele
   const estHeight = 36 + options.length * 42;
   let left = sw / 2 - CARD_W / 2;
   let top = sh / 2 - estHeight / 2;
-  if (anchorRect) {
-    left = anchorRect.x + anchorRect.w / 2 - CARD_W / 2;
-    top = anchorRect.y + anchorRect.h + GAP;
+  if (anchorPoint) {
+    left = anchorPoint.x - CARD_W / 2;
+    top = anchorPoint.y + GAP;
     if (top + estHeight > sh - GAP) {
-      top = Math.max(GAP, anchorRect.y - estHeight - GAP);
+      top = Math.max(GAP, anchorPoint.y - estHeight - GAP);
     }
   }
   left = Math.max(GAP, Math.min(left, sw - CARD_W - GAP));
@@ -325,8 +325,7 @@ function SettingsMenuWrapper({
   menuStyle, visible, onClose, title, options, selectedValue, onSelect, tr, theme, insets, styles, icon, desc,
 }) {
   const chevronDir = visible && menuStyle === 'inline' ? '▲' : '›';
-  const anchorRef = useRef(null);
-  const [anchorRect, setAnchorRect] = useState(null);
+  const [anchorPoint, setAnchorPoint] = useState(null);
 
   const openPicker = () => {
     if (menuStyle === 'inline') {
@@ -336,15 +335,15 @@ function SettingsMenuWrapper({
     }
   };
 
-  const handlePress = () => {
-    if (menuStyle === 'center' && anchorRef.current) {
-      anchorRef.current.measureInWindow((x, y, w, h) => {
-        setAnchorRect({ x, y, w, h });
-        openPicker();
-      });
+  const handlePress = (e) => {
+    if (menuStyle === 'center') {
+      const px = e?.nativeEvent?.pageX;
+      const py = e?.nativeEvent?.pageY;
+      setAnchorPoint(px != null && py != null ? { x: px, y: py } : null);
     } else {
-      openPicker();
+      setAnchorPoint(null);
     }
+    openPicker();
   };
 
   return (
@@ -354,16 +353,14 @@ function SettingsMenuWrapper({
         activeOpacity={0.6}
         onPress={handlePress}
       >
-        <View ref={anchorRef} style={{ flex: 1, flexDirection: 'row', alignItems: 'center' }}>
-          <View style={styles.iconWrap}>
-            <Text style={styles.iconEmoji}>{icon}</Text>
-          </View>
-          <View style={styles.cardTextWrap}>
-            <Text style={styles.cardTitle}>{title}</Text>
-            <Text style={styles.cardDesc}>{desc}</Text>
-          </View>
-          <Text style={styles.chevron}>{chevronDir}</Text>
+        <View style={styles.iconWrap}>
+          <Text style={styles.iconEmoji}>{icon}</Text>
         </View>
+        <View style={styles.cardTextWrap}>
+          <Text style={styles.cardTitle}>{title}</Text>
+          <Text style={styles.cardDesc}>{desc}</Text>
+        </View>
+        <Text style={styles.chevron}>{chevronDir}</Text>
       </TouchableOpacity>
 
       {menuStyle === 'inline' && visible && (
@@ -403,7 +400,7 @@ function SettingsMenuWrapper({
           onSelect={onSelect}
           tr={tr}
           theme={theme}
-          anchorRect={anchorRect}
+          anchorPoint={anchorPoint}
         />
       )}
     </>
