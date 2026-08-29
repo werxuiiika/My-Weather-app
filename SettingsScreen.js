@@ -204,77 +204,84 @@ function BottomSheet({ visible, onClose, title, options, selectedValue, onSelect
   );
 }
 
-function CenteredModal({ visible, onClose, title, options, selectedValue, onSelect, tr, theme }) {
+function CenteredModal({ visible, onClose, title, options, selectedValue, onSelect, tr, theme, anchorRect }) {
   const scale = useRef(new Animated.Value(0.9)).current;
   const opacity = useRef(new Animated.Value(0)).current;
   const [mounted, setMounted] = useState(visible);
-  const SPRING = { friction: 8, tension: 40, useNativeDriver: true };
 
   useEffect(() => {
     if (visible) {
       setMounted(true);
       Animated.parallel([
-        Animated.spring(opacity, { toValue: 1, ...SPRING }),
-        Animated.spring(scale, { toValue: 1, ...SPRING }),
+        Animated.timing(opacity, { toValue: 1, duration: 150, easing: Easing.out(Easing.quad), useNativeDriver: true }),
+        Animated.timing(scale, { toValue: 1, duration: 150, easing: Easing.out(Easing.quad), useNativeDriver: true }),
       ]).start();
     } else if (mounted) {
-      Animated.parallel([
-        Animated.timing(opacity, { toValue: 0, duration: 200, easing: Easing.inOut(Easing.quad), useNativeDriver: true }),
-        Animated.timing(scale, { toValue: 0.9, duration: 200, easing: Easing.inOut(Easing.quad), useNativeDriver: true }),
-      ]).start(() => {
-        setMounted(false);
-        onClose();
-      });
+      opacity.setValue(0);
+      scale.setValue(0.9);
+      setMounted(false);
+      onClose();
     }
   }, [visible]);
 
   if (!mounted) return null;
 
+  const { width: sw, height: sh } = Dimensions.get('window');
+  const CARD_W = Math.min(sw * 0.68, 280);
+  const GAP = 8;
+  const estHeight = 44 + options.length * 46;
+  let left = sw / 2 - CARD_W / 2;
+  let top = sh / 2 - estHeight / 2;
+  if (anchorRect) {
+    left = anchorRect.x + anchorRect.w / 2 - CARD_W / 2;
+    top = anchorRect.y + anchorRect.h + GAP;
+    if (top + estHeight > sh - GAP) {
+      top = Math.max(GAP, anchorRect.y - estHeight - GAP);
+    }
+  }
+  left = Math.max(GAP, Math.min(left, sw - CARD_W - GAP));
+
   return (
-    <Modal transparent visible={mounted} animationType="none">
+    <Modal transparent visible={mounted} animationType="none" onRequestClose={onClose}>
       <TouchableWithoutFeedback onPress={onClose}>
-        <Animated.View style={{ flex: 1, backgroundColor: 'rgba(0, 0, 0, 0.45)', alignItems: 'center', justifyContent: 'center', opacity }} />
+        <View style={{ flex: 1, backgroundColor: 'transparent' }} />
       </TouchableWithoutFeedback>
       <Animated.View
         pointerEvents="box-none"
         style={{
           position: 'absolute',
-          top: 0,
-          left: 0,
-          right: 0,
-          bottom: 0,
-          alignItems: 'center',
-          justifyContent: 'center',
+          left,
+          top,
           transform: [{ scale }],
+          opacity,
         }}
       >
         <View style={{
+          width: CARD_W,
           backgroundColor: theme.surface,
-          borderRadius: 20,
-          width: '80%',
-          maxWidth: 300,
+          borderRadius: 16,
+          paddingHorizontal: 12,
+          paddingVertical: 8,
           shadowColor: '#000',
-          shadowOffset: { width: 0, height: 8 },
-          shadowOpacity: 0.25,
-          shadowRadius: 20,
-          elevation: 24,
-          paddingHorizontal: 18,
-          paddingVertical: 16,
+          shadowOffset: { width: 0, height: 6 },
+          shadowOpacity: 0.18,
+          shadowRadius: 16,
+          elevation: 16,
         }}>
-          <Text style={{ fontSize: 15, fontWeight: '600', color: theme.textMuted, textAlign: 'center', marginBottom: 14 }}>{title}</Text>
+          <Text style={{ fontSize: 13, fontWeight: '600', color: theme.textMuted, textAlign: 'center', marginBottom: 6 }}>{title}</Text>
           {options.map((opt) => (
             <TouchableOpacity
               key={opt.value}
-              style={{ flexDirection: 'row', alignItems: 'center', paddingVertical: 11 }}
+              style={{ flexDirection: 'row', alignItems: 'center', paddingVertical: 8 }}
               onPress={() => { onSelect(opt.value); onClose(); }}
               activeOpacity={0.6}
             >
               <View style={selectedValue === opt.value ? {
-                width: 22, height: 22, borderRadius: 11, borderWidth: 2, borderColor: theme.accent, alignItems: 'center', justifyContent: 'center', marginRight: 12,
+                width: 20, height: 20, borderRadius: 10, borderWidth: 2, borderColor: theme.accent, alignItems: 'center', justifyContent: 'center', marginRight: 10,
               } : {
-                width: 22, height: 22, borderRadius: 11, borderWidth: 2, borderColor: theme.border, alignItems: 'center', justifyContent: 'center', marginRight: 12,
+                width: 20, height: 20, borderRadius: 10, borderWidth: 2, borderColor: theme.border, alignItems: 'center', justifyContent: 'center', marginRight: 10,
               }}>
-                {selectedValue === opt.value && <View style={{ width: 10, height: 10, borderRadius: 5, backgroundColor: theme.accent }} />}
+                {selectedValue === opt.value && <View style={{ width: 8, height: 8, borderRadius: 4, backgroundColor: theme.accent }} />}
               </View>
               <View style={{ flex: 1 }}>
                 <Text style={{ fontSize: 15, fontWeight: '600', color: theme.text }}>{tr(opt.labelKey)}</Text>
@@ -313,28 +320,45 @@ function SettingsMenuWrapper({
   menuStyle, visible, onClose, title, options, selectedValue, onSelect, tr, theme, insets, styles, icon, desc,
 }) {
   const chevronDir = visible && menuStyle === 'inline' ? '▲' : '›';
+  const anchorRef = useRef(null);
+  const [anchorRect, setAnchorRect] = useState(null);
+
+  const openPicker = () => {
+    if (menuStyle === 'inline') {
+      if (visible) onClose(); else onSelect(null);
+    } else {
+      onSelect(null);
+    }
+  };
+
+  const handlePress = () => {
+    if (menuStyle === 'center' && anchorRef.current) {
+      anchorRef.current.measureInWindow((x, y, w, h) => {
+        setAnchorRect({ x, y, w, h });
+        openPicker();
+      });
+    } else {
+      openPicker();
+    }
+  };
 
   return (
     <>
       <TouchableOpacity
         style={styles.card}
         activeOpacity={0.6}
-        onPress={() => {
-          if (menuStyle === 'inline') {
-            if (visible) onClose(); else onSelect(null);
-          } else {
-            onSelect(null);
-          }
-        }}
+        onPress={handlePress}
       >
-        <View style={styles.iconWrap}>
-          <Text style={styles.iconEmoji}>{icon}</Text>
+        <View ref={anchorRef} style={{ flex: 1, flexDirection: 'row', alignItems: 'center' }}>
+          <View style={styles.iconWrap}>
+            <Text style={styles.iconEmoji}>{icon}</Text>
+          </View>
+          <View style={styles.cardTextWrap}>
+            <Text style={styles.cardTitle}>{title}</Text>
+            <Text style={styles.cardDesc}>{desc}</Text>
+          </View>
+          <Text style={styles.chevron}>{chevronDir}</Text>
         </View>
-        <View style={styles.cardTextWrap}>
-          <Text style={styles.cardTitle}>{title}</Text>
-          <Text style={styles.cardDesc}>{desc}</Text>
-        </View>
-        <Text style={styles.chevron}>{chevronDir}</Text>
       </TouchableOpacity>
 
       {menuStyle === 'inline' && visible && (
@@ -374,6 +398,7 @@ function SettingsMenuWrapper({
           onSelect={onSelect}
           tr={tr}
           theme={theme}
+          anchorRect={anchorRect}
         />
       )}
     </>
