@@ -47,6 +47,9 @@
   "byAuthor": "by werxuiiika",
   "splashText": "Determining weather…",
   "language": "Language",
+  "fontSize": "Font size",
+  "smallFont": "Small",
+  "largeFont": "Large",
   "russian": "Русский",
   "english": "English",
   "condition": {

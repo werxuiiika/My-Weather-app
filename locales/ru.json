@@ -47,6 +47,9 @@
   "byAuthor": "от werxuiiika",
   "splashText": "Определяем погоду...",
   "language": "Язык",
+  "fontSize": "Размер шрифта",
+  "smallFont": "Маленький",
+  "largeFont": "Большой",
   "russian": "Русский",
   "english": "English",
   "condition": {

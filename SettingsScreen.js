@@ -13,13 +13,14 @@ import {
   Easing,
   Dimensions,
   StyleSheet,
+  PanResponder,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
 import { useTranslation } from 'react-i18next';
 import i18n, { changeLanguage } from './i18n';
 import { useTheme } from './ThemeContext';
-import { useSettings } from './SettingsContext';
+import { useSettings, scaleFont } from './SettingsContext';
 import { THEME_MODES } from './themes';
 import { Ionicons } from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
@@ -59,7 +60,8 @@ function GithubIcon({ size = 22, color }) {
   return <Ionicons name="logo-github" size={size} color={color || theme.text} />;
 }
 
-function buildStyles(theme) {
+function buildStyles(theme, fontScale) {
+  const fs = (n) => scaleFont(n, fontScale);
   return StyleSheet.create({
     safe: { flex: 1, backgroundColor: theme.background },
     header: {
@@ -75,8 +77,8 @@ function buildStyles(theme) {
       backgroundColor: theme.surfaceRaised,
       alignItems: 'center', justifyContent: 'center',
     },
-    headerBtnText: { fontSize: 22, color: theme.textSecondary },
-    headerTitle: { fontSize: 22, fontWeight: '700', color: theme.text, marginLeft: 12 },
+    headerBtnText: { fontSize: fs(22), color: theme.textSecondary },
+    headerTitle: { fontSize: fs(22), fontWeight: '700', color: theme.text, marginLeft: 12 },
     body: { flex: 1 },
     bodyContent: { paddingHorizontal: 20, paddingTop: 8, paddingBottom: 34 },
     hero: { alignItems: 'center', paddingTop: 14, paddingBottom: 8, marginBottom: 16 },
@@ -89,11 +91,11 @@ function buildStyles(theme) {
       alignItems: 'center',
       justifyContent: 'center',
     },
-    heroTitle: { fontSize: 26, fontWeight: '700', color: theme.text },
-    heroAuthor: { fontSize: 13, color: theme.textMuted, marginTop: 4 },
-    heroVersion: { fontSize: 11, color: theme.textMuted, marginTop: 2 },
+    heroTitle: { fontSize: fs(26), fontWeight: '700', color: theme.text },
+    heroAuthor: { fontSize: fs(13), color: theme.textMuted, marginTop: 4 },
+    heroVersion: { fontSize: fs(11), color: theme.textMuted, marginTop: 2 },
     sectionTitle: {
-      fontSize: 13, fontWeight: '700', color: theme.textMuted,
+      fontSize: fs(13), fontWeight: '700', color: theme.textMuted,
       letterSpacing: 0.8, marginBottom: 10, marginTop: 22,
     },
     cardStack: { gap: 10 },
@@ -106,16 +108,16 @@ function buildStyles(theme) {
       paddingRight: 12,
     },
     cardTextWrap: { flex: 1, marginRight: 12 },
-    cardTitle: { fontSize: 16, fontWeight: '600', color: theme.text },
-    cardDesc: { fontSize: 13, color: theme.textMuted, marginTop: 4, lineHeight: 18 },
+    cardTitle: { fontSize: fs(16), fontWeight: '600', color: theme.text },
+    cardDesc: { fontSize: fs(13), color: theme.textMuted, marginTop: 4, lineHeight: fs(18) },
     iconWrap: {
       width: 42, height: 42, borderRadius: 12,
       backgroundColor: theme.background,
       alignItems: 'center', justifyContent: 'center',
       marginRight: 12,
     },
-    iconEmoji: { fontSize: 20 },
-    chevron: { fontSize: 24, color: theme.textMuted, marginLeft: 'auto' },
+    iconEmoji: { fontSize: fs(20) },
+    chevron: { fontSize: fs(24), color: theme.textMuted, marginLeft: 'auto' },
     radioOuter: {
       width: 22, height: 22, borderRadius: 11,
       borderWidth: 2, borderColor: theme.accent,
@@ -131,10 +133,10 @@ function buildStyles(theme) {
     radioInner: { width: 10, height: 10, borderRadius: 5, backgroundColor: theme.accent },
      pickerOption: { flexDirection: 'row', alignItems: 'center', paddingVertical: 11 },
      pickerOptionTextWrap: { flex: 1 },
-     pickerOptionLabel: { fontSize: 15, fontWeight: '600', color: theme.text },
-     pickerOptionDesc: { fontSize: 12, color: theme.textMuted, marginTop: 2 },
-   });
- }
+     pickerOptionLabel: { fontSize: fs(15), fontWeight: '600', color: theme.text },
+     pickerOptionDesc: { fontSize: fs(12), color: theme.textMuted, marginTop: 2 },
+    });
+  }
 
 function BottomSheet({ visible, onClose, title, options, selectedValue, onSelect, tr, theme, insets }) {
   const translateY = useRef(new Animated.Value(0)).current;
@@ -206,7 +208,7 @@ function BottomSheet({ visible, onClose, title, options, selectedValue, onSelect
   );
 }
 
-function CenteredModal({ visible, onClose, title, options, selectedValue, onSelect, tr, theme, anchorPoint }) {
+function CenteredModal({ visible, onClose, title, options, selectedValue, onSelect, tr, theme }) {
   const scale = useRef(new Animated.Value(0.9)).current;
   const opacity = useRef(new Animated.Value(0)).current;
   const translateY = useRef(new Animated.Value(12)).current;
@@ -235,27 +237,20 @@ function CenteredModal({ visible, onClose, title, options, selectedValue, onSele
   const CARD_W = Math.min(sw * 0.55, 210);
   const GAP = 8;
   const estHeight = 36 + options.length * 42;
-  let left = sw / 2 - CARD_W / 2;
-  let top = sh / 2 - estHeight / 2;
-  if (anchorPoint) {
-    left = anchorPoint.x - CARD_W / 2;
-    top = anchorPoint.y + GAP;
-    if (top + estHeight > sh - GAP) {
-      top = Math.max(GAP, anchorPoint.y - estHeight - GAP);
-    }
-  }
-  left = Math.max(GAP, Math.min(left, sw - CARD_W - GAP));
+  const left = sw / 2 - CARD_W / 2;
+  const top = sh / 2 - estHeight / 2;
+  const clampedLeft = Math.max(GAP, Math.min(left, sw - CARD_W - GAP));
 
   return (
     <Modal transparent visible={mounted} animationType="none" onRequestClose={onClose}>
       <TouchableWithoutFeedback onPress={onClose}>
-        <View style={{ flex: 1, backgroundColor: 'transparent' }} />
+        <View style={{ flex: 1, backgroundColor: 'rgba(0, 0, 0, 0.35)' }} />
       </TouchableWithoutFeedback>
       <Animated.View
         pointerEvents="box-none"
         style={{
           position: 'absolute',
-          left,
+          left: clampedLeft,
           top,
           transform: [{ scale }, { translateY }],
           opacity,
@@ -321,11 +316,156 @@ function InlinePicker({ visible, options, selectedValue, onSelect, onClose, tr, 
   );
 }
 
+function FontSizeSlider({ value, onValueChange, theme, fs }) {
+  const SLIDER_W = 200;
+  const TRACK_H = 6;
+  const THUMB_W = 18;
+  const RANGE_MIN = 0.6;
+  const RANGE_MAX = 1.8;
+
+  const norm = (value - RANGE_MIN) / (RANGE_MAX - RANGE_MIN);
+
+  const panResponder = useRef(
+    PanResponder.create({
+      onStartShouldSetPanResponder: () => true,
+      onMoveShouldSetPanResponder: () => true,
+      onPanResponderGrant: () => {},
+      onPanResponderMove: (_, gesture) => {
+        const clampedX = Math.max(0, Math.min(gesture.dx, SLIDER_W - THUMB_W));
+        let newNorm = clampedX / (SLIDER_W - THUMB_W);
+        newNorm = Math.max(0, Math.min(newNorm, 1));
+        const newValue = RANGE_MIN + newNorm * (RANGE_MAX - RANGE_MIN);
+        onValueChange(Math.round(newValue * 100) / 100);
+      },
+      onPanResponderRelease: () => {},
+    }),
+  ).current;
+
+  const thumbX = norm * (SLIDER_W - THUMB_W);
+
+  const label = `${Math.round(value * 100)}%`;
+
+  return (
+    <View style={{ width: SLIDER_W, alignItems: 'center' }}>
+      <Text style={{ fontSize: fs(14), fontWeight: '600', color: theme.text, marginBottom: 10 }}>{label}</Text>
+      <View style={{ width: SLIDER_W, height: TRACK_H, backgroundColor: theme.border, borderRadius: TRACK_H / 2 }}>
+        <View
+          style={{
+            position: 'absolute',
+            left: 0,
+            top: 0,
+            width: thumbX + THUMB_W / 2,
+            height: TRACK_H,
+            backgroundColor: theme.accent,
+            borderRadius: TRACK_H / 2,
+          }}
+        />
+        <View
+          {...panResponder.panHandlers}
+          style={{
+            position: 'absolute',
+            left: thumbX,
+            top: (TRACK_H - THUMB_W) / 2,
+            width: THUMB_W,
+            height: THUMB_W,
+            borderRadius: THUMB_W / 2,
+            backgroundColor: theme.accent,
+            shadowColor: '#000',
+            shadowOffset: { width: 0, height: 1 },
+            shadowOpacity: 0.2,
+            shadowRadius: 3,
+            elevation: 5,
+          }}
+        />
+      </View>
+    </View>
+  );
+}
+
+function FontSizeModal({ visible, onClose, fontScale, setFontScale, tr, theme, fs }) {
+  const scale = useRef(new Animated.Value(0.9)).current;
+  const opacity = useRef(new Animated.Value(0)).current;
+  const translateY = useRef(new Animated.Value(12)).current;
+  const [mounted, setMounted] = useState(visible);
+
+  useEffect(() => {
+    if (visible) {
+      setMounted(true);
+      Animated.parallel([
+        Animated.timing(opacity, { toValue: 1, duration: 200, easing: Easing.out(Easing.cubic), useNativeDriver: true }),
+        Animated.timing(scale, { toValue: 1, duration: 200, easing: Easing.out(Easing.cubic), useNativeDriver: true }),
+        Animated.timing(translateY, { toValue: 0, duration: 200, easing: Easing.out(Easing.cubic), useNativeDriver: true }),
+      ]).start();
+    } else if (mounted) {
+      opacity.setValue(0);
+      scale.setValue(0.9);
+      translateY.setValue(12);
+      setMounted(false);
+      onClose();
+    }
+  }, [visible]);
+
+  if (!mounted) return null;
+
+  const { width: sw, height: sh } = Dimensions.get('window');
+  const CARD_W = Math.min(sw * 0.55, 210);
+  const GAP = 24;
+  const labelH = fs(14) + 20;
+  const sliderH = 18;
+  const estHeight = 44 + labelH + 20 + sliderH + 24;
+  const left = sw / 2 - CARD_W / 2;
+  const top = sh / 2 - estHeight / 2;
+  const clampedLeft = Math.max(GAP, Math.min(left, sw - CARD_W - GAP));
+
+  return (
+    <Modal transparent visible={mounted} animationType="none" onRequestClose={onClose}>
+      <TouchableWithoutFeedback onPress={onClose}>
+        <View style={{ flex: 1, backgroundColor: 'rgba(0, 0, 0, 0.35)' }} />
+      </TouchableWithoutFeedback>
+      <Animated.View
+        pointerEvents="box-none"
+        style={{
+          position: 'absolute',
+          left: clampedLeft,
+          top,
+          transform: [{ scale }, { translateY }],
+          opacity,
+        }}
+      >
+        <View style={{
+          width: CARD_W,
+          backgroundColor: theme.surface,
+          borderRadius: 12,
+          paddingHorizontal: 16,
+          paddingVertical: 16,
+          alignItems: 'center',
+          shadowColor: '#000',
+          shadowOffset: { width: 0, height: 4 },
+          shadowOpacity: 0.2,
+          shadowRadius: 14,
+          elevation: 20,
+        }}>
+          <Text style={{ fontSize: fs(12), fontWeight: '600', color: theme.textMuted, textAlign: 'center', marginBottom: 12 }}>{tr('fontSize')}</Text>
+          <FontSizeSlider
+            value={fontScale}
+            onValueChange={setFontScale}
+            theme={theme}
+            fs={fs}
+          />
+          <View style={{ flexDirection: 'row', justifyContent: 'space-between', width: '100%', marginTop: 14 }}>
+            <Text style={{ fontSize: fs(11), color: theme.textMuted }}>{tr('smallFont')}</Text>
+            <Text style={{ fontSize: fs(11), color: theme.textMuted }}>{tr('largeFont')}</Text>
+          </View>
+        </View>
+      </Animated.View>
+    </Modal>
+  );
+}
+
 function SettingsMenuWrapper({
   menuStyle, visible, onClose, title, options, selectedValue, onSelect, tr, theme, insets, styles, icon, desc,
 }) {
   const chevronDir = visible && menuStyle === 'inline' ? '▲' : '›';
-  const [anchorPoint, setAnchorPoint] = useState(null);
 
   const openPicker = () => {
     if (menuStyle === 'inline') {
@@ -335,23 +475,12 @@ function SettingsMenuWrapper({
     }
   };
 
-  const handlePress = (e) => {
-    if (menuStyle === 'center') {
-      const px = e?.nativeEvent?.pageX;
-      const py = e?.nativeEvent?.pageY;
-      setAnchorPoint(px != null && py != null ? { x: px, y: py } : null);
-    } else {
-      setAnchorPoint(null);
-    }
-    openPicker();
-  };
-
   return (
     <>
       <TouchableOpacity
         style={styles.card}
         activeOpacity={0.6}
-        onPress={handlePress}
+        onPress={openPicker}
       >
         <View style={styles.iconWrap}>
           <Text style={styles.iconEmoji}>{icon}</Text>
@@ -400,7 +529,6 @@ function SettingsMenuWrapper({
           onSelect={onSelect}
           tr={tr}
           theme={theme}
-          anchorPoint={anchorPoint}
         />
       )}
     </>
@@ -426,9 +554,10 @@ export default function SettingsScreen() {
   const navigation = useNavigation();
   const { t: tr, i18n: i18nInstance } = useTranslation();
   const { theme, setThemeMode, themeMode } = useTheme();
-  const { tempUnit, windUnit, setTempUnit, setWindUnit } = useSettings();
-  const styles = useMemo(() => buildStyles(theme), [theme]);
+  const { tempUnit, windUnit, fontScale, setTempUnit, setWindUnit, setFontScale } = useSettings();
+  const styles = useMemo(() => buildStyles(theme, fontScale), [theme, fontScale]);
   const insets = useSafeAreaInsets();
+  const fs = (n) => scaleFont(n, fontScale);
 
   const [rememberCity, setRememberCity] = useState(true);
   const [menuStyle, setMenuStyle] = useState(DEFAULT_MENU_STYLE);
@@ -437,6 +566,7 @@ export default function SettingsScreen() {
   const [showTempPicker, setShowTempPicker] = useState(false);
   const [showWindPicker, setShowWindPicker] = useState(false);
   const [showMenuStylePicker, setShowMenuStylePicker] = useState(false);
+  const [showFontSizePicker, setShowFontSizePicker] = useState(false);
 
   useEffect(() => {
     (async () => {
@@ -618,9 +748,27 @@ export default function SettingsScreen() {
             insets={insets}
             styles={styles}
           />
-        </View>
 
-        <Text style={styles.sectionTitle}>{tr('units')}</Text>
+          <View style={[styles.card, { paddingVertical: 14 }]}>
+            <View style={styles.iconWrap}>
+              <Text style={styles.iconEmoji}>🔤</Text>
+            </View>
+            <View style={styles.cardTextWrap}>
+              <Text style={styles.cardTitle}>{tr('fontSize')}</Text>
+              <Text style={styles.cardDesc}>{`${Math.round(fontScale * 100)}%`}</Text>
+            </View>
+            <TouchableOpacity
+              style={{ paddingHorizontal: 10, paddingVertical: 6 }}
+              onPress={() => setShowFontSizePicker(true)}
+              activeOpacity={0.6}
+            >
+              <Text style={{ fontSize: fs(12), fontWeight: '600', color: theme.accent }}>
+                {tr('smallFont')} / {tr('largeFont')}
+              </Text>
+            </TouchableOpacity>
+            <Text style={styles.chevron}>›</Text>
+          </View>
+        </View>
         <View style={styles.cardStack}>
           <SettingsMenuWrapper
             menuStyle={menuStyle}
@@ -673,6 +821,16 @@ export default function SettingsScreen() {
           </TouchableOpacity>
         </View>
       </ScrollView>
+
+      <FontSizeModal
+        visible={showFontSizePicker}
+        onClose={() => setShowFontSizePicker(false)}
+        fontScale={fontScale}
+        setFontScale={setFontScale}
+        tr={tr}
+        theme={theme}
+        fs={fs}
+      />
     </View>
   );
 }
