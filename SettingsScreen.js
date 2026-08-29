@@ -213,84 +213,72 @@ function BottomSheet({ visible, onClose, title, options, selectedValue, onSelect
   );
 }
 
-function CenteredModal({ visible, onClose, title, options, selectedValue, onSelect, tr, theme }) {
-  const scale = useRef(new Animated.Value(0.9)).current;
+function CenteredModal({ visible, onClose, title, options, selectedValue, onSelect, tr, theme, fs }) {
+  const scale = useRef(new Animated.Value(0)).current;
   const opacity = useRef(new Animated.Value(0)).current;
-  const translateY = useRef(new Animated.Value(12)).current;
-  const [mounted, setMounted] = useState(visible);
 
   useEffect(() => {
     if (visible) {
-      setMounted(true);
       Animated.parallel([
         Animated.timing(opacity, { toValue: 1, duration: 200, easing: Easing.out(Easing.cubic), useNativeDriver: true }),
-        Animated.timing(scale, { toValue: 1, duration: 200, easing: Easing.out(Easing.cubic), useNativeDriver: true }),
-        Animated.timing(translateY, { toValue: 0, duration: 200, easing: Easing.out(Easing.cubic), useNativeDriver: true }),
+        Animated.spring(scale, { toValue: 1, friction: 12, useNativeDriver: true }),
       ]).start();
-    } else if (mounted) {
-      opacity.setValue(0);
-      scale.setValue(0.9);
-      translateY.setValue(12);
-      setMounted(false);
-      onClose();
+    } else {
+      Animated.parallel([
+        Animated.timing(opacity, { toValue: 0, duration: 140, easing: Easing.in(Easing.cubic), useNativeDriver: true }),
+        Animated.timing(scale, { toValue: 0.92, duration: 160, easing: Easing.in(Easing.cubic), useNativeDriver: true }),
+      ]).start(onClose);
     }
-  }, [visible]);
+  }, [visible, scale, opacity, onClose]);
 
-  if (!mounted) return null;
-
-  const { width: sw, height: sh } = Dimensions.get('window');
-  const CARD_W = Math.min(sw * 0.55, 210);
-  const GAP = 8;
-  const estHeight = 36 + options.length * 42;
-  const left = sw / 2 - CARD_W / 2;
-  const top = sh / 2 - estHeight / 2;
-  const clampedLeft = Math.max(GAP, Math.min(left, sw - CARD_W - GAP));
+  if (!visible) return null;
 
   return (
-    <Modal transparent visible={mounted} animationType="none" onRequestClose={onClose}>
+    <Modal transparent visible animationType="none">
       <TouchableWithoutFeedback onPress={onClose}>
-        <View style={{ flex: 1, backgroundColor: 'rgba(0, 0, 0, 0.35)' }} />
+        <Animated.View style={{ flex: 1, backgroundColor: 'rgba(0, 0, 0, 0.45)', alignItems: 'center', justifyContent: 'center', opacity }} />
       </TouchableWithoutFeedback>
-      <Animated.View
-        pointerEvents="box-none"
-        style={{
-          position: 'absolute',
-          left: clampedLeft,
-          top,
-          transform: [{ scale }, { translateY }],
-          opacity,
-        }}
-      >
+      <Animated.View style={{
+        position: 'absolute',
+        top: 0,
+        left: 0,
+        right: 0,
+        bottom: 0,
+        alignItems: 'center',
+        justifyContent: 'center',
+        transform: [{ scale }],
+      }}>
         <View style={{
-          width: CARD_W,
           backgroundColor: theme.surface,
-          borderRadius: 12,
-          paddingHorizontal: 8,
-          paddingVertical: 6,
+          borderRadius: 20,
+          width: '80%',
+          maxWidth: 300,
           shadowColor: '#000',
-          shadowOffset: { width: 0, height: 4 },
-          shadowOpacity: 0.2,
-          shadowRadius: 14,
-          elevation: 20,
+          shadowOffset: { width: 0, height: 8 },
+          shadowOpacity: 0.25,
+          shadowRadius: 20,
+          elevation: 24,
+          paddingHorizontal: 18,
+          paddingVertical: 16,
         }}>
-          <Text style={{ fontSize: 12, fontWeight: '600', color: theme.textMuted, textAlign: 'center', marginBottom: 4 }}>{title}</Text>
+          <Text style={{ fontSize: fs.small * 0.9375, fontWeight: '600', color: theme.textMuted, textAlign: 'center', marginBottom: fs.spacing * 0.875 }}>{title}</Text>
           {options.map((opt) => (
             <TouchableOpacity
               key={opt.value}
-              style={{ flexDirection: 'row', alignItems: 'center', paddingVertical: 6 }}
+              style={{ flexDirection: 'row', alignItems: 'center', paddingVertical: fs.spacing * 0.6875 }}
               onPress={() => { onSelect(opt.value); onClose(); }}
               activeOpacity={0.6}
             >
               <View style={selectedValue === opt.value ? {
-                width: 18, height: 18, borderRadius: 9, borderWidth: 2, borderColor: theme.accent, alignItems: 'center', justifyContent: 'center', marginRight: 8,
+                width: 22, height: 22, borderRadius: 11, borderWidth: 2, borderColor: theme.accent, alignItems: 'center', justifyContent: 'center', marginRight: 12,
               } : {
-                width: 18, height: 18, borderRadius: 9, borderWidth: 2, borderColor: theme.border, alignItems: 'center', justifyContent: 'center', marginRight: 8,
+                width: 22, height: 22, borderRadius: 11, borderWidth: 2, borderColor: theme.border, alignItems: 'center', justifyContent: 'center', marginRight: 12,
               }}>
-                {selectedValue === opt.value && <View style={{ width: 7, height: 7, borderRadius: 3.5, backgroundColor: theme.accent }} />}
+                {selectedValue === opt.value && <View style={{ width: 10, height: 10, borderRadius: 5, backgroundColor: theme.accent }} />}
               </View>
               <View style={{ flex: 1 }}>
-                <Text style={{ fontSize: 14, fontWeight: '600', color: theme.text }}>{tr(opt.labelKey)}</Text>
-                {opt.descKey ? <Text style={{ fontSize: 11, color: theme.textMuted, marginTop: 1 }}>{tr(opt.descKey)}</Text> : null}
+                <Text style={{ fontSize: fs.base * 0.9375, fontWeight: '600', color: theme.text }}>{tr(opt.labelKey)}</Text>
+                {opt.descKey ? <Text style={{ fontSize: fs.small * 0.769, color: theme.textMuted, marginTop: fs.spacing * 0.125 }}>{tr(opt.descKey)}</Text> : null}
               </View>
             </TouchableOpacity>
           ))}
@@ -389,69 +377,55 @@ function FontSizeSlider({ value, onValueChange, theme, fs }) {
 }
 
 function FontSizeModal({ visible, onClose, fontScale, setFontScale, tr, theme, fs }) {
-  const scale = useRef(new Animated.Value(0.9)).current;
+  const scale = useRef(new Animated.Value(0)).current;
   const opacity = useRef(new Animated.Value(0)).current;
-  const translateY = useRef(new Animated.Value(12)).current;
-  const [mounted, setMounted] = useState(visible);
 
   useEffect(() => {
     if (visible) {
-      setMounted(true);
       Animated.parallel([
         Animated.timing(opacity, { toValue: 1, duration: 200, easing: Easing.out(Easing.cubic), useNativeDriver: true }),
-        Animated.timing(scale, { toValue: 1, duration: 200, easing: Easing.out(Easing.cubic), useNativeDriver: true }),
-        Animated.timing(translateY, { toValue: 0, duration: 200, easing: Easing.out(Easing.cubic), useNativeDriver: true }),
+        Animated.spring(scale, { toValue: 1, friction: 12, useNativeDriver: true }),
       ]).start();
-    } else if (mounted) {
-      opacity.setValue(0);
-      scale.setValue(0.9);
-      translateY.setValue(12);
-      setMounted(false);
-      onClose();
+    } else {
+      Animated.parallel([
+        Animated.timing(opacity, { toValue: 0, duration: 140, easing: Easing.in(Easing.cubic), useNativeDriver: true }),
+        Animated.timing(scale, { toValue: 0.92, duration: 160, easing: Easing.in(Easing.cubic), useNativeDriver: true }),
+      ]).start(onClose);
     }
-  }, [visible]);
+  }, [visible, scale, opacity, onClose]);
 
-  if (!mounted) return null;
-
-  const { width: sw, height: sh } = Dimensions.get('window');
-  const CARD_W = Math.min(sw * 0.55, 210);
-  const GAP = fs.spacing * 1.5;
-  const labelH = fs.small + 20;
-  const sliderH = 18;
-  const estHeight = 44 + labelH + 20 + sliderH + 24;
-  const left = sw / 2 - CARD_W / 2;
-  const top = sh / 2 - estHeight / 2;
-  const clampedLeft = Math.max(GAP, Math.min(left, sw - CARD_W - GAP));
+  if (!visible) return null;
 
   return (
-    <Modal transparent visible={mounted} animationType="none" onRequestClose={onClose}>
+    <Modal transparent visible animationType="none">
       <TouchableWithoutFeedback onPress={onClose}>
-        <View style={{ flex: 1, backgroundColor: 'rgba(0, 0, 0, 0.35)' }} />
+        <Animated.View style={{ flex: 1, backgroundColor: 'rgba(0, 0, 0, 0.45)', alignItems: 'center', justifyContent: 'center', opacity }} />
       </TouchableWithoutFeedback>
-      <Animated.View
-        pointerEvents="box-none"
-        style={{
-          position: 'absolute',
-          left: clampedLeft,
-          top,
-          transform: [{ scale }, { translateY }],
-          opacity,
-        }}
-      >
+      <Animated.View style={{
+        position: 'absolute',
+        top: 0,
+        left: 0,
+        right: 0,
+        bottom: 0,
+        alignItems: 'center',
+        justifyContent: 'center',
+        transform: [{ scale }],
+      }}>
         <View style={{
-          width: CARD_W,
           backgroundColor: theme.surface,
-          borderRadius: 12,
-          paddingHorizontal: fs.spacing * 1.0,
-          paddingVertical: fs.spacing,
-          alignItems: 'center',
+          borderRadius: 20,
+          width: '80%',
+          maxWidth: 300,
           shadowColor: '#000',
-          shadowOffset: { width: 0, height: 4 },
-          shadowOpacity: 0.2,
-          shadowRadius: 14,
-          elevation: 20,
+          shadowOffset: { width: 0, height: 8 },
+          shadowOpacity: 0.25,
+          shadowRadius: 20,
+          elevation: 24,
+          paddingHorizontal: 18,
+          paddingVertical: 16,
+          alignItems: 'center',
         }}>
-          <Text style={{ fontSize: fs.small, fontWeight: '600', color: theme.textMuted, textAlign: 'center', marginBottom: fs.spacing * 0.75 }}>{tr('fontSize')}</Text>
+          <Text style={{ fontSize: fs.small * 0.9375, fontWeight: '600', color: theme.textMuted, textAlign: 'center', marginBottom: fs.spacing * 0.875 }}>{tr('fontSize')}</Text>
           <FontSizeSlider
             value={fontScale}
             onValueChange={setFontScale}
@@ -459,8 +433,8 @@ function FontSizeModal({ visible, onClose, fontScale, setFontScale, tr, theme, f
             fs={fs}
           />
           <View style={{ flexDirection: 'row', justifyContent: 'space-between', width: '100%', marginTop: fs.spacing * 0.875 }}>
-            <Text style={{ fontSize: fs.small * 0.846, color: theme.textMuted }}>{tr('smallFont')}</Text>
-            <Text style={{ fontSize: fs.small * 0.846, color: theme.textMuted }}>{tr('largeFont')}</Text>
+            <Text style={{ fontSize: fs.small * 0.769, color: theme.textMuted }}>{tr('smallFont')}</Text>
+            <Text style={{ fontSize: fs.small * 0.769, color: theme.textMuted }}>{tr('largeFont')}</Text>
           </View>
         </View>
       </Animated.View>
@@ -469,24 +443,21 @@ function FontSizeModal({ visible, onClose, fontScale, setFontScale, tr, theme, f
 }
 
 function SettingsMenuWrapper({
-  menuStyle, visible, onClose, title, options, selectedValue, onSelect, tr, theme, insets, styles, icon, desc,
+  menuStyle, visible, onClose, title, options, selectedValue, onSelect, tr, theme, insets, styles, icon, desc, fs,
 }) {
   const chevronDir = visible && menuStyle === 'inline' ? '▲' : '›';
-
-  const openPicker = () => {
-    if (menuStyle === 'inline') {
-      if (visible) onClose(); else onSelect(null);
-    } else {
-      onSelect(null);
-    }
-  };
 
   return (
     <>
       <TouchableOpacity
         style={styles.card}
-        activeOpacity={0.6}
-        onPress={openPicker}
+        onPress={() => {
+          if (menuStyle === 'inline') {
+            if (visible) onClose(); else onSelect(null);
+          } else {
+            onSelect(null);
+          }
+        }}
       >
         <View style={styles.iconWrap}>
           <Text style={styles.iconEmoji}>{icon}</Text>
@@ -507,8 +478,9 @@ function SettingsMenuWrapper({
           onClose={onClose}
           tr={tr}
           theme={theme}
-          styles={styles}
-        />
+             styles={styles}
+             fs={fs}
+           />
       )}
 
       {menuStyle === 'bottom' && (
@@ -535,6 +507,7 @@ function SettingsMenuWrapper({
           onSelect={onSelect}
           tr={tr}
           theme={theme}
+          fs={fs}
         />
       )}
     </>
