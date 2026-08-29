@@ -8,6 +8,7 @@ import WeatherApp from './WeatherApp';
 import WeatherPhenomenonFinder, { SunTabIcon, SearchTabIcon } from './WeatherPhenomenonFinder';
 import SettingsScreen from './SettingsScreen';
 import { SettingsProvider } from './SettingsContext';
+import { FontSizeProvider, useFontSize } from './FontSizeContext';
 import { ThemeProvider, useTheme } from './ThemeContext';
 import { initI18n } from './i18n';
 
@@ -33,8 +34,9 @@ function AppContent() {
   return (
     <LoadingContext.Provider value={{ isLoading, setLoading: () => {} }}>
       <Animated.View style={{ flex: 1, opacity: themeOverlayOpacity }}>
-        <SettingsProvider>
-          <NavigationContainer>
+        <FontSizeProvider>
+          <SettingsProvider>
+            <NavigationContainer>
             <Stack.Navigator
               screenOptions={{
                 headerShown: false,
@@ -50,6 +52,7 @@ function AppContent() {
             </Stack.Navigator>
           </NavigationContainer>
         </SettingsProvider>
+        </FontSizeProvider>
       </Animated.View>
     </LoadingContext.Provider>
   );
@@ -76,6 +79,7 @@ function TabScreens() {
 function AnimatedTabBar({ state, descriptors, navigation }) {
   const { theme } = useTheme();
   const { t } = useTranslation();
+  const { base, iconSize } = useFontSize();
   const animationValues = useRef(state.routes.map(() => new Animated.Value(1))).current;
 
   useEffect(() => {
@@ -120,11 +124,11 @@ function AnimatedTabBar({ state, descriptors, navigation }) {
             activeOpacity={0.7}
           >
             <Animated.View style={{ transform: [{ scale: animationValues[index] }] }}>
-              <IconComponent color={iconColor} size={26} />
+              <IconComponent color={iconColor} size={iconSize} />
             </Animated.View>
             <Text
               style={{
-                fontSize: 12,
+                fontSize: base * 0.75,
                 fontWeight: '600',
                 color: iconColor,
                 marginTop: 4,

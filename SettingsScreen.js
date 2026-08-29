@@ -20,7 +20,8 @@ import { useNavigation } from '@react-navigation/native';
 import { useTranslation } from 'react-i18next';
 import i18n, { changeLanguage } from './i18n';
 import { useTheme } from './ThemeContext';
-import { useSettings, scaleFont } from './SettingsContext';
+import { useSettings } from './SettingsContext';
+import { useFontSize, FONT_SIZE_LEVELS } from './FontSizeContext';
 import { THEME_MODES } from './themes';
 import { Ionicons } from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
@@ -60,81 +61,82 @@ function GithubIcon({ size = 22, color }) {
   return <Ionicons name="logo-github" size={size} color={color || theme.text} />;
 }
 
-function buildStyles(theme, fontScale) {
-  const fs = (n) => scaleFont(n, fontScale);
+function buildStyles(theme, fs) {
   return StyleSheet.create({
     safe: { flex: 1, backgroundColor: theme.background },
     header: {
       flexDirection: 'row',
       alignItems: 'center',
-      paddingHorizontal: 16,
-      paddingVertical: 12,
+      paddingHorizontal: fs.spacing * 1.0,
+      paddingVertical: fs.spacing * 0.75,
       borderBottomWidth: 1,
       borderBottomColor: theme.border,
     },
     headerBtn: {
-      width: 40, height: 40, borderRadius: 12,
+      width: fs.spacing * 2.5, height: fs.spacing * 2.5, borderRadius: 12,
       backgroundColor: theme.surfaceRaised,
       alignItems: 'center', justifyContent: 'center',
     },
-    headerBtnText: { fontSize: fs(22), color: theme.textSecondary },
-    headerTitle: { fontSize: fs(22), fontWeight: '700', color: theme.text, marginLeft: 12 },
+    headerBtnText: { fontSize: fs.base * 1.375, color: theme.textSecondary },
+    headerTitle: { fontSize: fs.large * 1.15, fontWeight: '700', color: theme.text, marginLeft: fs.spacing * 0.75 },
     body: { flex: 1 },
-    bodyContent: { paddingHorizontal: 20, paddingTop: 8, paddingBottom: 34 },
-    hero: { alignItems: 'center', paddingTop: 14, paddingBottom: 8, marginBottom: 16 },
+    bodyContent: { paddingHorizontal: fs.spacing * 1.25, paddingTop: fs.spacing * 0.5, paddingBottom: fs.spacing * 2.125 },
+    hero: { alignItems: 'center', paddingTop: fs.spacing * 0.875, paddingBottom: fs.spacing * 0.5, marginBottom: fs.spacing },
     heroIcon: {
       width: 96,
       height: 96,
       borderRadius: 28,
       backgroundColor: '#FFFFFF',
-      marginBottom: 12,
+      marginBottom: fs.spacing * 0.75,
       alignItems: 'center',
       justifyContent: 'center',
+      padding: fs.spacing * 0.5,
     },
-    heroTitle: { fontSize: fs(26), fontWeight: '700', color: theme.text },
-    heroAuthor: { fontSize: fs(13), color: theme.textMuted, marginTop: 4 },
-    heroVersion: { fontSize: fs(11), color: theme.textMuted, marginTop: 2 },
+    heroTitle: { fontSize: fs.large * 1.15, fontWeight: '700', color: theme.text },
+    heroAuthor: { fontSize: fs.small, color: theme.textMuted, marginTop: fs.spacing * 0.25 },
+    heroVersion: { fontSize: fs.small * 0.846, color: theme.textMuted, marginTop: fs.spacing * 0.125 },
     sectionTitle: {
-      fontSize: fs(13), fontWeight: '700', color: theme.textMuted,
-      letterSpacing: 0.8, marginBottom: 10, marginTop: 22,
+      fontSize: fs.small, fontWeight: '700', color: theme.textMuted,
+      letterSpacing: 0.8, marginBottom: fs.spacing * 0.625, marginTop: fs.spacing * 1.375,
     },
-    cardStack: { gap: 10 },
+    cardStack: { gap: fs.spacing * 0.625 },
     card: {
       flexDirection: 'row', alignItems: 'center',
       backgroundColor: theme.surface,
       borderRadius: 16,
-      paddingHorizontal: 16,
-      paddingVertical: 14,
-      paddingRight: 12,
+      paddingHorizontal: fs.spacing,
+      paddingVertical: fs.spacing * 0.875,
+      paddingRight: fs.spacing * 0.75,
+      minHeight: fs.cardHeight,
     },
-    cardTextWrap: { flex: 1, marginRight: 12 },
-    cardTitle: { fontSize: fs(16), fontWeight: '600', color: theme.text },
-    cardDesc: { fontSize: fs(13), color: theme.textMuted, marginTop: 4, lineHeight: fs(18) },
+    cardTextWrap: { flex: 1, marginRight: fs.spacing * 0.75 },
+    cardTitle: { fontSize: fs.base, fontWeight: '600', color: theme.text },
+    cardDesc: { fontSize: fs.small, color: theme.textMuted, marginTop: fs.spacing * 0.25, lineHeight: fs.small * 1.384 },
     iconWrap: {
-      width: 42, height: 42, borderRadius: 12,
+      width: fs.spacing * 2.625, height: fs.spacing * 2.625, borderRadius: 12,
       backgroundColor: theme.background,
       alignItems: 'center', justifyContent: 'center',
-      marginRight: 12,
+      marginRight: fs.spacing * 0.75,
     },
-    iconEmoji: { fontSize: fs(20) },
-    chevron: { fontSize: fs(24), color: theme.textMuted, marginLeft: 'auto' },
+    iconEmoji: { fontSize: fs.iconSize * 0.77 },
+    chevron: { fontSize: fs.base * 1.5, color: theme.textMuted, marginLeft: 'auto' },
     radioOuter: {
-      width: 22, height: 22, borderRadius: 11,
+      width: fs.spacing * 1.375, height: fs.spacing * 1.375, borderRadius: fs.spacing * 0.6875,
       borderWidth: 2, borderColor: theme.accent,
       alignItems: 'center', justifyContent: 'center',
-      marginRight: 10,
+      marginRight: fs.spacing * 0.625,
     },
     radioOuterInactive: {
-      width: 22, height: 22, borderRadius: 11,
+      width: fs.spacing * 1.375, height: fs.spacing * 1.375, borderRadius: fs.spacing * 0.6875,
       borderWidth: 2, borderColor: theme.border,
       alignItems: 'center', justifyContent: 'center',
-      marginRight: 10,
+      marginRight: fs.spacing * 0.625,
     },
-    radioInner: { width: 10, height: 10, borderRadius: 5, backgroundColor: theme.accent },
-     pickerOption: { flexDirection: 'row', alignItems: 'center', paddingVertical: 11 },
+    radioInner: { width: fs.spacing * 0.625, height: fs.spacing * 0.625, borderRadius: fs.spacing * 0.3125, backgroundColor: theme.accent },
+     pickerOption: { flexDirection: 'row', alignItems: 'center', paddingVertical: fs.spacing * 0.6875 },
      pickerOptionTextWrap: { flex: 1 },
-     pickerOptionLabel: { fontSize: fs(15), fontWeight: '600', color: theme.text },
-     pickerOptionDesc: { fontSize: fs(12), color: theme.textMuted, marginTop: 2 },
+     pickerOptionLabel: { fontSize: fs.base, fontWeight: '600', color: theme.text },
+     pickerOptionDesc: { fontSize: fs.small, color: theme.textMuted, marginTop: fs.spacing * 0.125 },
     });
   }
 
@@ -320,10 +322,14 @@ function FontSizeSlider({ value, onValueChange, theme, fs }) {
   const SLIDER_W = 200;
   const TRACK_H = 6;
   const THUMB_W = 18;
-  const RANGE_MIN = 0.6;
-  const RANGE_MAX = 1.8;
+  const STEP_W = (SLIDER_W - THUMB_W) / (FONT_SIZE_LEVELS.length - 1);
 
-  const norm = (value - RANGE_MIN) / (RANGE_MAX - RANGE_MIN);
+  const levelIndex = useMemo(() => {
+    const idx = FONT_SIZE_LEVELS.indexOf(value);
+    return idx >= 0 ? idx : 2;
+  }, [value]);
+
+  const thumbX = levelIndex * STEP_W;
 
   const panResponder = useRef(
     PanResponder.create({
@@ -332,22 +338,19 @@ function FontSizeSlider({ value, onValueChange, theme, fs }) {
       onPanResponderGrant: () => {},
       onPanResponderMove: (_, gesture) => {
         const clampedX = Math.max(0, Math.min(gesture.dx, SLIDER_W - THUMB_W));
-        let newNorm = clampedX / (SLIDER_W - THUMB_W);
-        newNorm = Math.max(0, Math.min(newNorm, 1));
-        const newValue = RANGE_MIN + newNorm * (RANGE_MAX - RANGE_MIN);
-        onValueChange(Math.round(newValue * 100) / 100);
+        let newLevel = Math.round(clampedX / STEP_W);
+        newLevel = Math.max(0, Math.min(newLevel, FONT_SIZE_LEVELS.length - 1));
+        onValueChange(FONT_SIZE_LEVELS[newLevel]);
       },
       onPanResponderRelease: () => {},
     }),
   ).current;
 
-  const thumbX = norm * (SLIDER_W - THUMB_W);
-
   const label = `${Math.round(value * 100)}%`;
 
   return (
     <View style={{ width: SLIDER_W, alignItems: 'center' }}>
-      <Text style={{ fontSize: fs(14), fontWeight: '600', color: theme.text, marginBottom: 10 }}>{label}</Text>
+      <Text style={{ fontSize: fs.small, fontWeight: '600', color: theme.text, marginBottom: fs.spacing * 0.625 }}>{label}</Text>
       <View style={{ width: SLIDER_W, height: TRACK_H, backgroundColor: theme.border, borderRadius: TRACK_H / 2 }}>
         <View
           style={{
@@ -409,8 +412,8 @@ function FontSizeModal({ visible, onClose, fontScale, setFontScale, tr, theme, f
 
   const { width: sw, height: sh } = Dimensions.get('window');
   const CARD_W = Math.min(sw * 0.55, 210);
-  const GAP = 24;
-  const labelH = fs(14) + 20;
+  const GAP = fs.spacing * 1.5;
+  const labelH = fs.small + 20;
   const sliderH = 18;
   const estHeight = 44 + labelH + 20 + sliderH + 24;
   const left = sw / 2 - CARD_W / 2;
@@ -436,8 +439,8 @@ function FontSizeModal({ visible, onClose, fontScale, setFontScale, tr, theme, f
           width: CARD_W,
           backgroundColor: theme.surface,
           borderRadius: 12,
-          paddingHorizontal: 16,
-          paddingVertical: 16,
+          paddingHorizontal: fs.spacing * 1.0,
+          paddingVertical: fs.spacing,
           alignItems: 'center',
           shadowColor: '#000',
           shadowOffset: { width: 0, height: 4 },
@@ -445,16 +448,16 @@ function FontSizeModal({ visible, onClose, fontScale, setFontScale, tr, theme, f
           shadowRadius: 14,
           elevation: 20,
         }}>
-          <Text style={{ fontSize: fs(12), fontWeight: '600', color: theme.textMuted, textAlign: 'center', marginBottom: 12 }}>{tr('fontSize')}</Text>
+          <Text style={{ fontSize: fs.small, fontWeight: '600', color: theme.textMuted, textAlign: 'center', marginBottom: fs.spacing * 0.75 }}>{tr('fontSize')}</Text>
           <FontSizeSlider
             value={fontScale}
             onValueChange={setFontScale}
             theme={theme}
             fs={fs}
           />
-          <View style={{ flexDirection: 'row', justifyContent: 'space-between', width: '100%', marginTop: 14 }}>
-            <Text style={{ fontSize: fs(11), color: theme.textMuted }}>{tr('smallFont')}</Text>
-            <Text style={{ fontSize: fs(11), color: theme.textMuted }}>{tr('largeFont')}</Text>
+          <View style={{ flexDirection: 'row', justifyContent: 'space-between', width: '100%', marginTop: fs.spacing * 0.875 }}>
+            <Text style={{ fontSize: fs.small * 0.846, color: theme.textMuted }}>{tr('smallFont')}</Text>
+            <Text style={{ fontSize: fs.small * 0.846, color: theme.textMuted }}>{tr('largeFont')}</Text>
           </View>
         </View>
       </Animated.View>
@@ -554,10 +557,11 @@ export default function SettingsScreen() {
   const navigation = useNavigation();
   const { t: tr, i18n: i18nInstance } = useTranslation();
   const { theme, setThemeMode, themeMode } = useTheme();
-  const { tempUnit, windUnit, fontScale, setTempUnit, setWindUnit, setFontScale } = useSettings();
-  const styles = useMemo(() => buildStyles(theme, fontScale), [theme, fontScale]);
+  const { tempUnit, windUnit } = useSettings();
+  const fs = useFontSize();
+  const { fontScale, setFontScale } = fs;
+  const styles = useMemo(() => buildStyles(theme, fs), [theme, fs]);
   const insets = useSafeAreaInsets();
-  const fs = (n) => scaleFont(n, fontScale);
 
   const [rememberCity, setRememberCity] = useState(true);
   const [menuStyle, setMenuStyle] = useState(DEFAULT_MENU_STYLE);
@@ -762,7 +766,7 @@ export default function SettingsScreen() {
               onPress={() => setShowFontSizePicker(true)}
               activeOpacity={0.6}
             >
-              <Text style={{ fontSize: fs(12), fontWeight: '600', color: theme.accent }}>
+              <Text style={{ fontSize: fs.small * 0.846, fontWeight: '600', color: theme.accent }}>
                 {tr('smallFont')} / {tr('largeFont')}
               </Text>
             </TouchableOpacity>

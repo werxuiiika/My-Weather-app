@@ -4,6 +4,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
 import { useTranslation } from 'react-i18next';
 import Svg, { Circle, Path } from 'react-native-svg';
+import { useFontSize } from './FontSizeContext';
 import { useTheme } from './ThemeContext';
 
 const CITIES = [
@@ -69,6 +70,7 @@ export default function WeatherPhenomenonFinder() {
   const navigation = useNavigation();
   const { t } = useTranslation();
   const { theme } = useTheme();
+  const fs = useFontSize();
   const titleOpacity = useRef(new Animated.Value(0)).current;
   useEffect(() => {
     Animated.timing(titleOpacity, {
@@ -86,24 +88,24 @@ export default function WeatherPhenomenonFinder() {
     container: {
       flex: 1,
       backgroundColor: theme.background,
-      padding: 20,
+      padding: fs.spacing,
     },
     title: {
-      fontSize: 24,
+      fontSize: fs.large,
       fontWeight: '700',
       color: theme.text,
       textAlign: 'center',
-      marginBottom: 24,
+      marginBottom: fs.spacing,
     },
     buttonContainer: {
-      gap: 12,
-      marginBottom: 20,
+      gap: fs.spacing * 0.75,
+      marginBottom: fs.spacing,
     },
     phenomenonButton: {
       backgroundColor: theme.surface,
       borderRadius: 12,
-      paddingVertical: 16,
-      paddingHorizontal: 20,
+      paddingVertical: fs.spacing * 0.9375,
+      paddingHorizontal: fs.spacing * 1.25,
       alignItems: 'center',
     },
     phenomenonButtonActive: {
@@ -113,7 +115,7 @@ export default function WeatherPhenomenonFinder() {
     },
     phenomenonButtonText: {
       color: theme.textSecondary,
-      fontSize: 16,
+      fontSize: fs.base,
       fontWeight: '600',
     },
     phenomenonButtonTextActive: {
@@ -126,11 +128,11 @@ export default function WeatherPhenomenonFinder() {
     },
     loadingText: {
       color: theme.textMuted,
-      marginTop: 16,
-      fontSize: 14,
+      marginTop: fs.spacing,
+      fontSize: fs.small,
     },
     listContent: {
-      gap: 12,
+      gap: fs.spacing * 0.75,
     },
     resultCard: {
       flexDirection: 'row',
@@ -138,17 +140,18 @@ export default function WeatherPhenomenonFinder() {
       alignItems: 'center',
       backgroundColor: theme.surface,
       borderRadius: 12,
-      paddingVertical: 16,
-      paddingHorizontal: 20,
+      paddingVertical: fs.spacing * 0.9375,
+      paddingHorizontal: fs.spacing * 1.25,
+      minHeight: fs.cardHeight,
     },
     resultCity: {
       color: theme.text,
-      fontSize: 18,
+      fontSize: fs.base * 1.125,
       fontWeight: '600',
     },
     resultTemp: {
       color: theme.accent,
-      fontSize: 22,
+      fontSize: fs.large,
       fontWeight: '500',
     },
     hintContainer: {
@@ -158,11 +161,11 @@ export default function WeatherPhenomenonFinder() {
     },
     hint: {
       color: theme.textMuted,
-      fontSize: 16,
+      fontSize: fs.base,
       textAlign: 'center',
-      paddingHorizontal: 32,
+      paddingHorizontal: fs.spacing * 2,
     },
-  }), [theme]);
+  }), [theme, fs]);
 
   const handleSearch = async (phenomenon = selectedPhenomenon) => {
     setLoading(true);
