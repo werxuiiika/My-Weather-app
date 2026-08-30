@@ -84,9 +84,8 @@ function AnimatedTabBar({ state, descriptors, navigation, style }) {
   const { isLoading } = useContext(LoadingContext);
   const animationValues = useRef(state.routes.map(() => new Animated.Value(1))).current;
 
-  if (isLoading) return null;
-
   useEffect(() => {
+    if (isLoading) return;
     state.routes.forEach((route, index) => {
       Animated.spring(animationValues[index], {
         toValue: index === state.index ? 1.15 : 1,
@@ -94,7 +93,11 @@ function AnimatedTabBar({ state, descriptors, navigation, style }) {
         useNativeDriver: true,
       }).start();
     });
-  }, [state.index]);
+  }, [state.index, isLoading]);
+
+  if (isLoading) {
+    return <View style={{ height: 0, opacity: 0 }} />;
+  }
 
   return (
     <View
