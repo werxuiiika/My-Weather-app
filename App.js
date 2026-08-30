@@ -77,7 +77,7 @@ function TabScreens() {
   );
 }
 
-function AnimatedTabBar({ state, descriptors, navigation }) {
+function AnimatedTabBar({ state, descriptors, navigation, style }) {
   const { theme } = useTheme();
   const { t } = useTranslation();
   const { base, iconSize } = useFontSize();
@@ -103,6 +103,7 @@ function AnimatedTabBar({ state, descriptors, navigation }) {
         height: 70 + (StatusBar.currentHeight || 0),
         paddingBottom: 8,
         paddingTop: StatusBar.currentHeight || 0,
+        ...style,
       }}
     >
       {state.routes.map((route, index) => {

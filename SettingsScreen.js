@@ -111,9 +111,9 @@ function buildStyles(theme, fs) {
       paddingHorizontal: fs.spacing,
       paddingVertical: fs.spacing * 0.875,
       paddingRight: fs.spacing * 0.75,
-      minHeight: 60 * fs.fontScale,
+      minHeight: 64 * fs.fontScale,
     },
-    cardTextWrap: { flex: 1, marginRight: fs.spacing * 0.75, flexWrap: 'wrap' },
+    cardTextWrap: { flex: 1, marginRight: fs.spacing * 1.25, paddingRight: 50 * fs.fontScale, flexWrap: 'wrap' },
     cardTitle: { fontSize: fs.base, fontWeight: '600', color: theme.text },
     cardDesc: { fontSize: fs.small, color: theme.textMuted, marginTop: fs.spacing * 0.25, lineHeight: fs.small * 1.384 },
     iconWrap: {
@@ -539,7 +539,7 @@ export default function SettingsScreen() {
   const navigation = useNavigation();
   const { t: tr, i18n: i18nInstance } = useTranslation();
   const { theme, setThemeMode, themeMode } = useTheme();
-  const { tempUnit, windUnit } = useSettings();
+  const { tempUnit, windUnit, setTempUnit, setWindUnit } = useSettings();
   const fs = useFontSize();
   const { fontScale, setFontScale } = fs;
   const styles = useMemo(() => buildStyles(theme, fs), [theme, fs]);
