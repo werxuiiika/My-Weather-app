@@ -92,7 +92,7 @@ function buildStyles(theme, fs) {
       marginBottom: fs.spacing * 0.75,
       alignItems: 'center',
       justifyContent: 'center',
-      padding: 18,
+      padding: 4,
       overflow: 'hidden',
     },
     heroTitle: { fontSize: fs.large * 1.15, fontWeight: '700', color: theme.text },
