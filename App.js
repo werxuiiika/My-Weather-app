@@ -64,9 +64,9 @@ function TabScreens() {
       screenOptions={{
         headerShown: false,
          tabBarStyle: {
-          height: 48 + (StatusBar.currentHeight || 0),
-          paddingBottom: 2,
-          paddingTop: StatusBar.currentHeight || 0,
+          height: 40,
+          paddingBottom: 0,
+          paddingTop: 0,
         },
       }}
       tabBar={(props) => <AnimatedTabBar {...props} />}
@@ -107,9 +107,9 @@ function AnimatedTabBar({ state, descriptors, navigation, style }) {
         backgroundColor: theme.background,
         borderTopColor: theme.border,
         borderTopWidth: 1,
-        height: 48 + (StatusBar.currentHeight || 0),
-        paddingBottom: 2,
-        paddingTop: StatusBar.currentHeight || 0,
+        height: 40,
+        paddingBottom: 0,
+        paddingTop: 0,
         ...style,
       }}
     >
@@ -134,11 +134,11 @@ function AnimatedTabBar({ state, descriptors, navigation, style }) {
             activeOpacity={0.7}
           >
             <Animated.View style={{ transform: [{ scale: animationValues[index] }] }}>
-              <IconComponent color={iconColor} size={iconSize} />
+              <IconComponent color={iconColor} size={22} />
             </Animated.View>
             <Text
               style={{
-                fontSize: base * 0.75,
+                fontSize: 11,
                 fontWeight: '600',
                 color: iconColor,
                 marginTop: 0,
