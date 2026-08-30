@@ -2,7 +2,7 @@ import React, { createContext, useState, useEffect, useRef } from 'react';
 import { NavigationContainer } from '@react-navigation/native';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
-import { Text, View, TouchableOpacity, Animated, StatusBar, useContext } from 'react-native';
+import { Text, View, TouchableOpacity, Animated, StatusBar, StyleSheet } from 'react-native';
 import { useTranslation } from 'react-i18next';
 import WeatherApp from './WeatherApp';
 import WeatherPhenomenonFinder, { SunTabIcon, SearchTabIcon } from './WeatherPhenomenonFinder';
@@ -32,7 +32,7 @@ function AppContent() {
   }
 
   return (
-    <LoadingContext.Provider value={{ isLoading, setLoading: setIsLoading }}>
+    <LoadingContext.Provider value={{ isLoading, setLoading: () => {} }}>
       <Animated.View style={{ flex: 1, opacity: themeOverlayOpacity }}>
         <FontSizeProvider>
           <SettingsProvider>
@@ -81,11 +81,12 @@ function AnimatedTabBar({ state, descriptors, navigation, style }) {
   const { theme } = useTheme();
   const { t } = useTranslation();
   const { base, iconSize } = useFontSize();
-  const { isLoading } = useContext(LoadingContext);
   const animationValues = useRef(state.routes.map(() => new Animated.Value(1))).current;
 
+  const focusedOptions = descriptors[state.routes[state.index].key]?.options ?? {};
+  const displayStyle = StyleSheet.flatten(focusedOptions?.tabBarStyle ?? {})?.display ?? 'flex';
+
   useEffect(() => {
-    if (isLoading) return;
     state.routes.forEach((route, index) => {
       Animated.spring(animationValues[index], {
         toValue: index === state.index ? 1.15 : 1,
@@ -93,9 +94,9 @@ function AnimatedTabBar({ state, descriptors, navigation, style }) {
         useNativeDriver: true,
       }).start();
     });
-  }, [state.index, isLoading]);
+  }, [state.index]);
 
-  if (isLoading) {
+  if (displayStyle === 'none') {
     return <View style={{ height: 0, opacity: 0 }} />;
   }
 
