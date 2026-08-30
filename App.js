@@ -32,7 +32,7 @@ function AppContent() {
   }
 
   return (
-    <LoadingContext.Provider value={{ isLoading, setLoading: () => {} }}>
+    <LoadingContext.Provider value={{ isLoading, setLoading: setIsLoading }}>
       <Animated.View style={{ flex: 1, opacity: themeOverlayOpacity }}>
         <FontSizeProvider>
           <SettingsProvider>
