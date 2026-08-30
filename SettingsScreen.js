@@ -111,9 +111,9 @@ function buildStyles(theme, fs) {
       paddingHorizontal: fs.spacing,
       paddingVertical: fs.spacing * 0.875,
       paddingRight: fs.spacing * 0.75,
-      minHeight: 64 * fs.fontScale,
+      minHeight: 70 * fs.fontScale,
     },
-    cardTextWrap: { flex: 1, marginRight: fs.spacing * 1.25, paddingRight: 50 * fs.fontScale, flexWrap: 'wrap' },
+    cardTextWrap: { flex: 1, marginRight: fs.spacing * 1.25, paddingRight: 60 * fs.fontScale, flexWrap: 'wrap' },
     cardTitle: { fontSize: fs.base, fontWeight: '600', color: theme.text },
     cardDesc: { fontSize: fs.small, color: theme.textMuted, marginTop: fs.spacing * 0.25, lineHeight: fs.small * 1.384 },
     iconWrap: {

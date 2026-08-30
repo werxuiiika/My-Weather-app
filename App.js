@@ -2,7 +2,7 @@ import React, { createContext, useState, useEffect, useRef } from 'react';
 import { NavigationContainer } from '@react-navigation/native';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
-import { Text, View, TouchableOpacity, Animated, StatusBar } from 'react-native';
+import { Text, View, TouchableOpacity, Animated, StatusBar, useContext } from 'react-native';
 import { useTranslation } from 'react-i18next';
 import WeatherApp from './WeatherApp';
 import WeatherPhenomenonFinder, { SunTabIcon, SearchTabIcon } from './WeatherPhenomenonFinder';
@@ -81,7 +81,10 @@ function AnimatedTabBar({ state, descriptors, navigation, style }) {
   const { theme } = useTheme();
   const { t } = useTranslation();
   const { base, iconSize } = useFontSize();
+  const { isLoading } = useContext(LoadingContext);
   const animationValues = useRef(state.routes.map(() => new Animated.Value(1))).current;
+
+  if (isLoading) return null;
 
   useEffect(() => {
     state.routes.forEach((route, index) => {
