@@ -64,8 +64,8 @@ function TabScreens() {
       screenOptions={{
         headerShown: false,
          tabBarStyle: {
-          height: 70 + (StatusBar.currentHeight || 0),
-          paddingBottom: 8,
+          height: 60 + (StatusBar.currentHeight || 0),
+          paddingBottom: 4,
           paddingTop: StatusBar.currentHeight || 0,
         },
       }}
@@ -107,8 +107,8 @@ function AnimatedTabBar({ state, descriptors, navigation, style }) {
         backgroundColor: theme.background,
         borderTopColor: theme.border,
         borderTopWidth: 1,
-        height: 70 + (StatusBar.currentHeight || 0),
-        paddingBottom: 8,
+        height: 60 + (StatusBar.currentHeight || 0),
+        paddingBottom: 4,
         paddingTop: StatusBar.currentHeight || 0,
         ...style,
       }}

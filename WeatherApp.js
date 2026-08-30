@@ -1710,7 +1710,7 @@ const buildStyles = (theme, fs) =>
     title: { fontSize: fs.base * 2, fontWeight: '700', color: theme.text, textAlign: 'center' },
     container: { flex: 1, position: 'relative', paddingHorizontal: fs.spacing * 1.25, paddingTop: (StatusBar.currentHeight || 0) },
     titleRow: { position: 'relative', width: '100%', alignItems: 'center', justifyContent: 'center', marginBottom: fs.spacing, marginTop: fs.spacing * 0.25 },
-    gearButton: { position: 'absolute', right: 0, top: (StatusBar.currentHeight || 0) + fs.spacing * 0.25, padding: fs.spacing * 0.375, zIndex: 1 },
+    gearButton: { position: 'absolute', right: fs.spacing, top: StatusBar.currentHeight + 10, padding: fs.spacing * 0.375, zIndex: 1 },
     gearIcon: { fontSize: fs.iconSize },
     searchRow: { flexDirection: 'row', marginBottom: fs.spacing * 0.625 },
     input: { flex: 1, height: fs.spacing * 3, backgroundColor: theme.surface, borderRadius: 10, paddingHorizontal: fs.spacing * 0.875, color: theme.text, fontSize: fs.base, marginRight: fs.spacing * 0.625 },
