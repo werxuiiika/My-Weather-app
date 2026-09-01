@@ -28,6 +28,8 @@ import { THEME_MODES } from './themes';
 import { Ionicons } from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
+const REMEMBER_CITY_ENABLED_KEY = 'remember_city_enabled';
+
 const TEMP_UNIT_OPTIONS = [
   { value: 'C', labelKey: 'tempUnits.C.label', descKey: 'tempUnits.C.desc' },
   { value: 'F', labelKey: 'tempUnits.F.label', descKey: 'tempUnits.F.desc' },
@@ -561,6 +563,24 @@ async function saveMenuStyle(value) {
   } catch (e) {}
 }
 
+async function loadRememberCityEnabled() {
+  try {
+    const v = await AsyncStorage.getItem(REMEMBER_CITY_ENABLED_KEY);
+    return v === null ? true : v === 'true';
+  } catch (e) {
+    return true;
+  }
+}
+
+async function saveRememberCityEnabled(value) {
+  try {
+    await AsyncStorage.setItem(REMEMBER_CITY_ENABLED_KEY, value ? 'true' : 'false');
+    if (!value) {
+      await AsyncStorage.removeItem('last_selected_city');
+    }
+  } catch (e) {}
+}
+
 export default function SettingsScreen() {
   const navigation = useNavigation();
   const { t: tr, i18n: i18nInstance } = useTranslation();
@@ -584,18 +604,14 @@ export default function SettingsScreen() {
     (async () => {
       const saved = await loadMenuStyle();
       setMenuStyle(saved);
-      try {
-        const v = await AsyncStorage.getItem('rememberCity');
-        if (v !== null) setRememberCity(v === 'true');
-      } catch (e) {}
+      const remember = await loadRememberCityEnabled();
+      setRememberCity(remember);
     })();
   }, []);
 
   const toggleRemember = async (value) => {
     setRememberCity(value);
-    try {
-      await AsyncStorage.setItem('rememberCity', value ? 'true' : 'false');
-    } catch (e) {}
+    await saveRememberCityEnabled(value);
   };
 
   const handleThemeSelect = async (value) => {

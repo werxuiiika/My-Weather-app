@@ -1,4 +1,4 @@
-import { useState, useEffect, useLayoutEffect, useRef, useMemo, useContext } from 'react';
+import { useState, useEffect, useLayoutEffect, useRef, useMemo, useContext, useCallback } from 'react';
 import NetInfo from '@react-native-community/netinfo';
 import * as Location from 'expo-location';
 import {
@@ -26,13 +26,14 @@ import { BlurView } from 'expo-blur';
 import {
   THEME_MODES,
 } from './themes';
-import { useRoute, useNavigation } from '@react-navigation/native';
+import { useRoute, useNavigation, useFocusEffect } from '@react-navigation/native';
 import { useTranslation } from 'react-i18next';
 import i18n, { changeLanguage } from './i18n';
 import { LoadingContext } from './App';
 import { SettingsContext } from './SettingsContext';
 import { useFontSize } from './FontSizeContext';
 import { useTheme } from './ThemeContext';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 const BASE_URL = 'https://api.open-meteo.com/v1/forecast';
 const TIMEOUT_MS = 10000;
@@ -41,14 +42,16 @@ const APP_VERSION = require('./package.json').version;
 const APP_ICON_SOURCE = require('./assets/icon.png');
 const GITHUB_URL = 'https://github.com/werxuiiika/My-Weather-app';
 
-const LAST_CITY_KEY = '@weather_app/saved_city';
+const REMEMBER_CITY_ENABLED_KEY = 'remember_city_enabled';
+const LAST_CITY_KEY = 'last_selected_city';
+
 const loadLastCity = async () => { try { return await AsyncStorage.getItem(LAST_CITY_KEY); } catch (e) { return null; } };
 const saveLastCity = async (name) => { try { await AsyncStorage.setItem(LAST_CITY_KEY, name); } catch (e) {} };
 const clearLastCity = async () => { try { await AsyncStorage.removeItem(LAST_CITY_KEY); } catch (e) {} };
-const loadRememberCity = async () => { try { const v = await AsyncStorage.getItem('rememberCity'); return v === null ? true : v === 'true'; } catch (e) { return true; } };
+const loadRememberCity = async () => { try { const v = await AsyncStorage.getItem(REMEMBER_CITY_ENABLED_KEY); return v === null ? true : v === 'true'; } catch (e) { return true; } };
 const saveRememberCity = async (value) => {
   try {
-    await AsyncStorage.setItem('rememberCity', value ? 'true' : 'false');
+    await AsyncStorage.setItem(REMEMBER_CITY_ENABLED_KEY, value ? 'true' : 'false');
     if (!value) {
       await clearLastCity();
     }
@@ -940,9 +943,9 @@ export default function App() {
       if (!active) return;
       rememberRef.current = remember;
       setRememberCity(remember);
-      if (!remember) return;
       const saved = await loadLastCity();
-      if (!active || !saved) {
+      if (!active) return;
+      if (!remember || !saved) {
         if (active && !saved) detectMyLocation();
         return;
       }
@@ -956,13 +959,22 @@ export default function App() {
         setHostUnreachable(false);
       }
     });
-    return () => {
-      active = false;
-      unsubscribe();
-    };
-  }, []);
-  useEffect(() => {
-    if (!isSplashVisible) {
+     return () => {
+       active = false;
+       unsubscribe();
+     };
+   }, []);
+  useFocusEffect(
+    useCallback(() => {
+      (async () => {
+        const remember = await loadRememberCity();
+        rememberRef.current = remember;
+        setRememberCity(remember);
+      })();
+    }, [])
+  );
+   useEffect(() => {
+     if (!isSplashVisible) {
       Animated.timing(splashOpacity, { toValue: 0, duration: 500, useNativeDriver: true }).start(
         ({ finished }) => {
           if (finished) setSplashRendered(false);
@@ -1203,7 +1215,7 @@ export default function App() {
       setWeather({ place, data });
       lastRequest.current = { type: 'city', query };
       if (rememberRef.current) {
-        await saveLastCity(place.name);
+        await saveLastCity(query);
       }
     } catch (e) {
       if (isConnectedRef.current === false) {
