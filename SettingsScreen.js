@@ -290,21 +290,24 @@ function CenteredModal({ visible, onClose, title, options, selectedValue, onSele
   );
 }
 
-function InlinePicker({ visible, options, selectedValue, onSelect, onClose, tr, theme, styles }) {
+function InlinePicker({ visible, options, selectedValue, onSelect, onClose, tr, theme, styles, fs }) {
   if (!visible) return null;
   return (
-    <View style={{ backgroundColor: theme.surfaceAlt, borderRadius: 16, overflow: 'hidden', marginTop: 6 }}>
+    <View style={{ backgroundColor: theme.surfaceAlt, borderRadius: 16, overflow: 'hidden', marginTop: fs.spacing * 0.375 }}>
       {options.map((opt) => (
         <TouchableOpacity
           key={opt.value}
-          style={styles.pickerOption}
+          style={[styles.pickerOption, { paddingVertical: fs.spacing * 0.6875, paddingHorizontal: fs.spacing }]}
           onPress={() => { onSelect(opt.value); onClose(); }}
           activeOpacity={0.6}
         >
           <View style={selectedValue === opt.value ? styles.radioOuter : styles.radioOuterInactive}>
             {selectedValue === opt.value && <View style={styles.radioInner} />}
           </View>
-          <Text style={{ fontSize: 15, fontWeight: '600', color: theme.text, flex: 1 }}>{tr(opt.labelKey)}</Text>
+          <View style={{ flex: 1 }}>
+            <Text style={{ fontSize: fs.base, lineHeight: fs.base * 1.3, fontWeight: '600', color: theme.text }}>{tr(opt.labelKey)}</Text>
+            {opt.descKey ? <Text style={{ fontSize: fs.small, lineHeight: fs.small * 1.3, color: theme.textMuted, marginTop: fs.spacing * 0.125 }}>{tr(opt.descKey)}</Text> : null}
+          </View>
         </TouchableOpacity>
       ))}
     </View>
@@ -507,9 +510,9 @@ function SettingsMenuWrapper({
           onClose={onClose}
           tr={tr}
           theme={theme}
-             styles={styles}
-             fs={fs}
-           />
+          styles={styles}
+          fs={fs}
+        />
       )}
 
       {menuStyle === 'bottom' && (
