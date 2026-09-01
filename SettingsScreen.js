@@ -312,10 +312,11 @@ function InlinePicker({ visible, options, selectedValue, onSelect, onClose, tr, 
 }
 
 function FontSizeSlider({ value, onValueChange, theme, fs }) {
-  const SLIDER_W = 200;
+  const SLIDER_W = 220;
   const TRACK_H = 6;
-  const THUMB_W = 18;
-  const STEP_W = (SLIDER_W - THUMB_W) / (FONT_SIZE_LEVELS.length - 1);
+  const THUMB_W = 22;
+  const STEP_COUNT = FONT_SIZE_LEVELS.length - 1; // Exactly 5 points (0 to 4 indices)
+  const STEP_W = (SLIDER_W - THUMB_W) / STEP_COUNT;
 
   const levelIndex = useMemo(() => {
     const idx = FONT_SIZE_LEVELS.indexOf(value);
@@ -323,19 +324,29 @@ function FontSizeSlider({ value, onValueChange, theme, fs }) {
   }, [value]);
 
   const thumbX = levelIndex * STEP_W;
+  const startXRef = useRef(0);
 
   const panResponder = useRef(
     PanResponder.create({
       onStartShouldSetPanResponder: () => true,
       onMoveShouldSetPanResponder: () => true,
-      onPanResponderGrant: () => {},
+      onPanResponderGrant: (_, gesture) => {
+        startXRef.current = levelIndex * STEP_W;
+      },
       onPanResponderMove: (_, gesture) => {
-        const clampedX = Math.max(0, Math.min(gesture.dx, SLIDER_W - THUMB_W));
+        const rawX = startXRef.current + gesture.dx;
+        const clampedX = Math.max(0, Math.min(rawX, SLIDER_W - THUMB_W));
         let newLevel = Math.round(clampedX / STEP_W);
-        newLevel = Math.max(0, Math.min(newLevel, FONT_SIZE_LEVELS.length - 1));
+        newLevel = Math.max(0, Math.min(newLevel, STEP_COUNT));
         onValueChange(FONT_SIZE_LEVELS[newLevel]);
       },
-      onPanResponderRelease: () => {},
+      onPanResponderRelease: (_, gesture) => {
+        const rawX = startXRef.current + gesture.dx;
+        const clampedX = Math.max(0, Math.min(rawX, SLIDER_W - THUMB_W));
+        let newLevel = Math.round(clampedX / STEP_W);
+        newLevel = Math.max(0, Math.min(newLevel, STEP_COUNT));
+        onValueChange(FONT_SIZE_LEVELS[newLevel]);
+      },
     }),
   ).current;
 
@@ -343,8 +354,8 @@ function FontSizeSlider({ value, onValueChange, theme, fs }) {
 
   return (
     <View style={{ width: SLIDER_W, alignItems: 'center' }}>
-      <Text style={{ fontSize: fs.small, fontWeight: '600', color: theme.text, marginBottom: fs.spacing * 0.625 }}>{label}</Text>
-      <View style={{ width: SLIDER_W, height: TRACK_H, backgroundColor: theme.border, borderRadius: TRACK_H / 2 }}>
+      <Text style={{ fontSize: fs.small, fontWeight: '600', color: theme.text, marginBottom: fs.spacing * 0.75 }}>{label}</Text>
+      <View style={{ width: SLIDER_W, height: TRACK_H, backgroundColor: theme.border, borderRadius: TRACK_H / 2, justifyContent: 'center' }}>
         <View
           style={{
             position: 'absolute',
@@ -356,6 +367,20 @@ function FontSizeSlider({ value, onValueChange, theme, fs }) {
             borderRadius: TRACK_H / 2,
           }}
         />
+        {FONT_SIZE_LEVELS.map((_, idx) => (
+          <View
+            key={idx}
+            style={{
+              position: 'absolute',
+              left: idx * STEP_W + THUMB_W / 2 - 3,
+              width: 6,
+              height: 6,
+              borderRadius: 3,
+              backgroundColor: idx <= levelIndex ? '#ffffff' : theme.textMuted,
+              opacity: 0.7,
+            }}
+          />
+        ))}
         <View
           {...panResponder.panHandlers}
           style={{
@@ -367,8 +392,8 @@ function FontSizeSlider({ value, onValueChange, theme, fs }) {
             borderRadius: THUMB_W / 2,
             backgroundColor: theme.accent,
             shadowColor: '#000',
-            shadowOffset: { width: 0, height: 1 },
-            shadowOpacity: 0.2,
+            shadowOffset: { width: 0, height: 2 },
+            shadowOpacity: 0.25,
             shadowRadius: 3,
             elevation: 5,
           }}
