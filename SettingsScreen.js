@@ -85,9 +85,7 @@ function buildStyles(theme, fs) {
     bodyContent: { paddingHorizontal: fs.spacing * 1.25, paddingTop: fs.spacing * 0.5, paddingBottom: fs.spacing * 2.125 },
     hero: { alignItems: 'center', paddingTop: fs.spacing * 0.875, paddingBottom: fs.spacing * 0.5, marginBottom: fs.spacing },
     heroIcon: {
-      width: 90,
-      height: 90,
-      borderRadius: 22,
+      width: fs.iconSize * 3, height: fs.iconSize * 3, borderRadius: 22,
       backgroundColor: '#FFFFFF',
       marginBottom: fs.spacing * 0.75,
       alignItems: 'center',
