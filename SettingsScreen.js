@@ -85,7 +85,7 @@ function buildStyles(theme, fs) {
     bodyContent: { paddingHorizontal: fs.spacing * 1.25, paddingTop: fs.spacing * 0.5, paddingBottom: fs.spacing * 2.125 },
     hero: { alignItems: 'center', paddingTop: fs.spacing * 0.875, paddingBottom: fs.spacing * 0.5, marginBottom: fs.spacing },
     heroIcon: {
-      width: fs.iconSize * 3, height: fs.iconSize * 3, borderRadius: 22,
+      width: fs.iconSize * 3.8, height: fs.iconSize * 3.8, borderRadius: 26,
       backgroundColor: '#FFFFFF',
       marginBottom: fs.spacing * 0.75,
       alignItems: 'center',
@@ -120,7 +120,7 @@ function buildStyles(theme, fs) {
       alignItems: 'center', justifyContent: 'center',
       marginRight: fs.spacing * 0.75,
     },
-    iconEmoji: { fontSize: fs.iconSize * 0.9 },
+    iconEmoji: { fontSize: fs.iconSize * 0.77 },
     chevron: { fontSize: fs.base * 1.5, color: theme.textMuted, marginLeft: 'auto', flexShrink: 0 },
     radioOuter: {
       width: fs.spacing * 1.375, height: fs.spacing * 1.375, borderRadius: fs.spacing * 0.6875,
@@ -767,7 +767,7 @@ export default function SettingsScreen() {
 
           <TouchableOpacity style={styles.card} onPress={() => setShowFontSizePicker(true)} activeOpacity={0.6}>
             <View style={styles.iconWrap}>
-              <Ionicons name="text" size={fs.iconSize * 0.9} color={theme.textSecondary} />
+              <Ionicons name="text" size={fs.iconSize * 0.77} color={theme.textSecondary} />
             </View>
             <View style={[styles.cardTextWrap, { flex: 1, flexDirection: 'row', alignItems: 'center' }]}>
               <Text style={styles.cardTitle} numberOfLines={1} adjustsFontSizeToFit>{tr('fontSize')}</Text>

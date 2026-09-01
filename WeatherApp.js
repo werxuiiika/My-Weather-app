@@ -1760,7 +1760,7 @@ const buildStyles = (theme, fs) =>
     settingsBody: { flex: 1 },
     settingsBodyContent: { paddingHorizontal: fs.spacing * 1.25, paddingTop: fs.spacing * 0.5, paddingBottom: fs.spacing * 2.125 },
     settingsHero: { alignItems: 'center', paddingTop: fs.spacing * 0.875, paddingBottom: fs.spacing * 0.5, marginBottom: fs.spacing },
-    heroAppIcon: { width: fs.iconSize * 3, height: fs.iconSize * 3, borderRadius: 20, backgroundColor: '#FFFFFF', borderWidth: 0, marginBottom: fs.spacing * 0.75, alignItems: 'center', justifyContent: 'center', padding: fs.spacing },
+    heroAppIcon: { width: fs.iconSize * 3.8, height: fs.iconSize * 3.8, borderRadius: 26, backgroundColor: '#FFFFFF', borderWidth: 0, marginBottom: fs.spacing * 0.75, alignItems: 'center', justifyContent: 'center', padding: fs.spacing },
     heroTitle: { fontSize: fs.large * 1.15, fontWeight: '700', color: theme.text },
     heroAuthor: { fontSize: fs.small, color: theme.textMuted, marginTop: fs.spacing * 0.25 },
     heroVersion: { fontSize: fs.small * 0.846, color: theme.textMuted, marginTop: fs.spacing * 0.125 },
@@ -1776,7 +1776,7 @@ const buildStyles = (theme, fs) =>
       alignItems: 'center', justifyContent: 'center',
       marginRight: fs.spacing * 0.75,
     },
-    interfaceIconEmoji: { fontSize: fs.iconSize * 0.9 },
+    interfaceIconEmoji: { fontSize: fs.iconSize * 0.77 },
     githubIconWrap: {
       width: fs.spacing * 2.625, height: fs.spacing * 2.625, borderRadius: 12,
       backgroundColor: theme.background,
