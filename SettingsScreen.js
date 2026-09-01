@@ -100,7 +100,7 @@ function buildStyles(theme, fs) {
       fontSize: fs.small, fontWeight: '700', color: theme.textMuted,
       letterSpacing: 0.8, marginBottom: fs.spacing * 0.625, marginTop: fs.spacing * 1.375,
     },
-    cardStack: { gap: fs.spacing * 0.625 },
+    cardStack: { },
     card: {
       flexDirection: 'row',
       alignItems: 'flex-start',
@@ -109,6 +109,7 @@ function buildStyles(theme, fs) {
       paddingHorizontal: fs.spacing,
       paddingVertical: fs.spacing * 0.875,
       minHeight: 70 * fs.fontScale,
+      marginTop: fs.spacing * 0.5,
     },
     cardTextWrap: { flex: 1, marginRight: fs.spacing * 0.5, minWidth: 0 },
     cardTitle: { fontSize: fs.base, fontWeight: '600', color: theme.text },
@@ -138,21 +139,6 @@ function buildStyles(theme, fs) {
       pickerOptionTextWrap: { flex: 1 },
       pickerOptionLabel: { fontSize: fs.base, fontWeight: '600', color: theme.text },
       pickerOptionDesc: { fontSize: fs.small, color: theme.textMuted, marginTop: fs.spacing * 0.125 },
-      fontSizeSliderButton: {
-        flexShrink: 0,
-        minWidth: Math.round(fs.base * 1.75),
-        alignItems: 'center',
-        paddingVertical: 5,
-        paddingHorizontal: fs.spacing * 0.5,
-        backgroundColor: theme.background,
-        borderRadius: 10,
-      },
-      fontSizeButtonLabel: {
-        fontSize: fs.small * 0.846,
-        fontWeight: '600',
-        color: theme.accent,
-        textAlign: 'center',
-      },
     });
   }
 
@@ -688,7 +674,7 @@ export default function SettingsScreen() {
               <Text style={styles.cardDesc}>{tr('rememberCityDesc')}</Text>
             </View>
             <Switch
-              style={{ flexShrink: 0 }}
+              style={{ flexShrink: 0, marginRight: 5 }}
               value={rememberCity}
               onValueChange={toggleRemember}
               trackColor={{ false: theme.textMuted, true: theme.accent2 }}
@@ -751,25 +737,16 @@ export default function SettingsScreen() {
             fs={fs}
           />
 
-          <View style={styles.card}>
+          <TouchableOpacity style={styles.card} onPress={() => setShowFontSizePicker(true)} activeOpacity={0.6}>
             <View style={styles.iconWrap}>
               <Ionicons name="text" size={fs.iconSize * 0.77} color={theme.textSecondary} />
             </View>
-            <View style={[styles.cardTextWrap, { flex: 1 }]}>
-              <Text style={styles.cardTitle}>{tr('fontSize')}</Text>
-              <Text style={styles.cardDesc}>{`${Math.round(fontScale * 100)}%`}</Text>
+            <View style={[styles.cardTextWrap, { flex: 1, flexDirection: 'row', alignItems: 'center' }]}>
+              <Text style={styles.cardTitle} numberOfLines={1} adjustsFontSizeToFit>{tr('fontSize')}</Text>
+              <Text style={[styles.cardDesc, { marginLeft: 10, marginTop: 0 }]}>{`${Math.round(fontScale * 100)}%`}</Text>
             </View>
-            <TouchableOpacity
-              style={styles.fontSizeSliderButton}
-              onPress={() => setShowFontSizePicker(true)}
-              activeOpacity={0.6}
-            >
-              <Text style={styles.fontSizeButtonLabel}>
-                {tr('smallFont')} / {tr('largeFont')}
-              </Text>
-            </TouchableOpacity>
             <Text style={styles.chevron}>›</Text>
-          </View>
+          </TouchableOpacity>
         </View>
         <View style={styles.cardStack}>
           <SettingsMenuWrapper

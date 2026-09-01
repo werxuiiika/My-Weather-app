@@ -1406,7 +1406,7 @@ export default function App() {
                           </Text>
                         </View>
                         <Switch
-                          style={{ flexShrink: 0 }}
+                          style={{ flexShrink: 0, marginRight: 5 }}
                           value={rememberCity}
                           onValueChange={toggleRemember}
                           trackColor={{ false: switchTrackOff, true: theme.accent2 }}
