@@ -41,10 +41,19 @@ const APP_VERSION = require('./package.json').version;
 const APP_ICON_SOURCE = require('./assets/icon.png');
 const GITHUB_URL = 'https://github.com/werxuiiika/My-Weather-app';
 
-const loadLastCity = async () => { try { return await AsyncStorage.getItem('lastCity'); } catch (e) { return null; } };
-const saveLastCity = async (name) => { try { await AsyncStorage.setItem('lastCity', name); } catch (e) {} };
+const LAST_CITY_KEY = '@weather_app/saved_city';
+const loadLastCity = async () => { try { return await AsyncStorage.getItem(LAST_CITY_KEY); } catch (e) { return null; } };
+const saveLastCity = async (name) => { try { await AsyncStorage.setItem(LAST_CITY_KEY, name); } catch (e) {} };
+const clearLastCity = async () => { try { await AsyncStorage.removeItem(LAST_CITY_KEY); } catch (e) {} };
 const loadRememberCity = async () => { try { const v = await AsyncStorage.getItem('rememberCity'); return v === null ? true : v === 'true'; } catch (e) { return true; } };
-const saveRememberCity = async (value) => { try { await AsyncStorage.setItem('rememberCity', value ? 'true' : 'false'); } catch (e) {} };
+const saveRememberCity = async (value) => {
+  try {
+    await AsyncStorage.setItem('rememberCity', value ? 'true' : 'false');
+    if (!value) {
+      await clearLastCity();
+    }
+  } catch (e) {}
+};
 
 const fetchJson = async (url) => {
   const controller = new AbortController();
@@ -487,9 +496,105 @@ function ThunderWeather({ size }) {
   );
 }
 
+function ForecastFogAnimation({ size = 26 }) {
+  const anim1 = useRef(new Animated.Value(0)).current;
+  const anim2 = useRef(new Animated.Value(0)).current;
+  const anim3 = useRef(new Animated.Value(0)).current;
+
+  useEffect(() => {
+    const createLoop = (anim, delay = 0) => {
+      return Animated.loop(
+        Animated.sequence([
+          Animated.delay(delay),
+          Animated.timing(anim, {
+            toValue: 1,
+            duration: 4000,
+            easing: Easing.inOut(Easing.ease),
+            useNativeDriver: true,
+          }),
+          Animated.timing(anim, {
+            toValue: 0,
+            duration: 4000,
+            easing: Easing.inOut(Easing.ease),
+            useNativeDriver: true,
+          }),
+        ])
+      );
+    };
+
+    const l1 = createLoop(anim1, 0);
+    const l2 = createLoop(anim2, 100);
+    const l3 = createLoop(anim3, 200);
+
+    l1.start();
+    l2.start();
+    l3.start();
+
+    return () => {
+      l1.stop();
+      l2.stop();
+      l3.stop();
+    };
+  }, [anim1, anim2, anim3]);
+
+  const translateX1 = anim1.interpolate({ inputRange: [0, 1], outputRange: [0, 5] });
+  const translateX2 = anim2.interpolate({ inputRange: [0, 1], outputRange: [0, 6] });
+  const translateX3 = anim3.interpolate({ inputRange: [0, 1], outputRange: [0, 5] });
+
+  return (
+    <View style={{ width: size, height: size * 0.833, alignItems: 'center', justifyContent: 'center' }}>
+      <Svg width={size} height={size * 0.833} viewBox="0 0 120 100">
+        <Path
+          d="M 45 78
+             L 95 78
+             A 16 16 0 0 0 111 62
+             A 15 15 0 0 0 99 48
+             A 22 22 0 0 0 58 35
+             A 25 25 0 0 0 35 55
+             A 16 16 0 0 0 45 78 Z"
+          fill="#CFD8DC"
+        />
+        <AnimatedLine
+          x1="35"
+          y1="58"
+          x2="75"
+          y2="58"
+          stroke="#B0BEC5"
+          strokeWidth="6"
+          strokeLinecap="round"
+          style={{ transform: [{ translateX: translateX1 }] }}
+        />
+        <AnimatedLine
+          x1="22"
+          y1="71"
+          x2="80"
+          y2="71"
+          stroke="#B0BEC5"
+          strokeWidth="6"
+          strokeLinecap="round"
+          style={{ transform: [{ translateX: translateX2 }] }}
+        />
+        <AnimatedLine
+          x1="25"
+          y1="84"
+          x2="95"
+          y2="84"
+          stroke="#B0BEC5"
+          strokeWidth="6"
+          strokeLinecap="round"
+          style={{ transform: [{ translateX: translateX3 }] }}
+        />
+      </Svg>
+    </View>
+  );
+}
+
 function WeatherIcon({ type = 'clear', isNight = false, size = 96 }) {
   if (type === 'thunder') {
     return <ThunderWeather size={size} />;
+  }
+  if (type === 'fog') {
+    return <ForecastFogAnimation size={size} />;
   }
   const isRain = type === 'rain' || type === 'showers';
   const isSnow = type === 'snow';
@@ -516,6 +621,8 @@ function WeatherIcon({ type = 'clear', isNight = false, size = 96 }) {
     driftingCloud = { fill: ICON_COLORS.cloudDark, offsetY: -6 };
   } else if (type === 'snow') {
     content = <CloudShape y={-2} fill={ICON_COLORS.cloudDark} />;
+  } else if (type === 'fog') {
+    content = null;
   } else {
     content = (
       <CloudShape y={-2} fill={type === 'showers' ? ICON_COLORS.cloudDark : ICON_COLORS.cloudLight} />
@@ -576,108 +683,108 @@ function SunAnimation({ size = 96 }) {
   );
 }
 
-function FogAnimation({ size = 96 }) {
+function FogAnimation({ size = 140 }) {
   const anim1 = useRef(new Animated.Value(0)).current;
   const anim2 = useRef(new Animated.Value(0)).current;
   const anim3 = useRef(new Animated.Value(0)).current;
-  const swayAnim = useRef(new Animated.Value(0)).current;
 
   useEffect(() => {
-    const loops = [
-      Animated.loop(Animated.timing(anim1, { toValue: 1, duration: 22000, easing: Easing.linear, useNativeDriver: true })),
-      Animated.loop(Animated.timing(anim2, { toValue: 1, duration: 30000, easing: Easing.linear, useNativeDriver: true })),
-      Animated.loop(Animated.timing(anim3, { toValue: 1, duration: 38000, easing: Easing.linear, useNativeDriver: true })),
-      Animated.loop(
+    const createLoop = (anim, delay = 0) => {
+      return Animated.loop(
         Animated.sequence([
-          Animated.timing(swayAnim, { toValue: 1, duration: 4000, easing: Easing.inOut(Easing.sin), useNativeDriver: true }),
-          Animated.timing(swayAnim, { toValue: 0, duration: 4000, easing: Easing.inOut(Easing.sin), useNativeDriver: true }),
+          Animated.delay(delay),
+          Animated.timing(anim, {
+            toValue: 1,
+            duration: 4000,
+            easing: Easing.inOut(Easing.ease),
+            useNativeDriver: true,
+          }),
+          Animated.timing(anim, {
+            toValue: 0,
+            duration: 4000,
+            easing: Easing.inOut(Easing.ease),
+            useNativeDriver: true,
+          }),
         ])
-      ),
-    ];
-    loops.forEach((l) => l.start());
-    return () => loops.forEach((l) => l.stop());
-  }, [anim1, anim2, anim3, swayAnim]);
+      );
+    };
 
-  const translateX1 = anim1.interpolate({ inputRange: [0, 1], outputRange: [-size * 0.4, size * 0.4] });
-  const translateX2 = anim2.interpolate({ inputRange: [0, 1], outputRange: [size * 0.4, -size * 0.4] });
-  const translateX3 = anim3.interpolate({ inputRange: [0, 1], outputRange: [-size * 0.3, size * 0.3] });
+    const l1 = createLoop(anim1, 0);
+    const l2 = createLoop(anim2, 100);
+    const l3 = createLoop(anim3, 200);
 
-  const translateY = swayAnim.interpolate({ inputRange: [0, 1], outputRange: [-size * 0.04, size * 0.04] });
+    l1.start();
+    l2.start();
+    l3.start();
+
+    return () => {
+      l1.stop();
+      l2.stop();
+      l3.stop();
+    };
+  }, [anim1, anim2, anim3]);
+
+  const translateX1 = anim1.interpolate({ inputRange: [0, 1], outputRange: [0, 22] });
+  const translateX2 = anim2.interpolate({ inputRange: [0, 1], outputRange: [0, 26] });
+  const translateX3 = anim3.interpolate({ inputRange: [0, 1], outputRange: [0, 20] });
 
   return (
-    <View style={{ width: size, height: size, overflow: 'hidden', alignItems: 'center', justifyContent: 'center' }}>
-      <BlurView intensity={25} tint="light" style={StyleSheet.absoluteFillObject} />
-      <Animated.View
-        style={{
-          ...StyleSheet.absoluteFillObject,
-          transform: [{ translateY }],
-          alignItems: 'center',
-          justifyContent: 'center',
-        }}
-      >
-        {/* Layer 1 - Deep / Slow */}
-        <Animated.View
-          style={{
-            position: 'absolute',
-            top: size * 0.12,
-            left: -size * 0.3,
-            width: size * 1.6,
-            height: size * 0.28,
-            transform: [{ translateX: translateX3 }],
-            opacity: 0.7,
-          }}
-        >
-          <LinearGradient
-            colors={['transparent', 'rgba(241, 245, 249, 0.85)', 'transparent']}
-            start={{ x: 0, y: 0.5 }}
-            end={{ x: 1, y: 0.5 }}
-            style={{ flex: 1, borderRadius: size * 0.15 }}
-          />
-        </Animated.View>
+    <View style={{ width: size, height: size * 0.833, alignItems: 'center', justifyContent: 'center', marginLeft: -24 }}>
+      <Svg width={size} height={size * 0.833} viewBox="0 0 120 100">
+        <Defs />
+        {/* Cloud Body */}
+        <Path
+          d="M 45 78
+             L 95 78
+             A 16 16 0 0 0 111 62
+             A 15 15 0 0 0 99 48
+             A 22 22 0 0 0 58 35
+             A 25 25 0 0 0 35 55
+             A 16 16 0 0 0 45 78 Z"
+          fill="#CFD8DC"
+        />
 
-        {/* Layer 2 - Mid / Medium Speed */}
-        <Animated.View
-          style={{
-            position: 'absolute',
-            top: size * 0.35,
-            left: -size * 0.3,
-            width: size * 1.6,
-            height: size * 0.32,
-            transform: [{ translateX: translateX2 }],
-            opacity: 0.85,
-          }}
-        >
-          <LinearGradient
-            colors={['transparent', 'rgba(255, 255, 255, 0.95)', 'transparent']}
-            start={{ x: 0, y: 0.5 }}
-            end={{ x: 1, y: 0.5 }}
-            style={{ flex: 1, borderRadius: size * 0.16 }}
-          />
-        </Animated.View>
+        {/* Wind Line 1 */}
+        <AnimatedLine
+          x1="35"
+          y1="58"
+          x2="75"
+          y2="58"
+          stroke="#B0BEC5"
+          strokeWidth="6"
+          strokeLinecap="round"
+          style={{ transform: [{ translateX: translateX1 }] }}
+        />
 
-        {/* Layer 3 - Foreground / Fast */}
-        <Animated.View
-          style={{
-            position: 'absolute',
-            top: size * 0.6,
-            left: -size * 0.3,
-            width: size * 1.6,
-            height: size * 0.28,
-            transform: [{ translateX: translateX1 }],
-            opacity: 0.6,
-          }}
-        >
-          <LinearGradient
-            colors={['transparent', 'rgba(226, 232, 240, 0.8)', 'transparent']}
-            start={{ x: 0, y: 0.5 }}
-            end={{ x: 1, y: 0.5 }}
-            style={{ flex: 1, borderRadius: size * 0.14 }}
-          />
-        </Animated.View>
-      </Animated.View>
+        {/* Wind Line 2 */}
+        <AnimatedLine
+          x1="22"
+          y1="71"
+          x2="80"
+          y2="71"
+          stroke="#B0BEC5"
+          strokeWidth="6"
+          strokeLinecap="round"
+          style={{ transform: [{ translateX: translateX2 }] }}
+        />
+
+        {/* Wind Line 3 */}
+        <AnimatedLine
+          x1="25"
+          y1="84"
+          x2="95"
+          y2="84"
+          stroke="#B0BEC5"
+          strokeWidth="6"
+          strokeLinecap="round"
+          style={{ transform: [{ translateX: translateX3 }] }}
+        />
+      </Svg>
     </View>
   );
 }
+
+const AnimatedLine = Animated.createAnimatedComponent(Line);
 
 function weathercodeToType(code) {
   if (code === 0) return 'clear';
