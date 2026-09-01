@@ -1396,110 +1396,111 @@ export default function App() {
                      <Text style={styles.heroAuthor}>{tr('byAuthor')}</Text>
                      <Text style={styles.heroVersion}>{tr('version', { version: APP_VERSION })}</Text>
                   </View>
-                   <Text style={styles.settingsSectionTitle}>{tr('settings')}</Text>
-                   <View style={styles.cardStack}>
-                     <View style={styles.aboutCard}>
-                       <View style={styles.aboutCardTextWrap}>
-                         <Text style={styles.aboutCardTitle}>{tr('rememberCity')}</Text>
-                         <Text style={styles.aboutCardDesc}>
-                           {tr('rememberCityDesc')}
-                         </Text>
-                       </View>
-                       <Switch
-                         value={rememberCity}
-                         onValueChange={toggleRemember}
-                         trackColor={{ false: switchTrackOff, true: theme.accent2 }}
-                         thumbColor="#ffffff"
-                         ios_backgroundColor={switchTrackOff}
-                       />
+                    <Text style={styles.settingsSectionTitle}>{tr('settings')}</Text>
+                    <View style={styles.cardStack}>
+                      <View style={styles.aboutCard}>
+                        <View style={[styles.aboutCardTextWrap, { flex: 0 }]}>
+                          <Text style={styles.aboutCardTitle}>{tr('rememberCity')}</Text>
+                          <Text style={styles.aboutCardDesc}>
+                            {tr('rememberCityDesc')}
+                          </Text>
+                        </View>
+                        <Switch
+                          style={{ flexShrink: 0 }}
+                          value={rememberCity}
+                          onValueChange={toggleRemember}
+                          trackColor={{ false: switchTrackOff, true: theme.accent2 }}
+                          thumbColor="#ffffff"
+                          ios_backgroundColor={switchTrackOff}
+                        />
                       </View>
                     </View>
                     <Text style={styles.settingsSectionTitle}>{tr('interface')}</Text>
                    <View style={styles.cardStack}>
-                     <TouchableOpacity
-                       style={styles.aboutCard}
-                       onPress={openThemePicker}
-                       activeOpacity={0.6}
-                     >
-                       <View style={styles.interfaceIconWrap}>
-                         <Text style={styles.interfaceIconEmoji}>🎨</Text>
-                       </View>
-                       <View style={styles.aboutCardTextWrap}>
-                         <Text style={styles.aboutCardTitle}>{tr('appTheme')}</Text>
-                         <Text style={styles.aboutCardDesc}>{currentThemeLabel}</Text>
-                       </View>
-                       <Text style={styles.settingsChevron}>›</Text>
-                     </TouchableOpacity>
-                     <TouchableOpacity
-                       style={styles.aboutCard}
-                       onPress={openLanguagePicker}
-                       activeOpacity={0.6}
-                     >
-                       <View style={styles.interfaceIconWrap}>
-                         <Text style={styles.interfaceIconEmoji}>🌐</Text>
-                       </View>
-                       <View style={styles.aboutCardTextWrap}>
-                         <Text style={styles.aboutCardTitle}>{tr('language')}</Text>
-                         <Text style={styles.aboutCardDesc}>
-                           {i18n.language === 'ru' ? tr('russian') : tr('english')}
-                         </Text>
-                       </View>
-                       <Text style={styles.settingsChevron}>›</Text>
-                     </TouchableOpacity>
-                   </View>
-                   <Text style={styles.settingsSectionTitle}>{tr('units')}</Text>
-                   <View style={styles.cardStack}>
-                     <TouchableOpacity
-                       style={styles.aboutCard}
-                       onPress={() => showUnitPicker('temp')}
-                       activeOpacity={0.6}
-                     >
-                       <View style={styles.interfaceIconWrap}>
-                         <Text style={styles.interfaceIconEmoji}>🌡️</Text>
-                       </View>
-                       <View style={styles.aboutCardTextWrap}>
-                         <Text style={styles.aboutCardTitle}>{tr('temperature')}</Text>
-                         <Text style={styles.aboutCardDesc}>
-                           {tr(TEMP_UNIT_OPTIONS.find((o) => o.value === tempUnit)?.labelKey ?? 'tempUnits.C.label')}
-                         </Text>
-                       </View>
-                       <Text style={styles.settingsChevron}>›</Text>
-                     </TouchableOpacity>
-                     <TouchableOpacity
-                       style={styles.aboutCard}
-                       onPress={() => showUnitPicker('wind')}
-                       activeOpacity={0.6}
-                     >
-                       <View style={styles.interfaceIconWrap}>
-                         <Text style={styles.interfaceIconEmoji}>💨</Text>
-                       </View>
-                       <View style={styles.aboutCardTextWrap}>
-                         <Text style={styles.aboutCardTitle}>{tr('windSpeed')}</Text>
-                         <Text style={styles.aboutCardDesc}>
-                           {tr(WIND_UNIT_OPTIONS.find((o) => o.value === windUnit)?.labelKey ?? 'windUnits.kmh.label')}
-                         </Text>
-                       </View>
-                       <Text style={styles.settingsChevron}>›</Text>
-                     </TouchableOpacity>
-                   </View>
+                      <TouchableOpacity
+                        style={styles.aboutCard}
+                        onPress={openThemePicker}
+                        activeOpacity={0.6}
+                      >
+                        <View style={styles.interfaceIconWrap}>
+                          <Text style={styles.interfaceIconEmoji}>🎨</Text>
+                        </View>
+                        <View style={[styles.aboutCardTextWrap, { flex: 1 }]}>
+                          <Text style={styles.aboutCardTitle}>{tr('appTheme')}</Text>
+                          <Text style={styles.aboutCardDesc}>{currentThemeLabel}</Text>
+                        </View>
+                        <Text style={styles.settingsChevron}>›</Text>
+                      </TouchableOpacity>
+                      <TouchableOpacity
+                        style={styles.aboutCard}
+                        onPress={openLanguagePicker}
+                        activeOpacity={0.6}
+                      >
+                        <View style={styles.interfaceIconWrap}>
+                          <Text style={styles.interfaceIconEmoji}>🌐</Text>
+                        </View>
+                        <View style={[styles.aboutCardTextWrap, { flex: 1 }]}>
+                          <Text style={styles.aboutCardTitle}>{tr('language')}</Text>
+                          <Text style={styles.aboutCardDesc}>
+                            {i18n.language === 'ru' ? tr('russian') : tr('english')}
+                          </Text>
+                        </View>
+                        <Text style={styles.settingsChevron}>›</Text>
+                      </TouchableOpacity>
+                    </View>
+                    <Text style={styles.settingsSectionTitle}>{tr('units')}</Text>
+                    <View style={styles.cardStack}>
+                      <TouchableOpacity
+                        style={styles.aboutCard}
+                        onPress={() => showUnitPicker('temp')}
+                        activeOpacity={0.6}
+                      >
+                        <View style={styles.interfaceIconWrap}>
+                          <Text style={styles.interfaceIconEmoji}>🌡️</Text>
+                        </View>
+                        <View style={[styles.aboutCardTextWrap, { flex: 1 }]}>
+                          <Text style={styles.aboutCardTitle}>{tr('temperature')}</Text>
+                          <Text style={styles.aboutCardDesc}>
+                            {tr(TEMP_UNIT_OPTIONS.find((o) => o.value === tempUnit)?.labelKey ?? 'tempUnits.C.label')}
+                          </Text>
+                        </View>
+                        <Text style={styles.settingsChevron}>›</Text>
+                      </TouchableOpacity>
+                      <TouchableOpacity
+                        style={styles.aboutCard}
+                        onPress={() => showUnitPicker('wind')}
+                        activeOpacity={0.6}
+                      >
+                        <View style={styles.interfaceIconWrap}>
+                          <Text style={styles.interfaceIconEmoji}>💨</Text>
+                        </View>
+                        <View style={[styles.aboutCardTextWrap, { flex: 1 }]}>
+                          <Text style={styles.aboutCardTitle}>{tr('windSpeed')}</Text>
+                          <Text style={styles.aboutCardDesc}>
+                            {tr(WIND_UNIT_OPTIONS.find((o) => o.value === windUnit)?.labelKey ?? 'windUnits.kmh.label')}
+                          </Text>
+                        </View>
+                        <Text style={styles.settingsChevron}>›</Text>
+                      </TouchableOpacity>
+                    </View>
                    <Text style={styles.settingsSectionTitle}>{tr('aboutProject')}</Text>
                    <View style={styles.cardStack}>
                      <TouchableOpacity
                        style={styles.aboutCard}
                        onPress={openGitHub}
                        activeOpacity={0.6}
-                     >
-                       <View style={styles.githubIconWrap}>
-                         <GithubIcon size={22} color={theme.text} />
-                       </View>
-                       <View style={styles.aboutCardTextWrap}>
-                         <Text style={styles.aboutCardTitle}>{tr('sourceCode')}</Text>
-                         <Text style={styles.aboutCardDesc}>
-                           {tr('githubDesc')}
-                        </Text>
-                      </View>
-                      <Text style={styles.settingsChevron}>›</Text>
-                    </TouchableOpacity>
+                      >
+                        <View style={styles.githubIconWrap}>
+                          <GithubIcon size={22} color={theme.text} />
+                        </View>
+                        <View style={[styles.aboutCardTextWrap, { flex: 1 }]}>
+                          <Text style={styles.aboutCardTitle}>{tr('sourceCode')}</Text>
+                          <Text style={styles.aboutCardDesc}>
+                            {tr('githubDesc')}
+                          </Text>
+                        </View>
+                        <Text style={styles.settingsChevron}>›</Text>
+                      </TouchableOpacity>
                   </View>
                 </ScrollView>
                 {themePickerVisible && (
@@ -1707,10 +1708,10 @@ const buildStyles = (theme, fs) =>
     splash: { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: theme.background, alignItems: 'center', justifyContent: 'center' },
     splashIconWrap: { marginBottom: fs.spacing },
     splashText: { color: theme.textSecondary, fontSize: fs.small },
-    title: { fontSize: fs.base * 2, fontWeight: '700', color: theme.text, textAlign: 'center', marginTop: -16, marginLeft: -8 },
-    container: { flex: 1, position: 'relative', paddingHorizontal: fs.spacing * 1.25, paddingTop: (StatusBar.currentHeight || 0) },
-    titleRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: fs.spacing, marginTop: fs.spacing * 0.25 },
-    gearButton: { marginRight: -4, marginTop: -18, padding: fs.spacing * 0.375, zIndex: 1 },
+    title: { fontSize: fs.base * 2, fontWeight: '700', color: theme.text, textAlign: 'center', marginTop: 0, marginLeft: 0 },
+    container: { flex: 1, position: 'relative', paddingHorizontal: fs.spacing * 2, paddingTop: (StatusBar.currentHeight || 0) },
+    titleRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: fs.spacing, marginTop: fs.spacing * 0.5 },
+    gearButton: { marginRight: 0, marginTop: 0, padding: fs.spacing * 0.375, zIndex: 1 },
     gearIcon: { fontSize: fs.iconSize },
     searchRow: { flexDirection: 'row', marginBottom: fs.spacing * 0.625 },
     input: { flex: 1, height: fs.spacing * 3, backgroundColor: theme.surface, borderRadius: 10, paddingHorizontal: fs.spacing * 0.875, color: theme.text, fontSize: fs.base, marginRight: fs.spacing * 0.625 },
@@ -1766,13 +1767,23 @@ const buildStyles = (theme, fs) =>
     settingsSectionTitle: { fontSize: fs.small, fontWeight: '700', color: theme.textMuted, letterSpacing: 0.8, marginBottom: fs.spacing * 0.625, marginTop: fs.spacing * 1.375 },
     cardStack: { gap: fs.spacing * 0.625 },
     aboutCard: { flexDirection: 'row', alignItems: 'flex-start', backgroundColor: theme.surface, borderRadius: 16, paddingHorizontal: fs.spacing, paddingVertical: fs.spacing * 0.875, minHeight: 70 * fs.fontScale },
-    aboutCardTextWrap: { flex: 1, marginRight: fs.spacing * 1.25, paddingRight: 60 * fs.fontScale, flexWrap: 'wrap' },
+    aboutCardTextWrap: { flex: 1, marginRight: fs.spacing * 0.5, minWidth: 0 },
     aboutCardTitle: { fontSize: fs.base, fontWeight: '600', color: theme.text },
-    aboutCardDesc: { fontSize: fs.small, color: theme.textMuted, marginTop: fs.spacing * 0.25, lineHeight: fs.small * 1.384 },
-    interfaceIconWrap: { width: fs.spacing * 2.625, height: fs.spacing * 2.625, borderRadius: 12, backgroundColor: theme.background, alignItems: 'center', justifyContent: 'center', marginRight: fs.spacing * 0.75 },
+    aboutCardDesc: { fontSize: fs.small, color: theme.textMuted, marginTop: fs.spacing * 0.125, lineHeight: fs.small * 1.3 },
+    interfaceIconWrap: {
+      width: fs.spacing * 2.625, height: fs.spacing * 2.625, borderRadius: 12,
+      backgroundColor: theme.background,
+      alignItems: 'center', justifyContent: 'center',
+      marginRight: fs.spacing * 0.75,
+    },
     interfaceIconEmoji: { fontSize: fs.iconSize * 0.77 },
-    githubIconWrap: { width: fs.spacing * 2.625, height: fs.spacing * 2.625, borderRadius: 12, backgroundColor: theme.background, alignItems: 'center', justifyContent: 'center', marginRight: fs.spacing * 0.75 },
-    settingsChevron: { fontSize: fs.base * 1.5, color: theme.textMuted, marginLeft: fs.spacing * 0.375 },
+    githubIconWrap: {
+      width: fs.spacing * 2.625, height: fs.spacing * 2.625, borderRadius: 12,
+      backgroundColor: theme.background,
+      alignItems: 'center', justifyContent: 'center',
+      marginRight: fs.spacing * 0.75,
+    },
+    settingsChevron: { fontSize: fs.base * 1.5, color: theme.textMuted, marginLeft: 'auto', flexShrink: 0 },
     pickerLayer: { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, zIndex: 20, alignItems: 'center', justifyContent: 'center', paddingHorizontal: fs.spacing * 1.5 },
     pickerBackdrop: { ...StyleSheet.absoluteFillObject, backgroundColor: 'rgba(0, 0, 0, 0.45)' },
     pickerCard: { width: '100%', maxWidth: 360, backgroundColor: theme.surface, borderRadius: 20, borderWidth: 1, borderColor: theme.border, padding: fs.spacing * 1.125 },
