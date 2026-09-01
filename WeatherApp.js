@@ -1776,7 +1776,7 @@ const buildStyles = (theme, fs) =>
       alignItems: 'center', justifyContent: 'center',
       marginRight: fs.spacing * 0.75,
     },
-    interfaceIconEmoji: { fontSize: fs.iconSize * 0.77 },
+    interfaceIconEmoji: { fontSize: fs.iconSize * 0.9 },
     githubIconWrap: {
       width: fs.spacing * 2.625, height: fs.spacing * 2.625, borderRadius: 12,
       backgroundColor: theme.background,
