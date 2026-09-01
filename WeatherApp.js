@@ -1398,22 +1398,22 @@ export default function App() {
                   </View>
                     <Text style={styles.settingsSectionTitle}>{tr('settings')}</Text>
                     <View style={styles.cardStack}>
-                      <View style={styles.aboutCard}>
-                        <View style={[styles.aboutCardTextWrap, { flex: 0 }]}>
-                          <Text style={styles.aboutCardTitle}>{tr('rememberCity')}</Text>
-                          <Text style={styles.aboutCardDesc}>
-                            {tr('rememberCityDesc')}
-                          </Text>
-                        </View>
-                        <Switch
-                          style={{ flexShrink: 0, marginRight: 5 }}
-                          value={rememberCity}
-                          onValueChange={toggleRemember}
-                          trackColor={{ false: switchTrackOff, true: theme.accent2 }}
-                          thumbColor="#ffffff"
-                          ios_backgroundColor={switchTrackOff}
-                        />
-                      </View>
+                       <View style={styles.aboutCard}>
+                         <View style={[styles.aboutCardTextWrap, { flex: 1 }]}>
+                           <Text style={styles.aboutCardTitle}>{tr('rememberCity')}</Text>
+                           <Text style={styles.aboutCardDesc}>
+                             {tr('rememberCityDesc')}
+                           </Text>
+                         </View>
+                         <Switch
+                           style={{ flexShrink: 0, alignSelf: 'center', marginLeft: 10 }}
+                           value={rememberCity}
+                           onValueChange={toggleRemember}
+                           trackColor={{ false: switchTrackOff, true: theme.accent2 }}
+                           thumbColor="#ffffff"
+                           ios_backgroundColor={switchTrackOff}
+                         />
+                       </View>
                     </View>
                     <Text style={styles.settingsSectionTitle}>{tr('interface')}</Text>
                    <View style={styles.cardStack}>

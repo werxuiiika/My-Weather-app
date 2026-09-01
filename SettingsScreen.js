@@ -669,12 +669,12 @@ export default function SettingsScreen() {
         <Text style={styles.sectionTitle}>{tr('settings')}</Text>
         <View style={styles.cardStack}>
           <View style={styles.card}>
-            <View style={[styles.cardTextWrap, { flex: 0 }]}>
+            <View style={[styles.cardTextWrap, { flex: 1 }]}>
               <Text style={styles.cardTitle}>{tr('rememberCity')}</Text>
               <Text style={styles.cardDesc}>{tr('rememberCityDesc')}</Text>
             </View>
             <Switch
-              style={{ flexShrink: 0, marginRight: 5 }}
+              style={{ flexShrink: 0, alignSelf: 'center', marginLeft: 10 }}
               value={rememberCity}
               onValueChange={toggleRemember}
               trackColor={{ false: theme.textMuted, true: theme.accent2 }}
