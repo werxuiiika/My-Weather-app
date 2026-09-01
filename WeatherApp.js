@@ -21,7 +21,8 @@ import {
    StatusBar,
  } from 'react-native';
 import Svg, { Circle, Defs, G, Line, Path, RadialGradient, Rect, Stop } from 'react-native-svg';
-import AsyncStorage from '@react-native-async-storage/async-storage';
+import { LinearGradient } from 'expo-linear-gradient';
+import { BlurView } from 'expo-blur';
 import {
   THEME_MODES,
 } from './themes';
@@ -579,40 +580,101 @@ function FogAnimation({ size = 96 }) {
   const anim1 = useRef(new Animated.Value(0)).current;
   const anim2 = useRef(new Animated.Value(0)).current;
   const anim3 = useRef(new Animated.Value(0)).current;
+  const swayAnim = useRef(new Animated.Value(0)).current;
 
   useEffect(() => {
     const loops = [
-      Animated.loop(Animated.timing(anim1, { toValue: 1, duration: 20000, easing: Easing.linear, useNativeDriver: true })),
-      Animated.loop(Animated.timing(anim2, { toValue: 1, duration: 28000, easing: Easing.linear, useNativeDriver: true })),
-      Animated.loop(Animated.timing(anim3, { toValue: 1, duration: 36000, easing: Easing.linear, useNativeDriver: true })),
+      Animated.loop(Animated.timing(anim1, { toValue: 1, duration: 22000, easing: Easing.linear, useNativeDriver: true })),
+      Animated.loop(Animated.timing(anim2, { toValue: 1, duration: 30000, easing: Easing.linear, useNativeDriver: true })),
+      Animated.loop(Animated.timing(anim3, { toValue: 1, duration: 38000, easing: Easing.linear, useNativeDriver: true })),
+      Animated.loop(
+        Animated.sequence([
+          Animated.timing(swayAnim, { toValue: 1, duration: 4000, easing: Easing.inOut(Easing.sin), useNativeDriver: true }),
+          Animated.timing(swayAnim, { toValue: 0, duration: 4000, easing: Easing.inOut(Easing.sin), useNativeDriver: true }),
+        ])
+      ),
     ];
     loops.forEach((l) => l.start());
     return () => loops.forEach((l) => l.stop());
-  }, [anim1, anim2, anim3]);
+  }, [anim1, anim2, anim3, swayAnim]);
 
-  const layerX = (anim, direction) =>
-    anim.interpolate({
-      inputRange: [0, 1],
-      outputRange: direction === 'left' ? [size * 0.5, -size * 0.5] : [-size * 0.5, size * 0.5],
-    });
+  const translateX1 = anim1.interpolate({ inputRange: [0, 1], outputRange: [-size * 0.4, size * 0.4] });
+  const translateX2 = anim2.interpolate({ inputRange: [0, 1], outputRange: [size * 0.4, -size * 0.4] });
+  const translateX3 = anim3.interpolate({ inputRange: [0, 1], outputRange: [-size * 0.3, size * 0.3] });
 
-  const fogLayer = (color, anim, direction, top, height, width) => ({
-    position: 'absolute',
-    top,
-    left: 0,
-    width,
-    height,
-    backgroundColor: color,
-    borderRadius: height,
-    opacity: 0.5,
-    transform: [{ translateX: layerX(anim, direction) }],
-  });
+  const translateY = swayAnim.interpolate({ inputRange: [0, 1], outputRange: [-size * 0.04, size * 0.04] });
 
   return (
     <View style={{ width: size, height: size, overflow: 'hidden', alignItems: 'center', justifyContent: 'center' }}>
-      <Animated.View style={fogLayer('#e2e8f0', anim1, 'left', size * 0.14, size * 0.22, size * 1.2)} />
-      <Animated.View style={fogLayer('#cdd6e5', anim2, 'right', size * 0.36, size * 0.18, size * 1.1)} />
-      <Animated.View style={fogLayer('#cbd5e1', anim3, 'left', size * 0.58, size * 0.2, size * 1.3)} />
+      <BlurView intensity={25} tint="light" style={StyleSheet.absoluteFillObject} />
+      <Animated.View
+        style={{
+          ...StyleSheet.absoluteFillObject,
+          transform: [{ translateY }],
+          alignItems: 'center',
+          justifyContent: 'center',
+        }}
+      >
+        {/* Layer 1 - Deep / Slow */}
+        <Animated.View
+          style={{
+            position: 'absolute',
+            top: size * 0.12,
+            left: -size * 0.3,
+            width: size * 1.6,
+            height: size * 0.28,
+            transform: [{ translateX: translateX3 }],
+            opacity: 0.7,
+          }}
+        >
+          <LinearGradient
+            colors={['transparent', 'rgba(241, 245, 249, 0.85)', 'transparent']}
+            start={{ x: 0, y: 0.5 }}
+            end={{ x: 1, y: 0.5 }}
+            style={{ flex: 1, borderRadius: size * 0.15 }}
+          />
+        </Animated.View>
+
+        {/* Layer 2 - Mid / Medium Speed */}
+        <Animated.View
+          style={{
+            position: 'absolute',
+            top: size * 0.35,
+            left: -size * 0.3,
+            width: size * 1.6,
+            height: size * 0.32,
+            transform: [{ translateX: translateX2 }],
+            opacity: 0.85,
+          }}
+        >
+          <LinearGradient
+            colors={['transparent', 'rgba(255, 255, 255, 0.95)', 'transparent']}
+            start={{ x: 0, y: 0.5 }}
+            end={{ x: 1, y: 0.5 }}
+            style={{ flex: 1, borderRadius: size * 0.16 }}
+          />
+        </Animated.View>
+
+        {/* Layer 3 - Foreground / Fast */}
+        <Animated.View
+          style={{
+            position: 'absolute',
+            top: size * 0.6,
+            left: -size * 0.3,
+            width: size * 1.6,
+            height: size * 0.28,
+            transform: [{ translateX: translateX1 }],
+            opacity: 0.6,
+          }}
+        >
+          <LinearGradient
+            colors={['transparent', 'rgba(226, 232, 240, 0.8)', 'transparent']}
+            start={{ x: 0, y: 0.5 }}
+            end={{ x: 1, y: 0.5 }}
+            style={{ flex: 1, borderRadius: size * 0.14 }}
+          />
+        </Animated.View>
+      </Animated.View>
     </View>
   );
 }
