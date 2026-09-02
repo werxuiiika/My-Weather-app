@@ -23,6 +23,7 @@ import {
 import Svg, { Circle, Defs, G, Line, Path, RadialGradient, Rect, Stop } from 'react-native-svg';
 import { LinearGradient } from 'expo-linear-gradient';
 import { BlurView } from 'expo-blur';
+import { Ionicons } from '@expo/vector-icons';
 import {
   THEME_MODES,
 } from './themes';
@@ -1393,9 +1394,18 @@ export default function App() {
         <Animated.View style={[styles.container, { opacity: contentOpacity }]}>
           <View style={styles.titleRow}>
             <Text style={styles.title}>{tr('weather')}</Text>
-            <TouchableOpacity style={styles.gearButton} onPress={openSettings} activeOpacity={0.7}>
-              <Text style={styles.gearIcon}>⚙️</Text>
-            </TouchableOpacity>
+            <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+              <TouchableOpacity
+                style={[styles.gearButton, { marginRight: 8 }]}
+                onPress={() => navigation.navigate('CityList')}
+                activeOpacity={0.7}
+              >
+                <Ionicons name="list" size={22} color={theme.text} />
+              </TouchableOpacity>
+              <TouchableOpacity style={styles.gearButton} onPress={openSettings} activeOpacity={0.7}>
+                <Text style={styles.gearIcon}>⚙️</Text>
+              </TouchableOpacity>
+            </View>
           </View>
           <View style={styles.searchRow}>
             <TextInput

@@ -7,6 +7,7 @@ import { useTranslation } from 'react-i18next';
 import WeatherApp from './WeatherApp';
 import WeatherPhenomenonFinder, { SunTabIcon, SearchTabIcon } from './WeatherPhenomenonFinder';
 import SettingsScreen from './SettingsScreen';
+import CityListScreen from './CityListScreen';
 import { SettingsProvider } from './SettingsContext';
 import { FontSizeProvider, useFontSize } from './FontSizeContext';
 import { ThemeProvider, useTheme } from './ThemeContext';
@@ -37,19 +38,24 @@ function AppContent() {
         <FontSizeProvider>
           <SettingsProvider>
             <NavigationContainer>
-            <Stack.Navigator
-              screenOptions={{
-                headerShown: false,
-                animation: 'slide_from_right',
-              }}
-            >
-              <Stack.Screen name="Tabs" component={TabScreens} />
-              <Stack.Screen
-                name="Settings"
-                component={SettingsScreen}
-                options={{ animation: 'slide_from_right' }}
-              />
-            </Stack.Navigator>
+              <Stack.Navigator
+                screenOptions={{
+                  headerShown: false,
+                  animation: 'slide_from_right',
+                }}
+              >
+                <Stack.Screen name="Tabs" component={TabScreens} />
+                <Stack.Screen
+                  name="Settings"
+                  component={SettingsScreen}
+                  options={{ animation: 'slide_from_right' }}
+                />
+                <Stack.Screen
+                  name="CityList"
+                  component={CityListScreen}
+                  options={{ animation: 'slide_from_right' }}
+                />
+              </Stack.Navigator>
           </NavigationContainer>
         </SettingsProvider>
         </FontSizeProvider>
