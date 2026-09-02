@@ -122,22 +122,23 @@ export default function CityListScreen() {
   };
 
   const getGlassGradient = (code, isNight) => {
+    const isLight = theme.mode === 'light';
     if (isNight) {
-      return ['rgba(15, 25, 45, 0.6)', 'rgba(30, 45, 75, 0.4)'];
+      return ['rgba(15, 25, 45, 0.7)', 'rgba(30, 45, 75, 0.5)'];
     }
     if (code === 0) {
-      return ['rgba(41, 128, 185, 0.5)', 'rgba(109, 213, 250, 0.3)'];
+      return isLight ? ['rgba(41, 128, 185, 0.35)', 'rgba(109, 213, 250, 0.2)']: ['rgba(41, 128, 185, 0.6)', 'rgba(109, 213, 250, 0.4)'];
     }
     if (code <= 3) {
-      return ['rgba(76, 161, 175, 0.5)', 'rgba(44, 62, 80, 0.4)'];
+      return isLight ? ['rgba(76, 161, 175, 0.35)', 'rgba(44, 62, 80, 0.3)'] : ['rgba(76, 161, 175, 0.6)', 'rgba(44, 62, 80, 0.5)'];
     }
     if (code <= 67) {
-      return ['rgba(58, 123, 213, 0.5)', 'rgba(58, 96, 115, 0.4)'];
+      return isLight ? ['rgba(58, 123, 213, 0.35)', 'rgba(58, 96, 115, 0.3)'] : ['rgba(58, 123, 213, 0.6)', 'rgba(58, 96, 115, 0.5)'];
     }
     if (code <= 77) {
-      return ['rgba(101, 121, 155, 0.5)', 'rgba(94, 37, 99, 0.4)'];
+      return isLight ? ['rgba(101, 121, 155, 0.35)', 'rgba(94, 37, 99, 0.3)'] : ['rgba(101, 121, 155, 0.6)', 'rgba(94, 37, 99, 0.5)'];
     }
-    return ['rgba(35, 37, 38, 0.6)', 'rgba(65, 67, 69, 0.4)'];
+    return isLight ? ['rgba(35, 37, 38, 0.4)', 'rgba(65, 67, 69, 0.3)'] : ['rgba(35, 37, 38, 0.7)', 'rgba(65, 67, 69, 0.5)'];
   };
 
   const getWeatherConditionText = (code) => {
@@ -240,30 +241,30 @@ export default function CityListScreen() {
       onPress={() => handleSelectCity(item.name)}
       onLongPress={() => handleDeleteCity(item.id, item.name)}
     >
-      <BlurView intensity={40} tint="dark" style={styles.blurContainer}>
-        <LinearGradient
-          colors={item.gradientColors || ['rgba(41, 128, 185, 0.5)', 'rgba(109, 213, 250, 0.3)']}
-          style={styles.cardGradient}
-          start={{ x: 0, y: 0 }}
-          end={{ x: 1, y: 1 }}
-        >
+      <LinearGradient
+        colors={item.gradientColors || ['rgba(41, 128, 185, 0.5)', 'rgba(109, 213, 250, 0.3)']}
+        style={styles.cardGradient}
+        start={{ x: 0, y: 0 }}
+        end={{ x: 1, y: 1 }}
+      >
+        <View style={[styles.cardContentInner, { backgroundColor: theme.mode === 'light' ? 'rgba(255, 255, 255, 0.3)' : 'rgba(255, 255, 255, 0.1)' }]}>
           <View style={styles.cardLeft}>
-            <Text style={styles.cityName} numberOfLines={1} ellipsizeMode="tail">
+            <Text style={[styles.cityName, theme.mode === 'light' && { color: '#1a1a1a' }]} numberOfLines={1} ellipsizeMode="tail">
               {item.name}
             </Text>
-            <Text style={styles.cityCondition} numberOfLines={1} ellipsizeMode="tail">
+            <Text style={[styles.cityCondition, theme.mode === 'light' && { color: 'rgba(26, 26, 26, 0.75)' }]} numberOfLines={1} ellipsizeMode="tail">
               {item.condition || t('condition.cloudy')}
             </Text>
           </View>
           <View style={styles.cardRight}>
             <View style={styles.tempRow}>
-              <Text style={styles.cityTemp}>{item.temp || '0'}</Text>
-              <Text style={styles.tempDegree}>°</Text>
+              <Text style={[styles.cityTemp, theme.mode === 'light' && { color: '#1a1a1a' }]}>{item.temp || '0'}</Text>
+              <Text style={[styles.tempDegree, theme.mode === 'light' && { color: '#1a1a1a' }]}>°</Text>
             </View>
-            <Text style={styles.cityMinMax}>{item.minMax || ''}</Text>
+            <Text style={[styles.cityMinMax, theme.mode === 'light' && { color: 'rgba(26, 26, 26, 0.7)' }]}>{item.minMax || ''}</Text>
           </View>
-        </LinearGradient>
-      </BlurView>
+        </View>
+      </LinearGradient>
     </Pressable>
   );
 
@@ -373,6 +374,7 @@ const styles = StyleSheet.create({
   cardContainer: {
     marginBottom: 16,
     borderRadius: 24,
+    borderRadius: 28,
     overflow: 'hidden',
     borderWidth: 1,
     borderColor: 'rgba(255, 255, 255, 0.15)',
@@ -383,15 +385,25 @@ const styles = StyleSheet.create({
     shadowRadius: 12,
   },
   blurContainer: {
-    borderRadius: 24,
+    flex: 1,
+    borderRadius: 28,
     overflow: 'hidden',
+    width: '100%',
+    height: '100%',
   },
   cardGradient: {
+    padding: 10,
+    borderRadius: 28,
+    overflow: 'hidden',
+  },
+  cardContentInner: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    padding: 24,
-    minHeight: 110,
+    paddingHorizontal: 16,
+    paddingVertical: 14,
+    minHeight: 90,
+    borderRadius: 20,
   },
   cardLeft: {
     flex: 0.65,

@@ -1464,8 +1464,7 @@ export default function App() {
                       navigation.navigate('CityList');
                     }}
                   >
-                    <Ionicons name="list" size={20} color={theme.text} style={styles.menuIcon} />
-                    <Text style={[styles.menuItemText, { color: theme.text }]}>Управление городами</Text>
+                    <Text style={[styles.menuItemText, { color: theme.text }]} numberOfLines={1} ellipsizeMode="tail">Управление городами</Text>
                   </TouchableOpacity>
                   <View style={[styles.menuDivider, { backgroundColor: theme.border || 'rgba(255,255,255,0.1)' }]} />
                   <TouchableOpacity
@@ -1475,8 +1474,7 @@ export default function App() {
                       openSettings();
                     }}
                   >
-                    <Ionicons name="settings-outline" size={20} color={theme.text} style={styles.menuIcon} />
-                    <Text style={[styles.menuItemText, { color: theme.text }]}>{tr('settings')}</Text>
+                    <Text style={[styles.menuItemText, { color: theme.text }]} numberOfLines={1} ellipsizeMode="tail">{tr('settings')}</Text>
                   </TouchableOpacity>
                 </Animated.View>
               </View>
@@ -1980,9 +1978,8 @@ const buildStyles = (theme, fs) =>
     gearButton: { marginRight: 0, marginTop: 0, padding: fs.spacing * 0.375, zIndex: 1 },
     gearIcon: { fontSize: fs.iconSize },
     menuBackdrop: { flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'flex-start', alignItems: 'flex-end', paddingTop: 60, paddingRight: 16 },
-    dropdownMenu: { width: 220, borderRadius: 16, borderWidth: 1, paddingVertical: 6, elevation: 8, shadowColor: '#000', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.3, shadowRadius: 8 },
-    menuItem: { flexDirection: 'row', alignItems: 'center', paddingVertical: 12, paddingHorizontal: 16 },
-    menuIcon: { marginRight: 12 },
+    dropdownMenu: { minWidth: 220, borderRadius: 16, borderWidth: 1, paddingVertical: 6, elevation: 8, shadowColor: '#000', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.3, shadowRadius: 8 },
+    menuItem: { flexDirection: 'row', alignItems: 'center', paddingVertical: 14, paddingHorizontal: 18 },
     menuItemText: { fontSize: 16, fontWeight: '600' },
     menuDivider: { height: 1, width: '100%', marginVertical: 2 },
     searchRow: { flexDirection: 'row', marginBottom: fs.spacing * 0.625 },
