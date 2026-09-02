@@ -91,5 +91,16 @@
     "mph": "mph",
     "knots": "узл.",
     "beaufort": "Bft"
+  },
+  "cities": {
+    "title": "Управление городами",
+    "add_placeholder": "Добавить город...",
+    "delete_title": "Удаление города",
+    "delete_message": "Удалить {{name}} из списка сохраненных?",
+    "cancel": "Отмена",
+    "delete": "Удалить",
+    "error": "Ошибка",
+    "city_not_found": "Город не найден",
+    "add_failed": "Не удалось добавить город"
   }
 }

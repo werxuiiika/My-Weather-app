@@ -91,5 +91,16 @@
     "mph": "mph",
     "knots": "kn",
     "beaufort": "Bft"
+  },
+  "cities": {
+    "title": "City Management",
+    "add_placeholder": "Add city...",
+    "delete_title": "Delete City",
+    "delete_message": "Delete {{name}} from saved cities?",
+    "cancel": "Cancel",
+    "delete": "Delete",
+    "error": "Error",
+    "city_not_found": "City not found",
+    "add_failed": "Failed to add city"
   }
 }

@@ -19,6 +19,8 @@ import {
    Linking,
    Image,
    StatusBar,
+   Modal,
+   TouchableWithoutFeedback,
  } from 'react-native';
 import Svg, { Circle, Defs, G, Line, Path, RadialGradient, Rect, Stop } from 'react-native-svg';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -881,7 +883,44 @@ export default function App() {
   const [isSplashVisible, setIsSplashVisible] = useState(true);
   const [isContentVisible, setIsContentVisible] = useState(false);
   const [splashRendered, setSplashRendered] = useState(true);
+  const [menuVisible, setMenuVisible] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
+  const menuAnim = useRef(new Animated.Value(0)).current;
+
+  const toggleMenu = () => {
+    if (menuVisible) {
+      Animated.timing(menuAnim, {
+        toValue: 0,
+        duration: 200,
+        useNativeDriver: true,
+      }).start(() => setMenuVisible(false));
+    } else {
+      setMenuVisible(true);
+      Animated.timing(menuAnim, {
+        toValue: 1,
+        duration: 200,
+        useNativeDriver: true,
+      }).start();
+    }
+  };
+
+  const closeMenu = () => {
+    Animated.timing(menuAnim, {
+      toValue: 0,
+      duration: 200,
+      useNativeDriver: true,
+    }).start(() => setMenuVisible(false));
+  };
+
+  const menuScale = menuAnim.interpolate({
+    inputRange: [0, 1],
+    outputRange: [0.9, 1],
+  });
+
+  const menuOpacity = menuAnim.interpolate({
+    inputRange: [0, 1],
+    outputRange: [0, 1],
+  });
   const [rememberCity, setRememberCity] = useState(true);
   const [themePickerVisible, setThemePickerVisible] = useState(false);
   const [unitPickerVisible, setUnitPickerVisible] = useState(false);
@@ -899,7 +938,7 @@ export default function App() {
   const pickerAnim = useRef(new Animated.Value(0)).current;
   const languagePickerAnim = useRef(new Animated.Value(0)).current;
   const fs = useFontSize();
-  const styles = useMemo(() => buildStyles(theme, fs), [theme, fs]);
+  const styles = useMemo(() => buildStyles(theme, fs || { spacing: 16, base: 16, small: 12, large: 20, iconSize: 24, cardHeight: 80 }), [theme, fs]);
   const currentThemeLabel = useMemo(() => {
     const found = THEME_MODES.find((m) => m.value === themeMode);
     return found ? tr(found.labelKey) : tr('themeModes.author.label');
@@ -1382,7 +1421,7 @@ export default function App() {
     if (code <= 86) return tr('condition.showers');
     return tr('condition.thunder');
   };
-  if (!themeLoaded) {
+  if (!themeLoaded || !fs) {
     return (
       <SafeAreaView style={preloadStyles.safe}>
         <View style={preloadStyles.fill} />
@@ -1394,19 +1433,55 @@ export default function App() {
         <Animated.View style={[styles.container, { opacity: contentOpacity }]}>
           <View style={styles.titleRow}>
             <Text style={styles.title}>{tr('weather')}</Text>
-            <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-              <TouchableOpacity
-                style={[styles.gearButton, { marginRight: 8 }]}
-                onPress={() => navigation.navigate('CityList')}
-                activeOpacity={0.7}
-              >
-                <Ionicons name="list" size={22} color={theme.text} />
-              </TouchableOpacity>
-              <TouchableOpacity style={styles.gearButton} onPress={openSettings} activeOpacity={0.7}>
-                <Text style={styles.gearIcon}>⚙️</Text>
-              </TouchableOpacity>
-            </View>
+            <TouchableOpacity style={styles.gearButton} onPress={toggleMenu} activeOpacity={0.7}>
+              <Ionicons name="ellipsis-vertical" size={24} color={theme.text} />
+            </TouchableOpacity>
           </View>
+
+          <Modal
+            visible={menuVisible}
+            transparent={true}
+            animationType="none"
+            onRequestClose={closeMenu}
+          >
+            <TouchableWithoutFeedback onPress={closeMenu}>
+              <View style={styles.menuBackdrop}>
+                <Animated.View
+                  style={[
+                    styles.dropdownMenu,
+                    {
+                      backgroundColor: theme.surfaceRaised || '#253043',
+                      borderColor: theme.border || 'rgba(255,255,255,0.1)',
+                      opacity: menuOpacity,
+                      transform: [{ scale: menuScale }],
+                    },
+                  ]}
+                >
+                  <TouchableOpacity
+                    style={styles.menuItem}
+                    onPress={() => {
+                      closeMenu();
+                      navigation.navigate('CityList');
+                    }}
+                  >
+                    <Ionicons name="list" size={20} color={theme.text} style={styles.menuIcon} />
+                    <Text style={[styles.menuItemText, { color: theme.text }]}>Управление городами</Text>
+                  </TouchableOpacity>
+                  <View style={[styles.menuDivider, { backgroundColor: theme.border || 'rgba(255,255,255,0.1)' }]} />
+                  <TouchableOpacity
+                    style={styles.menuItem}
+                    onPress={() => {
+                      closeMenu();
+                      openSettings();
+                    }}
+                  >
+                    <Ionicons name="settings-outline" size={20} color={theme.text} style={styles.menuIcon} />
+                    <Text style={[styles.menuItemText, { color: theme.text }]}>{tr('settings')}</Text>
+                  </TouchableOpacity>
+                </Animated.View>
+              </View>
+            </TouchableWithoutFeedback>
+          </Modal>
           <View style={styles.searchRow}>
             <TextInput
               style={styles.input}
@@ -1904,6 +1979,12 @@ const buildStyles = (theme, fs) =>
     titleRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: fs.spacing, marginTop: fs.spacing * 0.5 },
     gearButton: { marginRight: 0, marginTop: 0, padding: fs.spacing * 0.375, zIndex: 1 },
     gearIcon: { fontSize: fs.iconSize },
+    menuBackdrop: { flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'flex-start', alignItems: 'flex-end', paddingTop: 60, paddingRight: 16 },
+    dropdownMenu: { width: 220, borderRadius: 16, borderWidth: 1, paddingVertical: 6, elevation: 8, shadowColor: '#000', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.3, shadowRadius: 8 },
+    menuItem: { flexDirection: 'row', alignItems: 'center', paddingVertical: 12, paddingHorizontal: 16 },
+    menuIcon: { marginRight: 12 },
+    menuItemText: { fontSize: 16, fontWeight: '600' },
+    menuDivider: { height: 1, width: '100%', marginVertical: 2 },
     searchRow: { flexDirection: 'row', marginBottom: fs.spacing * 0.625 },
     input: { flex: 1, height: fs.spacing * 3, backgroundColor: theme.surface, borderRadius: 10, paddingHorizontal: fs.spacing * 0.875, color: theme.text, fontSize: fs.base, marginRight: fs.spacing * 0.625 },
     button: { height: fs.spacing * 3, paddingHorizontal: fs.spacing * 1.25, backgroundColor: theme.accent, borderRadius: 10, alignItems: 'center', justifyContent: 'center' },
