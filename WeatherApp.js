@@ -33,7 +33,7 @@ import {
 import { useRoute, useNavigation, useFocusEffect } from '@react-navigation/native';
 import { useTranslation } from 'react-i18next';
 import i18n, { changeLanguage } from './i18n';
-import { LoadingContext } from './LoadingContext';
+import { LoadingContext } from './App';
 import { SettingsContext } from './SettingsContext';
 import { useFontSize } from './FontSizeContext';
 import { useTheme } from './ThemeContext';
