@@ -13,9 +13,8 @@ import CityListScreen from './CityListScreen';
 import { SettingsProvider } from './SettingsContext';
 import { FontSizeProvider, useFontSize } from './FontSizeContext';
 import { ThemeProvider, useTheme } from './ThemeContext';
+import { LoadingContext } from './LoadingContext';
 import { initI18n } from './i18n';
-
-export const LoadingContext = createContext({ isLoading: true, setLoading: () => {} });
 
 const Tab = createBottomTabNavigator();
 const Stack = createNativeStackNavigator();

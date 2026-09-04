@@ -14,8 +14,6 @@ import {
 } from 'react-native';
 import ScreenWrapper from './ScreenWrapper';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { LinearGradient } from 'expo-linear-gradient';
-import { BlurView } from 'expo-blur';
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
@@ -101,7 +99,8 @@ export default function CityListScreen() {
                   temp: `${temp}`,
                   minMax: min !== '' && max !== '' ? `${max}° / ${min}°` : '',
                   condition: getWeatherConditionText(code),
-                  gradientColors: getGlassGradient(code, isNight),
+                  weathercode: code,
+                  isNight,
                 };
               }
             }
@@ -122,24 +121,38 @@ export default function CityListScreen() {
     }
   };
 
-  const getGlassGradient = (code, isNight) => {
+  const getWeatherCardColor = (code, isNight) => {
     const isLight = theme.mode === 'light';
-    if (isNight) {
-      return ['rgba(15, 25, 45, 0.7)', 'rgba(30, 45, 75, 0.5)'];
+    const c = code ?? 2;
+    if (isNight) return '#232f45';
+    // Clear sky
+    if (c === 0) return isLight ? '#7cc0ee' : '#2471a3';
+    // Cloudy / overcast
+    if (c <= 3) return isLight ? '#b9c9d8' : '#4a6b8a';
+    // Fog
+    if (c <= 48) return isLight ? '#c3cad4' : '#5d6d7e';
+    // Drizzle / rain
+    if (c <= 67) return isLight ? '#7d9fc4' : '#2e5f8a';
+    // Snow
+    if (c <= 77) return isLight ? '#cfe3f7' : '#6b7f99';
+    // Showers
+    if (c <= 82) return isLight ? '#8ba9cc' : '#33608c';
+    // Thunderstorm
+    return isLight ? '#9aa0c3' : '#4a4a8a';
+  };
+
+  const getWeatherIcon = (code, isNight) => {
+    const c = code ?? 2;
+    if (c === 0) return isNight ? 'moon' : 'sunny';
+    if (c <= 3) {
+      if (c === 1) return isNight ? 'cloudy-night' : 'partly-sunny';
+      return 'cloudy';
     }
-    if (code === 0) {
-      return isLight ? ['rgba(41, 128, 185, 0.35)', 'rgba(109, 213, 250, 0.2)']: ['rgba(41, 128, 185, 0.6)', 'rgba(109, 213, 250, 0.4)'];
-    }
-    if (code <= 3) {
-      return isLight ? ['rgba(76, 161, 175, 0.35)', 'rgba(44, 62, 80, 0.3)'] : ['rgba(76, 161, 175, 0.6)', 'rgba(44, 62, 80, 0.5)'];
-    }
-    if (code <= 67) {
-      return isLight ? ['rgba(58, 123, 213, 0.35)', 'rgba(58, 96, 115, 0.3)'] : ['rgba(58, 123, 213, 0.6)', 'rgba(58, 96, 115, 0.5)'];
-    }
-    if (code <= 77) {
-      return isLight ? ['rgba(101, 121, 155, 0.35)', 'rgba(94, 37, 99, 0.3)'] : ['rgba(101, 121, 155, 0.6)', 'rgba(94, 37, 99, 0.5)'];
-    }
-    return isLight ? ['rgba(35, 37, 38, 0.4)', 'rgba(65, 67, 69, 0.3)'] : ['rgba(35, 37, 38, 0.7)', 'rgba(65, 67, 69, 0.5)'];
+    if (c <= 48) return 'cloudy';
+    if (c <= 67) return 'rainy';
+    if (c <= 77) return 'snow';
+    if (c <= 82) return 'rainy';
+    return 'thunderstorm';
   };
 
   const getWeatherConditionText = (code) => {
@@ -191,7 +204,8 @@ export default function CityListScreen() {
         temp: `${temp}`,
         minMax: min !== '' && max !== '' ? `${max}° / ${min}°` : '',
         condition: getWeatherConditionText(code),
-        gradientColors: getGlassGradient(code, isNight),
+        weathercode: code,
+        isNight,
       };
 
       const updated = [...cities, newCity];
@@ -233,41 +247,58 @@ export default function CityListScreen() {
     }
   };
 
-  const renderItem = ({ item }) => (
-    <Pressable
-      style={({ pressed }) => [
-        styles.cardContainer,
-        { transform: [{ scale: pressed ? 0.97 : 1 }] },
-      ]}
-      onPress={() => handleSelectCity(item.name)}
-      onLongPress={() => handleDeleteCity(item.id, item.name)}
-    >
-      <LinearGradient
-        colors={item.gradientColors || ['rgba(41, 128, 185, 0.5)', 'rgba(109, 213, 250, 0.3)']}
-        style={styles.cardGradient}
-        start={{ x: 0, y: 0 }}
-        end={{ x: 1, y: 1 }}
+  const renderItem = ({ item }) => {
+    const isLight = theme.mode === 'light';
+    // Night cards are always dark -> use white text even in light theme
+    const darkCard = !!item.isNight;
+    const useDarkText = isLight && !darkCard;
+    const mainText = useDarkText ? '#1e293b' : '#FFFFFF';
+    const subText = useDarkText ? 'rgba(30, 41, 59, 0.75)' : 'rgba(255, 255, 255, 0.8)';
+    const minMaxText = useDarkText ? 'rgba(30, 41, 59, 0.7)' : 'rgba(255, 255, 255, 0.7)';
+    const cardColor = item.weathercode !== undefined
+      ? getWeatherCardColor(item.weathercode, item.isNight)
+      : (isLight ? '#b9c9d8' : '#4a6b8a');
+    const weatherIcon = item.weathercode !== undefined
+      ? getWeatherIcon(item.weathercode, item.isNight)
+      : 'cloudy';
+
+    return (
+      <Pressable
+        style={({ pressed }) => [
+          styles.cardContainer,
+          isLight && styles.cardContainerLight,
+          { transform: [{ scale: pressed ? 0.97 : 1 }] },
+        ]}
+        onPress={() => handleSelectCity(item.name)}
+        onLongPress={() => handleDeleteCity(item.id, item.name)}
       >
-        <View style={[styles.cardContentInner, { backgroundColor: theme.mode === 'light' ? 'rgba(255, 255, 255, 0.3)' : 'rgba(255, 255, 255, 0.1)' }]}>
-          <View style={styles.cardLeft}>
-            <Text style={[styles.cityName, theme.mode === 'light' && { color: '#1a1a1a' }]} numberOfLines={1} ellipsizeMode="tail">
-              {item.name}
-            </Text>
-            <Text style={[styles.cityCondition, theme.mode === 'light' && { color: 'rgba(26, 26, 26, 0.75)' }]} numberOfLines={1} ellipsizeMode="tail">
-              {item.condition || t('condition.cloudy')}
-            </Text>
-          </View>
-          <View style={styles.cardRight}>
-            <View style={styles.tempRow}>
-              <Text style={[styles.cityTemp, theme.mode === 'light' && { color: '#1a1a1a' }]}>{item.temp || '0'}</Text>
-              <Text style={[styles.tempDegree, theme.mode === 'light' && { color: '#1a1a1a' }]}>°</Text>
+        <View
+          style={[styles.cardGradient, { backgroundColor: cardColor }]}
+        >
+          <View style={styles.cardBody}>
+            <View style={styles.cardLeft}>
+              <Text style={[styles.cityName, { color: mainText }]} numberOfLines={1} ellipsizeMode="tail">
+                {item.name}
+              </Text>
+              <View style={styles.conditionRow}>
+                <Ionicons name={weatherIcon} size={15} color={useDarkText ? 'rgba(30, 41, 59, 0.75)' : 'rgba(255, 255, 255, 0.85)'} />
+                <Text style={[styles.cityCondition, { color: subText }]} numberOfLines={1} ellipsizeMode="tail">
+                  {item.condition || t('condition.cloudy')}
+                </Text>
+              </View>
             </View>
-            <Text style={[styles.cityMinMax, theme.mode === 'light' && { color: 'rgba(26, 26, 26, 0.7)' }]}>{item.minMax || ''}</Text>
+            <View style={styles.cardRight}>
+              <View style={styles.tempRow}>
+                <Text style={[styles.cityTemp, { color: mainText }]}>{item.temp || '0'}</Text>
+                <Text style={[styles.tempDegree, { color: mainText }]}>°</Text>
+              </View>
+              <Text style={[styles.cityMinMax, { color: minMaxText }]}>{item.minMax || ''}</Text>
+            </View>
           </View>
         </View>
-      </LinearGradient>
-    </Pressable>
-  );
+      </Pressable>
+    );
+  };
 
   return (
     <ScreenWrapper>
@@ -372,16 +403,24 @@ const styles = StyleSheet.create({
   },
   cardContainer: {
     marginBottom: 16,
-    borderRadius: 24,
     borderRadius: 28,
     overflow: 'hidden',
     borderWidth: 1,
     borderColor: 'rgba(255, 255, 255, 0.15)',
+    borderTopColor: 'rgba(255, 255, 255, 0.35)',
     elevation: 8,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 8 },
     shadowOpacity: 0.25,
     shadowRadius: 12,
+  },
+  cardContainerLight: {
+    borderColor: 'rgba(255, 255, 255, 0.85)',
+    elevation: 3,
+    shadowColor: '#64748b',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.1,
+    shadowRadius: 8,
   },
   blurContainer: {
     flex: 1,
@@ -391,18 +430,16 @@ const styles = StyleSheet.create({
     height: '100%',
   },
   cardGradient: {
-    padding: 10,
     borderRadius: 28,
     overflow: 'hidden',
   },
-  cardContentInner: {
+  cardBody: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    paddingHorizontal: 16,
-    paddingVertical: 14,
-    minHeight: 90,
-    borderRadius: 20,
+    paddingHorizontal: 20,
+    paddingVertical: 16,
+    minHeight: 110,
   },
   cardLeft: {
     flex: 0.65,
@@ -425,6 +462,12 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: 'rgba(255, 255, 255, 0.8)',
     fontWeight: '500',
+    flexShrink: 1,
+  },
+  conditionRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
   },
   tempRow: {
     flexDirection: 'row',

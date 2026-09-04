@@ -2,7 +2,7 @@ export default {
   expo: {
     name: "Моя погода",
     slug: "my-app-final",
-    version: "1.0.16",
+    version: "1.0.17",
     orientation: "portrait",
     icon: "./assets/icon.png",
     userInterfaceStyle: "light",
@@ -39,9 +39,11 @@ export default {
       [
         "expo-location",
         {
-          locationAlwaysAndWhenInUsePermission: "Приложению 'Моя погода' требуется доступ к геолокации для определения погоды."
+          locationAlwaysAndWhenInUsePermission: "Allow $(PRODUCT_NAME) to use your location."
         }
-      ]
+      ],
+      "expo-font",
+      "expo-status-bar"
     ],
     extra: {
       eas: {
