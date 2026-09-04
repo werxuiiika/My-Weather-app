@@ -3,7 +3,9 @@ import { NavigationContainer } from '@react-navigation/native';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { Text, View, TouchableOpacity, Animated, StatusBar, StyleSheet } from 'react-native';
+import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { useTranslation } from 'react-i18next';
+import i18n from './i18n';
 import WeatherApp from './WeatherApp';
 import WeatherPhenomenonFinder, { SunTabIcon, SearchTabIcon } from './WeatherPhenomenonFinder';
 import SettingsScreen from './SettingsScreen';
@@ -11,53 +13,58 @@ import CityListScreen from './CityListScreen';
 import { SettingsProvider } from './SettingsContext';
 import { FontSizeProvider, useFontSize } from './FontSizeContext';
 import { ThemeProvider, useTheme } from './ThemeContext';
+import { LoadingContext } from './LoadingContext';
 import { initI18n } from './i18n';
-
-export const LoadingContext = createContext({ isLoading: true, setLoading: () => {} });
 
 const Tab = createBottomTabNavigator();
 const Stack = createNativeStackNavigator();
 
 function AppContent() {
-  const { t } = useTranslation();
-  const [isLoading, setIsLoading] = useState(true);
   const [isI18nReady, setIsI18nReady] = useState(false);
-  const { loaded, themeOverlayOpacity } = useTheme();
 
   useEffect(() => {
     initI18n().then(() => setIsI18nReady(true));
   }, []);
 
-  if (!isI18nReady || !loaded) {
-    return null;
+  if (!isI18nReady) {
+    return <View style={{ flex: 1, backgroundColor: '#fff' }} />;
   }
 
+  return <AppMain />;
+}
+
+function AppMain() {
+  const { t } = useTranslation();
+  const { loaded, themeOverlayOpacity } = useTheme();
+
   return (
-    <LoadingContext.Provider value={{ isLoading, setLoading: () => {} }}>
+    <LoadingContext.Provider value={{ isLoading: false, setLoading: () => {} }}>
       <Animated.View style={{ flex: 1, opacity: themeOverlayOpacity }}>
         <FontSizeProvider>
           <SettingsProvider>
-            <NavigationContainer>
-              <Stack.Navigator
-                screenOptions={{
-                  headerShown: false,
-                  animation: 'slide_from_right',
-                }}
-              >
-                <Stack.Screen name="Tabs" component={TabScreens} />
-                <Stack.Screen
-                  name="Settings"
-                  component={SettingsScreen}
-                  options={{ animation: 'slide_from_right' }}
-                />
-                <Stack.Screen
-                  name="CityList"
-                  component={CityListScreen}
-                  options={{ animation: 'slide_from_right' }}
-                />
-              </Stack.Navigator>
-          </NavigationContainer>
-        </SettingsProvider>
+            <SafeAreaProvider style={{ flex: 1 }}>
+              <NavigationContainer>
+                <Stack.Navigator
+                  screenOptions={{
+                    headerShown: false,
+                    animation: 'slide_from_right',
+                  }}
+                >
+                  <Stack.Screen name="Tabs" component={TabScreens} />
+                  <Stack.Screen
+                    name="Settings"
+                    component={SettingsScreen}
+                    options={{ animation: 'slide_from_right' }}
+                  />
+                  <Stack.Screen
+                    name="CityList"
+                    component={CityListScreen}
+                    options={{ animation: 'slide_from_right' }}
+                  />
+                </Stack.Navigator>
+              </NavigationContainer>
+            </SafeAreaProvider>
+          </SettingsProvider>
         </FontSizeProvider>
       </Animated.View>
     </LoadingContext.Provider>

@@ -10,7 +10,6 @@ import {
   ActivityIndicator,
   ScrollView,
   RefreshControl,
-   SafeAreaView,
    Alert,
    Animated,
    Easing,
@@ -22,6 +21,8 @@ import {
    Modal,
    TouchableWithoutFeedback,
  } from 'react-native';
+ import ScreenWrapper from './ScreenWrapper';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Svg, { Circle, Defs, G, Line, Path, RadialGradient, Rect, Stop } from 'react-native-svg';
 import { LinearGradient } from 'expo-linear-gradient';
 import { BlurView } from 'expo-blur';
@@ -32,7 +33,7 @@ import {
 import { useRoute, useNavigation, useFocusEffect } from '@react-navigation/native';
 import { useTranslation } from 'react-i18next';
 import i18n, { changeLanguage } from './i18n';
-import { LoadingContext } from './App';
+import { LoadingContext } from './LoadingContext';
 import { SettingsContext } from './SettingsContext';
 import { useFontSize } from './FontSizeContext';
 import { useTheme } from './ThemeContext';
@@ -170,7 +171,7 @@ function RainLayer({ size, heavy }) {
     );
     loops.forEach((l) => l.start());
     return () => loops.forEach((l) => l.stop());
-  }, []);
+  }, [drops]);
   return (
     <View pointerEvents="none" style={StyleSheet.absoluteFill}>
       {drops.map((d, i) => (
@@ -229,7 +230,7 @@ function SnowLayer({ size }) {
     );
     loops.forEach((l) => l.start());
     return () => loops.forEach((l) => l.stop());
-  }, []);
+  }, [flakes]);
   return (
     <View pointerEvents="none" style={StyleSheet.absoluteFill}>
       {flakes.map((f, i) => (
@@ -321,7 +322,11 @@ function ThunderWeather({ size }) {
   const originY = 34 * scale;
   const burstR = 36 * scale;
 
-  const forkOps = useRef(THUNDER_BOLT_PATHS.map(() => new Animated.Value(0))).current;
+  const forkOps = useRef(null);
+  if (forkOps.current === null) {
+    forkOps.current = THUNDER_BOLT_PATHS.map(() => new Animated.Value(0));
+  }
+  const forkOpsValues = forkOps.current;
   const burstScale = useRef(new Animated.Value(1)).current;
   const burstOp = useRef(new Animated.Value(0)).current;
   const flashOp = useRef(new Animated.Value(0)).current;
@@ -330,7 +335,7 @@ function ThunderWeather({ size }) {
   const [lit, setLit] = useState(false);
 
   const runStrike = (forkIndex) => {
-    const op = forkOps[forkIndex];
+    const op = forkOpsValues[forkIndex];
     op.setValue(0);
     setLit(true);
     Animated.sequence([
@@ -412,7 +417,7 @@ function ThunderWeather({ size }) {
     return () => {
       cancelled = true;
       if (animRef.current) clearTimeout(animRef.current);
-      forkOps.forEach((o) => o.stopAnimation());
+      forkOpsValues.forEach((o) => o.stopAnimation());
       [burstScale, burstOp, flashOp, shake].forEach((v) => v.stopAnimation());
     };
   }, []);
@@ -445,7 +450,7 @@ function ThunderWeather({ size }) {
           <Animated.View
             key={`bolt-${i}`}
             pointerEvents="none"
-            style={[StyleSheet.absoluteFill, { width: size, height: size, opacity: forkOps[i] }]}
+            style={[StyleSheet.absoluteFill, { width: size, height: size, opacity: forkOpsValues[i] }]}
           >
             <Svg width={size} height={size} viewBox="0 0 64 64">
               <G>
@@ -864,6 +869,7 @@ function formatWind(speedKmh, unit) {
 export default function App() {
   const { t: tr } = useTranslation();
   const { theme, setThemeMode, themeMode, loaded: themeLoaded } = useTheme();
+  const insets = useSafeAreaInsets();
   const [isConnected, setIsConnected] = useState(null);
   const isConnectedRef = useRef(null);
   const updateConnection = (value) => {
@@ -938,7 +944,7 @@ export default function App() {
   const pickerAnim = useRef(new Animated.Value(0)).current;
   const languagePickerAnim = useRef(new Animated.Value(0)).current;
   const fs = useFontSize();
-  const styles = useMemo(() => buildStyles(theme, fs || { spacing: 16, base: 16, small: 12, large: 20, iconSize: 24, cardHeight: 80 }), [theme, fs]);
+  const styles = useMemo(() => buildStyles(theme, fs || { spacing: 16, base: 16, small: 12, large: 20, iconSize: 24, cardHeight: 80 }, insets), [theme, fs, insets]);
   const currentThemeLabel = useMemo(() => {
     const found = THEME_MODES.find((m) => m.value === themeMode);
     return found ? tr(found.labelKey) : tr('themeModes.author.label');
@@ -1325,7 +1331,7 @@ export default function App() {
     inputRange: [0, 1],
     outputRange: ['0deg', '360deg'],
   });
-  const getSkyIsNight = () => {
+  const getSkyIsNight = useCallback(() => {
     if (weather && weather.data) {
       const d = weather.data;
       const cwTime = d.current_weather && d.current_weather.time;
@@ -1343,7 +1349,7 @@ export default function App() {
     }
     const h = new Date().getHours();
     return h >= 21 || h < 6;
-  };
+  }, [weather]);
   const skyIsNight = getSkyIsNight();
   let bannerType = null;
   let bannerMessage = null;
@@ -1409,7 +1415,7 @@ export default function App() {
     typeof weather.data.current_weather.is_day === 'number'
       ? weather.data.current_weather.is_day === 0
       : skyIsNight;
-  const currentType = weather
+  const currentType = weather && weather.data && weather.data.current_weather
     ? weathercodeToType(weather.data.current_weather.weathercode)
     : 'clear';
   const conditionFor = (code) => {
@@ -1423,13 +1429,13 @@ export default function App() {
   };
   if (!themeLoaded || !fs) {
     return (
-      <SafeAreaView style={preloadStyles.safe}>
+      <View style={preloadStyles.safe}>
         <View style={preloadStyles.fill} />
-      </SafeAreaView>
+      </View>
     );
   }
   return (
-    <SafeAreaView style={styles.safe}>
+    <ScreenWrapper>
         <Animated.View style={[styles.container, { opacity: contentOpacity }]}>
           <View style={styles.titleRow}>
             <Text style={styles.title}>{tr('weather')}</Text>
@@ -1591,7 +1597,7 @@ export default function App() {
                 </View>
               </View>
                <Text style={styles.sectionTitle}>{tr('weeklyForecast')}</Text>
-              {weather.data.daily.time.map((day, i) => (
+               {weather.data.daily && weather.data.daily.time && weather.data.daily.time.map((day, i) => (
                 <View key={day} style={styles.forecastRow}>
                   <Text style={styles.forecastDay}>{formatDay(day)}</Text>
                   <View style={styles.forecastIconCell}>
@@ -1939,7 +1945,7 @@ export default function App() {
             </Animated.View>
           </View>
         )}
-      </SafeAreaView>
+    </ScreenWrapper>
   );
 }
 
@@ -1966,15 +1972,15 @@ const preloadStyles = StyleSheet.create({
   fill: { flex: 1 },
 });
 
-const buildStyles = (theme, fs) =>
+const buildStyles = (theme, fs, insets) =>
   StyleSheet.create({
     safe: { flex: 1, backgroundColor: theme.background },
     splash: { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: theme.background, alignItems: 'center', justifyContent: 'center' },
     splashIconWrap: { marginBottom: fs.spacing },
     splashText: { color: theme.textSecondary, fontSize: fs.small },
     title: { fontSize: fs.base * 2, fontWeight: '700', color: theme.text, textAlign: 'center', marginTop: 0, marginLeft: 0 },
-    container: { flex: 1, position: 'relative', paddingHorizontal: fs.spacing * 2, paddingTop: (StatusBar.currentHeight || 0) },
-    titleRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: fs.spacing, marginTop: fs.spacing * 0.5 },
+    container: { flex: 1, position: 'relative', paddingHorizontal: fs.spacing * 2 },
+    titleRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: fs.spacing, marginTop: fs.spacing * 0.2 },
     gearButton: { marginRight: 0, marginTop: 0, padding: fs.spacing * 0.375, zIndex: 1 },
     gearIcon: { fontSize: fs.iconSize },
     menuBackdrop: { flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'flex-start', alignItems: 'flex-end', paddingTop: 60, paddingRight: 16 },
@@ -2022,7 +2028,7 @@ const buildStyles = (theme, fs) =>
     settingsDim: { ...StyleSheet.absoluteFillObject, backgroundColor: theme.dim },
     settingsScreen: { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: theme.background },
     settingsSafe: { flex: 1 },
-    settingsHeader: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: fs.spacing, paddingTop: (StatusBar.currentHeight || 0) + fs.spacing, paddingBottom: fs.spacing * 0.75, borderBottomWidth: 1, borderBottomColor: theme.border },
+    settingsHeader: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: fs.spacing, paddingTop: insets.top + fs.spacing * 0.5, paddingBottom: fs.spacing * 0.75, borderBottomWidth: 1, borderBottomColor: theme.border },
     settingsBackButton: { width: fs.spacing * 2.5, height: fs.spacing * 2.5, borderRadius: 12, backgroundColor: theme.surfaceRaised, alignItems: 'center', justifyContent: 'center', marginRight: fs.spacing * 0.625 },
     settingsBackIcon: { fontSize: fs.base * 1.375, color: theme.textSecondary },
     settingsHeaderTitle: { fontSize: fs.large * 1.15, fontWeight: '700', color: theme.text },

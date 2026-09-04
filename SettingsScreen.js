@@ -15,8 +15,8 @@ import {
   StyleSheet,
   PanResponder,
   StatusBar,
-  SafeAreaView,
 } from 'react-native';
+import ScreenWrapper from './ScreenWrapper';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
 import { useTranslation } from 'react-i18next';
@@ -692,8 +692,8 @@ export default function SettingsScreen() {
   }, [i18nInstance.language, tr]);
 
   return (
-    <SafeAreaView style={styles.safe}>
-         <View style={[styles.header, { paddingTop: insets.top }]}>
+    <ScreenWrapper>
+         <View style={styles.header}>
         <TouchableOpacity style={styles.headerBtn} onPress={() => navigation.goBack()} activeOpacity={0.7}>
           <Text style={styles.headerBtnText}>←</Text>
         </TouchableOpacity>
@@ -856,6 +856,6 @@ export default function SettingsScreen() {
         theme={theme}
         fs={fs}
       />
-    </SafeAreaView>
+    </ScreenWrapper>
   );
 }

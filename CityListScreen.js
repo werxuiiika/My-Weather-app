@@ -12,7 +12,8 @@ import {
   Pressable,
   TouchableOpacity,
 } from 'react-native';
-import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
+import ScreenWrapper from './ScreenWrapper';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
 import { BlurView } from 'expo-blur';
 import { Ionicons } from '@expo/vector-icons';
@@ -269,9 +270,7 @@ export default function CityListScreen() {
   );
 
   return (
-    <SafeAreaView style={[styles.safe, { backgroundColor: theme.background }]}>
-      <StatusBar barStyle={theme.dark ? 'light-content' : 'dark-content'} backgroundColor="transparent" translucent />
-      
+    <ScreenWrapper>
       {/* Header */}
       <View style={[styles.header, { borderBottomColor: theme.border }]}>
         <TouchableOpacity
@@ -314,7 +313,7 @@ export default function CityListScreen() {
           }
         />
       )}
-    </SafeAreaView>
+    </ScreenWrapper>
   );
 }
 
