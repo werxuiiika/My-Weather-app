@@ -17,7 +17,7 @@ export default function ScreenWrapper({ children, style, backgroundColor }) {
         backgroundColor="transparent"
         translucent
       />
-      <View style={[styles.content, { paddingTop: insets.top + 10 }]}>
+      <View style={[styles.content, { paddingTop: Math.max(insets.top + 2, 16) }]}>
         {children}
       </View>
     </View>

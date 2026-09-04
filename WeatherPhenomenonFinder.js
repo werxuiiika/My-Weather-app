@@ -14,7 +14,7 @@ const CITIES = [
   { name: 'Токио', latitude: 35.6762, longitude: 139.6503 },
   { name: 'Сочи', latitude: 43.5974, longitude: 39.7154 },
   { name: 'Мумбаи', latitude: 19.076, longitude: 72.8777 },
-  { name: 'Пекен', latitude: 39.9042, longitude: 116.4074 },
+  { name: 'Пекин', latitude: 39.9042, longitude: 116.4074 },
   { name: 'Санкт-Петербург', latitude: 59.9343, longitude: 30.3351 },
   { name: 'Новосибирск', latitude: 55.0302, longitude: 82.9784 },
   { name: 'Екатеринбург', latitude: 56.8389, longitude: 60.6159 },
