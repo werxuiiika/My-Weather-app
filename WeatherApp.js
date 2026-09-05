@@ -1237,22 +1237,26 @@ export default function App() {
      setLocating(true);
      setError(null);
      try {
-       const { status } = await Location.requestForegroundPermissionsAsync();
+       let { status } = await Location.getForegroundPermissionsAsync();
        if (status !== 'granted') {
-        setError(tr('locationPermissionDenied'));
-        return;
-      }
-      const position = await Location.getCurrentPositionAsync({
-        accuracy: Location.Accuracy.Balanced,
-      });
-      const { latitude, longitude } = position.coords;
-      await loadByCoords(latitude, longitude);
-    } catch (e) {
+         const res = await Location.requestForegroundPermissionsAsync();
+         status = res.status;
+       }
+       if (status !== 'granted') {
+         setError(tr('locationPermissionDenied'));
+         return;
+       }
+       const position = await Location.getCurrentPositionAsync({
+         accuracy: Location.Accuracy.Balanced,
+       });
+       const { latitude, longitude } = position.coords;
+       await loadByCoords(latitude, longitude);
+     } catch (e) {
        setError(tr('locationFailed'));
-    } finally {
-      setLocating(false);
-    }
-  };
+     } finally {
+       setLocating(false);
+     }
+   };
   const doSearch = async (query, silent = false) => {
     if (!silent) setLoading(true);
     setError(null);
