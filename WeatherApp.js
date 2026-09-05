@@ -1972,6 +1972,7 @@ export default function App() {
 }
 
 function PermissionModal({ visible, onClose, onOpenSettings, theme, fs }) {
+  const { t: tr } = useTranslation();
   if (!visible) return null;
   return (
     <Modal transparent visible animationType="fade" statusBarTranslucent navigationBarTranslucent>
@@ -1979,14 +1980,14 @@ function PermissionModal({ visible, onClose, onOpenSettings, theme, fs }) {
         <View style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'center', alignItems: 'center', padding: 24 }}>
           <TouchableWithoutFeedback>
             <View style={{ width: '100%', maxWidth: 360, backgroundColor: theme.surfaceAlt || theme.background, borderRadius: 16, padding: 20, borderWidth: 1, borderColor: theme.border || 'rgba(255,255,255,0.1)' }}>
-              <Text style={{ fontSize: fs.base * 1.125, fontWeight: '600', color: theme.text, marginBottom: 8 }}>Требуется разрешение</Text>
-              <Text style={{ fontSize: fs.base * 0.9375, color: theme.textSecondary || theme.textMuted, marginBottom: 20, lineHeight: 20 }}>Приложению нужен доступ к геолокации. Включите его в настройках.</Text>
+              <Text style={{ fontSize: fs.base * 1.125, fontWeight: '600', color: theme.text, marginBottom: 8 }}>{tr('permission_required')}</Text>
+              <Text style={{ fontSize: fs.base * 0.9375, color: theme.textSecondary || theme.textMuted, marginBottom: 20, lineHeight: 20 }}>{tr('location_permission_message')}</Text>
               <View style={{ flexDirection: 'row', justifyContent: 'flex-end', gap: 12 }}>
                 <TouchableOpacity onPress={onClose} style={{ paddingVertical: 10, paddingHorizontal: 16, borderRadius: 8 }}>
-                  <Text style={{ color: theme.textMuted || theme.textSecondary, fontSize: fs.base * 0.9375, fontWeight: '500' }}>Отмена</Text>
+                  <Text style={{ color: theme.textMuted || theme.textSecondary, fontSize: fs.base * 0.9375, fontWeight: '500' }}>{tr('cancel')}</Text>
                 </TouchableOpacity>
-                <TouchableOpacity onPress={onOpenSettings} style={{ paddingVertical: 10, paddingHorizontal: 16, borderRadius: 8, backgroundColor: theme.primary }}>
-                  <Text style={{ color: theme.primaryText || '#ffffff', fontSize: fs.base * 0.9375, fontWeight: '600' }}>Открыть настройки</Text>
+                <TouchableOpacity onPress={onOpenSettings} style={{ paddingVertical: 10, paddingHorizontal: 16, borderRadius: 8, backgroundColor: theme.accent }}>
+                  <Text style={{ color: theme.onAccent || '#ffffff', fontSize: fs.base * 0.9375, fontWeight: '600' }}>{tr('open_settings')}</Text>
                 </TouchableOpacity>
               </View>
             </View>
