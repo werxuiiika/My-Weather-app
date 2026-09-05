@@ -9,7 +9,7 @@ export default {
     assetBundlePatterns: ["**/*"],
     splash: {
       image: "./assets/icon.png",
-      resizeMode: "contain",
+      resizeMode: "cover",
       backgroundColor: "#ffffff"
     },
     ios: {
