@@ -1237,12 +1237,8 @@ export default function App() {
      setLocating(true);
      setError(null);
      try {
-       let { status } = await Location.getForegroundPermissionsAsync();
-       if (status !== 'granted') {
-         const res = await Location.requestForegroundPermissionsAsync();
-         status = res.status;
-       }
-       if (status !== 'granted') {
+       const permission = await Location.requestForegroundPermissionsAsync();
+       if (permission.status !== 'granted') {
          setError(tr('locationPermissionDenied'));
          return;
        }
