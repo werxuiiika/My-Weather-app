@@ -8,7 +8,7 @@ export default {
     userInterfaceStyle: "light",
     assetBundlePatterns: ["**/*"],
     splash: {
-      image: "./assets/icon.png",
+      image: "./assets/splash.png",
       resizeMode: "cover",
       backgroundColor: "#ffffff"
     },
