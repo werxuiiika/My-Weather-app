@@ -30,6 +30,11 @@ const CITIES = [
   { name: 'Дубай', latitude: 25.2048, longitude: 55.2708 },
   { name: 'Сингапур', latitude: 1.3521, longitude: 103.8198 },
   { name: 'Сидней', latitude: -33.8688, longitude: 151.2093 },
+  { name: 'Якутск', latitude: 62.0355, longitude: 129.6755 },
+  { name: 'Рованиеми', latitude: 66.5039, longitude: 25.7294 },
+  { name: 'Эдмонтон', latitude: 53.5461, longitude: -113.4938 },
+  { name: 'Саппоро', latitude: 43.0642, longitude: 141.3469 },
+  { name: 'Чунцин', latitude: 29.563, longitude: 106.5516 },
 ];
 
 const PHENOMENA_KEYS = ['clear', 'rain', 'snow', 'cloudy', 'fog'];
