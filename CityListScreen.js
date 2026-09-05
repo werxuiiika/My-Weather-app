@@ -24,6 +24,30 @@ import { useTranslation } from 'react-i18next';
 const SAVED_CITIES_KEY = 'saved_cities_list';
 const LAST_SELECTED_CITY_KEY = 'last_selected_city';
 const BASE_URL = 'https://api.open-meteo.com/v1/forecast';
+const FETCH_TIMEOUT_MS = 15000;
+
+// fetch with timeout + single retry. Transient TLS failures (common
+// through VPNs) usually succeed on the second attempt.
+async function fetchJson(url, timeoutMs = FETCH_TIMEOUT_MS, retries = 1) {
+  let lastError;
+  for (let attempt = 0; attempt <= retries; attempt++) {
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), timeoutMs);
+    try {
+      const res = await fetch(url, { signal: controller.signal });
+      clearTimeout(timer);
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      return await res.json();
+    } catch (e) {
+      clearTimeout(timer);
+      lastError = e;
+      if (attempt < retries) {
+        await new Promise((r) => setTimeout(r, 500));
+      }
+    }
+  }
+  throw lastError;
+}
 
 export default function CityListScreen() {
   const navigation = useNavigation();
@@ -57,59 +81,58 @@ export default function CityListScreen() {
       }
       
       const currentLang = i18n.language || 'ru';
-      const updatedList = await Promise.all(
-        list.map(async (city) => {
-          try {
-            const geoRes = await fetch(
-              `https://geocoding-api.open-meteo.com/v1/search?name=${encodeURIComponent(city.name)}&count=1&language=${currentLang}&format=json`
+      // Sequential refresh: parallel TLS handshakes through a VPN often
+      // fail with SSLHandshakeException, so go one city at a time.
+      const updatedList = [];
+      for (const city of list) {
+        try {
+          const geoData = await fetchJson(
+            `https://geocoding-api.open-meteo.com/v1/search?name=${encodeURIComponent(city.name)}&count=1&language=${currentLang}&format=json`
+          );
+          let lat, lon, resolvedName = city.name;
+          if (geoData.results && geoData.results.length > 0) {
+            lat = geoData.results[0].latitude;
+            lon = geoData.results[0].longitude;
+            resolvedName = geoData.results[0].name || city.name;
+          } else {
+            const fallbackGeoData = await fetchJson(
+              `https://geocoding-api.open-meteo.com/v1/search?name=${encodeURIComponent(city.name)}&count=1&format=json`
             );
-            const geoData = await geoRes.json();
-            let lat, lon, resolvedName = city.name;
-            if (geoData.results && geoData.results.length > 0) {
-              lat = geoData.results[0].latitude;
-              lon = geoData.results[0].longitude;
-              resolvedName = geoData.results[0].name || city.name;
-            } else {
-              const fallbackGeoRes = await fetch(
-                `https://geocoding-api.open-meteo.com/v1/search?name=${encodeURIComponent(city.name)}&count=1&format=json`
-              );
-              const fallbackGeoData = await fallbackGeoRes.json();
-              if (fallbackGeoData.results && fallbackGeoData.results.length > 0) {
-                lat = fallbackGeoData.results[0].latitude;
-                lon = fallbackGeoData.results[0].longitude;
-                resolvedName = fallbackGeoData.results[0].name || city.name;
-              }
+            if (fallbackGeoData.results && fallbackGeoData.results.length > 0) {
+              lat = fallbackGeoData.results[0].latitude;
+              lon = fallbackGeoData.results[0].longitude;
+              resolvedName = fallbackGeoData.results[0].name || city.name;
             }
-
-            if (lat !== undefined && lon !== undefined) {
-              const weatherRes = await fetch(
-                `${BASE_URL}?latitude=${lat}&longitude=${lon}&current_weather=true&daily=temperature_2m_max,temperature_2m_min,weathercode&timezone=auto`
-              );
-              const weatherData = await weatherRes.json();
-              if (weatherData && weatherData.current_weather) {
-                const temp = Math.round(weatherData.current_weather.temperature);
-                const min = weatherData.daily?.temperature_2m_min ? Math.round(weatherData.daily.temperature_2m_min[0]) : '';
-                const max = weatherData.daily?.temperature_2m_max ? Math.round(weatherData.daily.temperature_2m_max[0]) : '';
-                const code = weatherData.current_weather.weathercode;
-                const isNight = weatherData.current_weather.is_day === 0;
-                
-                return {
-                  ...city,
-                  name: resolvedName,
-                  temp: `${temp}`,
-                  minMax: min !== '' && max !== '' ? `${max}° / ${min}°` : '',
-                  condition: getWeatherConditionText(code),
-                  weathercode: code,
-                  isNight,
-                };
-              }
-            }
-          } catch (e) {
-            console.error(`Failed to refresh city ${city.name}:`, e);
           }
-          return city;
-        })
-      );
+
+          if (lat !== undefined && lon !== undefined) {
+            const weatherData = await fetchJson(
+              `${BASE_URL}?latitude=${lat}&longitude=${lon}&current_weather=true&daily=temperature_2m_max,temperature_2m_min,weathercode&timezone=auto`
+            );
+            if (weatherData && weatherData.current_weather) {
+              const temp = Math.round(weatherData.current_weather.temperature);
+              const min = weatherData.daily?.temperature_2m_min ? Math.round(weatherData.daily.temperature_2m_min[0]) : '';
+              const max = weatherData.daily?.temperature_2m_max ? Math.round(weatherData.daily.temperature_2m_max[0]) : '';
+              const code = weatherData.current_weather.weathercode;
+              const isNight = weatherData.current_weather.is_day === 0;
+
+              updatedList.push({
+                ...city,
+                name: resolvedName,
+                temp: `${temp}`,
+                minMax: min !== '' && max !== '' ? `${max}° / ${min}°` : '',
+                condition: getWeatherConditionText(code),
+                weathercode: code,
+                isNight,
+              });
+              continue;
+            }
+          }
+        } catch (e) {
+          console.warn(`Failed to refresh city ${city.name}:`, e?.message || e);
+        }
+        updatedList.push(city);
+      }
 
       setCities(updatedList);
       await AsyncStorage.setItem(SAVED_CITIES_KEY, JSON.stringify(updatedList));
@@ -121,6 +144,7 @@ export default function CityListScreen() {
     }
   };
 
+  // Solid fallback (no-gradient design); gradient experiment below.
   const getWeatherCardColor = (code, isNight) => {
     const isLight = theme.mode === 'light';
     const c = code ?? 2;
@@ -171,15 +195,13 @@ export default function CityListScreen() {
     const currentLang = i18n.language || 'ru';
     try {
       setIsLoading(true);
-      let geoRes = await fetch(
+      let geoData = await fetchJson(
         `https://geocoding-api.open-meteo.com/v1/search?name=${encodeURIComponent(cityName)}&count=1&language=${currentLang}&format=json`
       );
-      let geoData = await geoRes.json();
       if (!geoData.results || geoData.results.length === 0) {
-        geoRes = await fetch(
+        geoData = await fetchJson(
           `https://geocoding-api.open-meteo.com/v1/search?name=${encodeURIComponent(cityName)}&count=1&format=json`
         );
-        geoData = await geoRes.json();
       }
 
       if (!geoData.results || geoData.results.length === 0) {
@@ -188,10 +210,9 @@ export default function CityListScreen() {
         return;
       }
       const { latitude, longitude, name } = geoData.results[0];
-      const weatherRes = await fetch(
+      const weatherData = await fetchJson(
         `${BASE_URL}?latitude=${latitude}&longitude=${longitude}&current_weather=true&daily=temperature_2m_max,temperature_2m_min,weathercode&timezone=auto`
       );
-      const weatherData = await weatherRes.json();
       const temp = weatherData?.current_weather ? Math.round(weatherData.current_weather.temperature) : 0;
       const min = weatherData?.daily?.temperature_2m_min ? Math.round(weatherData.daily.temperature_2m_min[0]) : '';
       const max = weatherData?.daily?.temperature_2m_max ? Math.round(weatherData.daily.temperature_2m_max[0]) : '';

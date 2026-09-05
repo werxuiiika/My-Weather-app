@@ -168,7 +168,7 @@ function BottomSheet({ visible, onClose, title, options, selectedValue, onSelect
   if (!visible) return null;
 
   return (
-    <Modal transparent visible animationType="none">
+    <Modal transparent visible animationType="none" statusBarTranslucent navigationBarTranslucent>
       <TouchableWithoutFeedback onPress={onClose}>
         <Animated.View style={{ flex: 1, backgroundColor: 'rgba(0, 0, 0, 0.45)', opacity }} />
       </TouchableWithoutFeedback>
@@ -235,7 +235,7 @@ function CenteredModal({ visible, onClose, title, options, selectedValue, onSele
   if (!visible) return null;
 
   return (
-    <Modal transparent visible animationType="none">
+    <Modal transparent visible animationType="none" statusBarTranslucent navigationBarTranslucent>
       <TouchableWithoutFeedback onPress={onClose}>
         <Animated.View style={{ flex: 1, backgroundColor: 'rgba(0, 0, 0, 0.45)', alignItems: 'center', justifyContent: 'center', opacity }} />
       </TouchableWithoutFeedback>
@@ -429,7 +429,7 @@ function FontSizeModal({ visible, onClose, fontScale, setFontScale, tr, theme, f
   if (!visible) return null;
 
   return (
-    <Modal transparent visible animationType="none">
+    <Modal transparent visible animationType="none" statusBarTranslucent navigationBarTranslucent>
       <TouchableWithoutFeedback onPress={onClose}>
         <Animated.View style={{ flex: 1, backgroundColor: 'rgba(0, 0, 0, 0.45)', alignItems: 'center', justifyContent: 'center', opacity }} />
       </TouchableWithoutFeedback>

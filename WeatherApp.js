@@ -951,7 +951,8 @@ export default function App() {
   }, [themeMode, tr]);
   const route = useRoute();
   const navigation = useNavigation();
-  const cityParam = route.params?.city;
+  const cityParam = route.params?.city ?? route.params?.selectedCity;
+  const appliedCityParam = useRef(null);
   const { isLoading, setLoading: setAppLoading } = useContext(LoadingContext);
   const { tempUnit, windUnit, setTempUnit, setWindUnit } = useContext(SettingsContext);
   const refreshColors =
@@ -1278,7 +1279,8 @@ export default function App() {
     }
   };
   useEffect(() => {
-    if (cityParam) {
+    if (cityParam && appliedCityParam.current !== cityParam) {
+      appliedCityParam.current = cityParam;
       setCity(cityParam);
       doSearch(cityParam);
     }
@@ -1448,6 +1450,8 @@ export default function App() {
             visible={menuVisible}
             transparent={true}
             animationType="none"
+            statusBarTranslucent
+            navigationBarTranslucent
             onRequestClose={closeMenu}
           >
             <TouchableWithoutFeedback onPress={closeMenu}>
@@ -1607,7 +1611,7 @@ export default function App() {
                       size={26}
                     />
                   </View>
-                  <Text style={styles.forecastTemp}>
+                  <Text style={styles.forecastTemp} numberOfLines={1}>
                     {formatTemp(weather.data.daily.temperature_2m_min[i], tempUnit)} /{' '}
                     {formatTemp(weather.data.daily.temperature_2m_max[i], tempUnit)}
                   </Text>
@@ -2021,9 +2025,9 @@ const buildStyles = (theme, fs, insets) =>
     detailLabel: { color: theme.textMuted, fontSize: fs.small, marginTop: fs.spacing * 0.25 },
     sectionTitle: { fontSize: fs.base * 1.125, fontWeight: '600', color: theme.text, marginTop: fs.spacing * 0.625, marginBottom: fs.spacing * 0.5 },
     forecastRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', backgroundColor: theme.surfaceAlt, borderRadius: 8, paddingHorizontal: fs.spacing * 0.875, paddingVertical: fs.spacing * 0.625, marginBottom: fs.spacing * 0.375 },
-    forecastDay: { color: theme.textSecondary, fontSize: fs.base * 0.9375, flex: 1 },
-    forecastIconCell: { width: 32, alignItems: 'center', marginRight: fs.spacing * 0.75 },
-    forecastTemp: { color: theme.text, fontSize: fs.base * 0.9375, fontWeight: '600' },
+    forecastDay: { color: theme.textSecondary, fontSize: fs.base * 0.9375, flex: 1, textAlign: 'left' },
+    forecastIconCell: { width: 40, alignItems: 'center' },
+    forecastTemp: { color: theme.text, fontSize: fs.base * 0.9375, fontWeight: '600', width: 90, textAlign: 'right' },
     settingsLayer: { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, zIndex: 100 },
     settingsDim: { ...StyleSheet.absoluteFillObject, backgroundColor: theme.dim },
     settingsScreen: { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: theme.background },
