@@ -1237,9 +1237,20 @@ export default function App() {
      setLocating(true);
      setError(null);
      try {
-       const permission = await Location.requestForegroundPermissionsAsync();
-       if (permission.status !== 'granted') {
-         setError(tr('locationPermissionDenied'));
+       let { status } = await Location.getForegroundPermissionsAsync();
+       if (status !== 'granted') {
+         const permission = await Location.requestForegroundPermissionsAsync();
+         status = permission.status;
+       }
+       if (status !== 'granted') {
+         Alert.alert(
+           'Требуется разрешение',
+           'Приложению нужен доступ к геолокации. Включите его в настройках.',
+           [
+             { text: 'Отмена', style: 'cancel' },
+             { text: 'Открыть настройки', onPress: () => Linking.openSettings() }
+           ]
+         );
          return;
        }
        const position = await Location.getCurrentPositionAsync({
