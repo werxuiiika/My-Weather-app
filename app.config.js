@@ -8,6 +8,8 @@ export default {
     userInterfaceStyle: "light",
     assetBundlePatterns: ["**/*"],
     splash: {
+      image: "./assets/splash.png",
+      resizeMode: "cover",
       backgroundColor: "#ffffff"
     },
     ios: {
