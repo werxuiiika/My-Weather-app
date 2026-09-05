@@ -1982,12 +1982,12 @@ function PermissionModal({ visible, onClose, onOpenSettings, theme, fs }) {
             <View style={{ width: '100%', maxWidth: 360, backgroundColor: theme.surfaceAlt || theme.background, borderRadius: 16, padding: 20, borderWidth: 1, borderColor: theme.border || 'rgba(255,255,255,0.1)' }}>
               <Text style={{ fontSize: fs.base * 1.125, fontWeight: '600', color: theme.text, marginBottom: 8 }}>{tr('permission_required')}</Text>
               <Text style={{ fontSize: fs.base * 0.9375, color: theme.textSecondary || theme.textMuted, marginBottom: 20, lineHeight: 20 }}>{tr('location_permission_message')}</Text>
-              <View style={{ flexDirection: 'row', justifyContent: 'flex-end', gap: 12 }}>
-                <TouchableOpacity onPress={onClose} style={{ paddingVertical: 10, paddingHorizontal: 16, borderRadius: 8 }}>
-                  <Text style={{ color: theme.textMuted || theme.textSecondary, fontSize: fs.base * 0.9375, fontWeight: '500' }}>{tr('cancel')}</Text>
-                </TouchableOpacity>
-                <TouchableOpacity onPress={onOpenSettings} style={{ paddingVertical: 10, paddingHorizontal: 16, borderRadius: 8, backgroundColor: theme.accent }}>
+              <View style={{ flexDirection: 'column', gap: 10 }}>
+                <TouchableOpacity onPress={onOpenSettings} style={{ paddingVertical: 12, paddingHorizontal: 16, borderRadius: 8, backgroundColor: theme.accent, alignItems: 'center' }}>
                   <Text style={{ color: theme.onAccent || '#ffffff', fontSize: fs.base * 0.9375, fontWeight: '600' }}>{tr('open_settings')}</Text>
+                </TouchableOpacity>
+                <TouchableOpacity onPress={onClose} style={{ paddingVertical: 12, paddingHorizontal: 16, borderRadius: 8, alignItems: 'center' }}>
+                  <Text style={{ color: theme.textMuted || theme.textSecondary, fontSize: fs.base * 0.9375, fontWeight: '500' }}>{tr('cancel')}</Text>
                 </TouchableOpacity>
               </View>
             </View>
