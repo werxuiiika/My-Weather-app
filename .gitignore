@@ -12,3 +12,7 @@ dist/
 web-build/
 recovered_bundle.js
 .aider*
+.yarn/cache
+.yarn/install-state.gz
+.yarn/unplugged
+
