@@ -43,7 +43,16 @@ export default {
         }
       ],
       "expo-font",
-      "expo-status-bar"
+      "expo-status-bar",
+      [
+        "expo-splash-screen",
+        {
+          image: "./assets/splash.png",
+          imageWidth: 200,
+          resizeMode: "cover",
+          backgroundColor: "#ffffff"
+        }
+      ]
     ],
     extra: {
       eas: {
