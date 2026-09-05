@@ -889,8 +889,9 @@ export default function App() {
   const [isSplashVisible, setIsSplashVisible] = useState(true);
   const [isContentVisible, setIsContentVisible] = useState(false);
   const [splashRendered, setSplashRendered] = useState(true);
-  const [menuVisible, setMenuVisible] = useState(false);
-  const [settingsOpen, setSettingsOpen] = useState(false);
+   const [menuVisible, setMenuVisible] = useState(false);
+   const [settingsOpen, setSettingsOpen] = useState(false);
+   const [permissionModalVisible, setPermissionModalVisible] = useState(false);
   const menuAnim = useRef(new Animated.Value(0)).current;
 
   const toggleMenu = () => {
@@ -1243,20 +1244,16 @@ export default function App() {
          status = permission.status;
        }
        if (status !== 'granted') {
-         Alert.alert(
-           'Требуется разрешение',
-           'Приложению нужен доступ к геолокации. Включите его в настройках.',
-           [
-             { text: 'Отмена', style: 'cancel' },
-             { text: 'Открыть настройки', onPress: () => Linking.openSettings() }
-           ]
-         );
+         setPermissionModalVisible(true);
          return;
        }
        const position = await Location.getCurrentPositionAsync({
          accuracy: Location.Accuracy.Balanced,
        });
-       const { latitude, longitude } = position.coords;
+       const { latitude, longitude, accuracy } = position.coords;
+       if (accuracy && accuracy > 1000) {
+         setError("Геолокация приблизительная. Для точного прогноза включите 'Точное местоположение' в настройках.");
+       }
        await loadByCoords(latitude, longitude);
      } catch (e) {
        setError(tr('locationFailed'));
@@ -1960,7 +1957,43 @@ export default function App() {
             </Animated.View>
           </View>
         )}
+        <PermissionModal
+          visible={permissionModalVisible}
+          onClose={() => setPermissionModalVisible(false)}
+          onOpenSettings={() => {
+            setPermissionModalVisible(false);
+            Linking.openSettings();
+          }}
+          theme={theme}
+          fs={fs}
+        />
     </ScreenWrapper>
+  );
+}
+
+function PermissionModal({ visible, onClose, onOpenSettings, theme, fs }) {
+  if (!visible) return null;
+  return (
+    <Modal transparent visible animationType="fade" statusBarTranslucent navigationBarTranslucent>
+      <TouchableWithoutFeedback onPress={onClose}>
+        <View style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'center', alignItems: 'center', padding: 24 }}>
+          <TouchableWithoutFeedback>
+            <View style={{ width: '100%', maxWidth: 360, backgroundColor: theme.surfaceAlt || theme.background, borderRadius: 16, padding: 20, borderWidth: 1, borderColor: theme.border || 'rgba(255,255,255,0.1)' }}>
+              <Text style={{ fontSize: fs.base * 1.125, fontWeight: '600', color: theme.text, marginBottom: 8 }}>Требуется разрешение</Text>
+              <Text style={{ fontSize: fs.base * 0.9375, color: theme.textSecondary || theme.textMuted, marginBottom: 20, lineHeight: 20 }}>Приложению нужен доступ к геолокации. Включите его в настройках.</Text>
+              <View style={{ flexDirection: 'row', justifyContent: 'flex-end', gap: 12 }}>
+                <TouchableOpacity onPress={onClose} style={{ paddingVertical: 10, paddingHorizontal: 16, borderRadius: 8 }}>
+                  <Text style={{ color: theme.textMuted || theme.textSecondary, fontSize: fs.base * 0.9375, fontWeight: '500' }}>Отмена</Text>
+                </TouchableOpacity>
+                <TouchableOpacity onPress={onOpenSettings} style={{ paddingVertical: 10, paddingHorizontal: 16, borderRadius: 8, backgroundColor: theme.primary }}>
+                  <Text style={{ color: theme.primaryText || '#ffffff', fontSize: fs.base * 0.9375, fontWeight: '600' }}>Открыть настройки</Text>
+                </TouchableOpacity>
+              </View>
+            </View>
+          </TouchableWithoutFeedback>
+        </View>
+      </TouchableWithoutFeedback>
+    </Modal>
   );
 }
 
