@@ -1482,7 +1482,7 @@ export default function App() {
                       navigation.navigate('CityList');
                     }}
                   >
-                    <Text style={[styles.menuItemText, { color: theme.text }]} numberOfLines={1} ellipsizeMode="tail">Управление городами</Text>
+                    <Text style={[styles.menuItemText, { color: theme.text }]} numberOfLines={1} ellipsizeMode="tail">{tr('cities.title')}</Text>
                   </TouchableOpacity>
                   <View style={[styles.menuDivider, { backgroundColor: theme.border || 'rgba(255,255,255,0.1)' }]} />
                   <TouchableOpacity
