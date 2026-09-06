@@ -38,6 +38,7 @@ import { SettingsContext } from './SettingsContext';
 import { useFontSize } from './FontSizeContext';
 import { useTheme } from './ThemeContext';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { geocodeCity } from './geocoding';
 
 const BASE_URL = 'https://api.open-meteo.com/v1/forecast';
 const TIMEOUT_MS = 10000;
@@ -1172,13 +1173,13 @@ export default function App() {
     } catch (e) {}
   };
   const geocode = async (query) => {
-    const data = await fetchJson(
-      `https://geocoding-api.open-meteo.com/v1/search?name=${encodeURIComponent(query)}&count=1&language=${i18n.language}&format=json`
-    );
-    if (!data.results || data.results.length === 0) {
+    // 1. Current app language -> 2. English -> 3. transliterated Latin
+    // variants (shared helper, see geocoding.js). Only then "not found".
+    const hit = await geocodeCity(query, i18n.language || 'ru', fetchJson);
+    if (!hit) {
       throw new Error(tr('cityNotFound'));
     }
-    return data.results[0];
+    return hit;
   };
   const reverseGeocode = async (lat, lon) => {
     const data = await fetchJson(
@@ -1209,10 +1210,12 @@ export default function App() {
   const loadByCoords = async (lat, lon, silent = false) => {
     if (!silent) setLoading(true);
     setError(null);
+    // Record intent BEFORE the attempt so Retry repeats this action
+    // even if it fails (previously only set on success, leaving a stale request).
+    lastRequest.current = { type: 'coords', lat, lon };
     try {
       const [place, data] = await Promise.all([reverseGeocode(lat, lon), fetchWeather(lat, lon)]);
       setWeather({ place, data });
-      lastRequest.current = { type: 'coords', lat, lon };
       if (rememberRef.current && place.name && place.name !== tr('currentLocation')) {
         await saveLastCity(place.name);
       }
@@ -1264,11 +1267,13 @@ export default function App() {
   const doSearch = async (query, silent = false) => {
     if (!silent) setLoading(true);
     setError(null);
+    // Record intent BEFORE the attempt so Retry repeats this exact search
+    // even when geocoding fails with "city not found".
+    lastRequest.current = { type: 'city', query };
     try {
       const place = await geocode(query);
       const data = await fetchWeather(place.latitude, place.longitude);
       setWeather({ place, data });
-      lastRequest.current = { type: 'city', query };
       if (rememberRef.current) {
         await saveLastCity(query);
       }
