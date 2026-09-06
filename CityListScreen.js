@@ -20,7 +20,8 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useTheme } from './ThemeContext';
 import { useFontSize } from './FontSizeContext';
 import { useTranslation } from 'react-i18next';
-import { geocodeCity } from './geocoding';
+import NetInfo from '@react-native-community/netinfo';
+import { geocodeCity, isOfflineError } from './geocoding';
 
 const SAVED_CITIES_KEY = 'saved_cities_list';
 const LAST_SELECTED_CITY_KEY = 'last_selected_city';
@@ -246,10 +247,42 @@ export default function CityListScreen() {
       }
       
       const currentLang = i18n.language || 'ru';
+      // Fast-fail offline: no point burning through timeouts/retries per
+      // city, just show the stored list as-is.
+      const showStored = () => setCities(list);
+      try {
+        const netState = await NetInfo.fetch();
+        if (netState && netState.isConnected === false) {
+          showStored();
+          return;
+        }
+      } catch {}
+      // NetInfo lies when a VPN interface is up but DNS is blocked, so
+      // probe the API once with a short timeout before the slow loop.
+      try {
+        await fetchJson(
+          `${BASE_URL}?latitude=0&longitude=0&current_weather=true&timezone=auto`,
+          5000,
+          0
+        );
+      } catch (e) {
+        if (isOfflineError(e)) {
+          showStored();
+          return;
+        }
+        // Transient error: fall through and let the per-city loop try.
+      }
       // Sequential refresh: parallel TLS handshakes through a VPN often
       // fail with SSLHandshakeException, so go one city at a time.
+      // circuitOpen stops burning timeouts on the rest if the connection
+      // drops mid-refresh.
+      let circuitOpen = false;
       const updatedList = [];
       for (const city of list) {
+        if (circuitOpen) {
+          updatedList.push(city);
+          continue;
+        }
         try {
           // Prefer stored coordinates: they are language-independent, so a
           // rename works even if the old name is in another language.
@@ -295,7 +328,14 @@ export default function CityListScreen() {
             }
           }
         } catch (e) {
-          console.warn(`Failed to refresh city ${city.name}:`, e?.message || e);
+          // Offline errors are expected: keep the stored data quietly
+          // instead of spamming LogBox warnings (one per city), and stop
+          // trying the remaining cities (circuit breaker).
+          if (!isOfflineError(e)) {
+            console.warn(`Failed to refresh city ${city.name}:`, e?.message || e);
+          } else {
+            circuitOpen = true;
+          }
         }
         updatedList.push(city);
       }

@@ -38,7 +38,7 @@ import { SettingsContext } from './SettingsContext';
 import { useFontSize } from './FontSizeContext';
 import { useTheme } from './ThemeContext';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { geocodeCity } from './geocoding';
+import { geocodeCity, isOfflineError } from './geocoding';
 
 const BASE_URL = 'https://api.open-meteo.com/v1/forecast';
 const TIMEOUT_MS = 10000;
@@ -51,6 +51,20 @@ const REMEMBER_CITY_ENABLED_KEY = 'remember_city_enabled';
 const LAST_CITY_KEY = 'last_selected_city';
 
 const loadLastCity = async () => { try { return await AsyncStorage.getItem(LAST_CITY_KEY); } catch (e) { return null; } };
+// Cache-First: last successfully loaded weather snapshot for instant display.
+const LAST_WEATHER_KEY = 'last_weather_data';
+const loadCachedWeather = async () => {
+  try {
+    const raw = await AsyncStorage.getItem(LAST_WEATHER_KEY);
+    if (!raw) return null;
+    const parsed = JSON.parse(raw);
+    if (!parsed || !parsed.place || !parsed.data) return null;
+    return parsed;
+  } catch (e) { return null; }
+};
+const saveCachedWeather = async (snapshot) => {
+  try { await AsyncStorage.setItem(LAST_WEATHER_KEY, JSON.stringify(snapshot)); } catch (e) {}
+};
 const saveLastCity = async (name) => { try { await AsyncStorage.setItem(LAST_CITY_KEY, name); } catch (e) {} };
 const clearLastCity = async () => { try { await AsyncStorage.removeItem(LAST_CITY_KEY); } catch (e) {} };
 const loadRememberCity = async () => { try { const v = await AsyncStorage.getItem(REMEMBER_CITY_ENABLED_KEY); return v === null ? true : v === 'true'; } catch (e) { return true; } };
@@ -882,6 +896,8 @@ export default function App() {
   const [locating, setLocating] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
   const [weather, setWeather] = useState(null);
+  // True while the visible data comes from cache and may be outdated.
+  const [isStale, setIsStale] = useState(false);
   const [error, setError] = useState(null);
   const [hostUnreachable, setHostUnreachable] = useState(false);
   const [retrying, setRetrying] = useState(false);
@@ -994,12 +1010,25 @@ export default function App() {
       setRememberCity(remember);
       const saved = await loadLastCity();
       if (!active) return;
+      // Cache-First: show the last snapshot instantly (no spinner),
+      // then refresh it in the background.
+      const cached = await loadCachedWeather();
+      if (!active) return;
+      let hasCache = false;
+      if (cached) {
+        hasCache = true;
+        setWeather({ place: cached.place, data: cached.data, savedAt: cached.savedAt });
+        if (cached.query) setCity(cached.query);
+        setIsStale(true);
+      }
       if (!remember || !saved) {
         if (active && !saved) detectMyLocation();
         return;
       }
       setCity(saved);
-      doSearch(saved);
+      // Silent background refresh when cache is already on screen,
+      // full loading state only when there is nothing to show yet.
+      doSearch(saved, hasCache);
     };
     init();
     const unsubscribe = NetInfo.addEventListener((state) => {
@@ -1215,12 +1244,15 @@ export default function App() {
     lastRequest.current = { type: 'coords', lat, lon };
     try {
       const [place, data] = await Promise.all([reverseGeocode(lat, lon), fetchWeather(lat, lon)]);
-      setWeather({ place, data });
+      const savedAt = Date.now();
+      setWeather({ place, data, savedAt });
+      setIsStale(false);
+      await saveCachedWeather({ place, data, query: place.name, savedAt });
       if (rememberRef.current && place.name && place.name !== tr('currentLocation')) {
         await saveLastCity(place.name);
       }
     } catch (e) {
-       if (isConnectedRef.current === false) {
+       if (isConnectedRef.current === false || isOfflineError(e)) {
          setError(tr('noInternet'));
        } else if (e.kind === 'network') {
          setError(null);
@@ -1273,12 +1305,15 @@ export default function App() {
     try {
       const place = await geocode(query);
       const data = await fetchWeather(place.latitude, place.longitude);
-      setWeather({ place, data });
+      const savedAt = Date.now();
+      setWeather({ place, data, savedAt });
+      setIsStale(false);
+      await saveCachedWeather({ place, data, query, savedAt });
       if (rememberRef.current) {
         await saveLastCity(query);
       }
     } catch (e) {
-      if (isConnectedRef.current === false) {
+      if (isConnectedRef.current === false || isOfflineError(e)) {
         setError(tr('noInternet'));
       } else if (e.kind === 'network') {
         setError(null);
@@ -1549,7 +1584,8 @@ export default function App() {
               </TouchableOpacity>
             </View>
           )}
-          {(loading || locating) && (
+          {/* Cache-First: spinner only when there is nothing to show yet. */}
+          {(loading || locating) && !weather && (
             <View style={styles.center}>
               <Animated.View
                 style={[
@@ -1565,7 +1601,7 @@ export default function App() {
               </Text>
             </View>
           )}
-          {weather && !loading && !locating && (
+          {weather && (
             <ScrollView
               style={styles.result}
               contentContainerStyle={styles.resultContent}
@@ -1581,6 +1617,11 @@ export default function App() {
               }
             >
               <Text style={styles.cityName}>{weather.place.name}</Text>
+              {isStale && weather.savedAt && (
+                <Text style={styles.staleLabel}>
+                  {tr('cachedAt', { time: formatCacheTime(weather.savedAt) })}
+                </Text>
+              )}
               <Text style={styles.subLabel}>
                 {weather.place.country} · {weather.place.latitude.toFixed(2)},
                 {weather.place.longitude.toFixed(2)}
@@ -2009,6 +2050,15 @@ function formatDay(iso) {
   return d.toLocaleDateString(locale, { weekday: 'short', day: 'numeric' });
 }
 
+function formatCacheTime(ts) {
+  try {
+    const locale = i18n.language === 'en' ? 'en-US' : 'ru-RU';
+    return new Date(ts).toLocaleTimeString(locale, { hour: '2-digit', minute: '2-digit' });
+  } catch {
+    return '';
+  }
+}
+
 function computeCityClock(data) {
   if (!data || typeof data.utc_offset_seconds !== 'number') return null;
   const now = new Date();
@@ -2065,6 +2115,7 @@ const buildStyles = (theme, fs, insets) =>
     resultContent: { paddingBottom: fs.spacing * 1.875 },
     cityName: { fontSize: fs.large * 1.15, fontWeight: '700', color: theme.text, textAlign: 'center' },
     subLabel: { fontSize: fs.small, color: theme.textMuted, textAlign: 'center', marginTop: fs.spacing * 0.125 },
+    staleLabel: { fontSize: fs.small * 0.9, color: theme.textMuted, textAlign: 'center', marginTop: fs.spacing * 0.125, fontStyle: 'italic' },
     cityTime: { fontSize: fs.base, color: theme.textSecondary, textAlign: 'center', marginTop: fs.spacing * 0.25 },
     bigIconWrap: { alignItems: 'center', marginTop: fs.spacing },
     temperature: { fontSize: fs.large * 2.5, fontWeight: '300', color: theme.text, textAlign: 'center' },

@@ -3,6 +3,7 @@ import { View, Text, FlatList, TouchableOpacity, ActivityIndicator, StyleSheet, 
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
 import { useTranslation } from 'react-i18next';
+import NetInfo from '@react-native-community/netinfo';
 import Svg, { Circle, Path } from 'react-native-svg';
 import { useFontSize } from './FontSizeContext';
 import { useTheme } from './ThemeContext';
@@ -88,6 +89,9 @@ export default function WeatherPhenomenonFinder() {
   const [loading, setLoading] = useState(false);
   const [results, setResults] = useState([]);
   const [hasSearched, setHasSearched] = useState(false);
+  // 'offline' when the search couldn't reach the API at all (as opposed
+  // to a genuine "no cities match this phenomenon" empty result).
+  const [searchError, setSearchError] = useState(null);
 
   const styles = useMemo(() => StyleSheet.create({
     container: {
@@ -175,8 +179,15 @@ export default function WeatherPhenomenonFinder() {
   const handleSearch = async (phenomenon = selectedPhenomenon) => {
     setLoading(true);
     setResults([]);
+    setSearchError(null);
     setHasSearched(true);
     try {
+      const netState = await NetInfo.fetch().catch(() => null);
+      if (netState && netState.isConnected === false) {
+        setSearchError('offline');
+        setResults([]);
+        return;
+      }
       const fetchPromises = CITIES.map(async (city) => {
         try {
           const url =
@@ -200,6 +211,16 @@ export default function WeatherPhenomenonFinder() {
         }
       });
       const allResults = await Promise.all(fetchPromises);
+      // If EVERY request failed (offline / VPN blocking DNS), say so
+      // instead of the misleading "no such phenomenon in the DB".
+      const allFailed = allResults.every(
+        (r) => r.weathercode === null && r.temperature === null
+      );
+      if (allFailed) {
+        setSearchError('offline');
+        setResults([]);
+        return;
+      }
       const matched = allResults
         .filter((r) => {
           const matches = r.weathercode !== null && isCodeInPhenomenon(r.weathercode, phenomenon);
@@ -208,6 +229,7 @@ export default function WeatherPhenomenonFinder() {
         .slice(0, 5);
       setResults(matched);
     } catch (e) {
+      setSearchError('offline');
       setResults([]);
     } finally {
       setLoading(false);
@@ -269,9 +291,11 @@ export default function WeatherPhenomenonFinder() {
       {!loading && results.length === 0 && (
         <View style={styles.hintContainer}>
           <Text style={styles.hint}>
-            {hasSearched
-              ? t('noResultsAfterSearch')
-              : t('noResultsBeforeSearch')}
+            {searchError === 'offline'
+              ? t('noInternet')
+              : hasSearched
+                ? t('noResultsAfterSearch')
+                : t('noResultsBeforeSearch')}
           </Text>
         </View>
       )}

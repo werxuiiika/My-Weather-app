@@ -1,3 +1,13 @@
+// Offline-looking errors (DNS/VPN/no route) shared by all screens so they
+// can show a friendly message (and stay silent in logs) instead of leaking
+// raw fetch errors into the UI.
+export const OFFLINE_RE = /unknownhost|resolve host|no address|network request failed|fetch failed|timed out|timeout|abort|econn|enotfound|no internet/i;
+export function isOfflineError(e) {
+  if (!e) return false;
+  if (e.kind === 'network') return true;
+  return OFFLINE_RE.test(String(e.message || e));
+}
+
 // Shared Open-Meteo geocoding search with fallbacks.
 //
 // Why this exists: Open-Meteo's `language` parameter only changes the
