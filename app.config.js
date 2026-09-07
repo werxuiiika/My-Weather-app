@@ -1,8 +1,10 @@
+const pkg = require('./package.json');
+
 export default {
   expo: {
     name: "Моя погода",
     slug: "my-app-final",
-    version: "1.0.17",
+    version: pkg.version,
     orientation: "portrait",
     icon: "./assets/icon.png",
     userInterfaceStyle: "light",

@@ -15,5 +15,7 @@ recovered_bundle.js
 .yarn/cache
 .yarn/install-state.gz
 .yarn/unplugged
-free-claude-code
+.env
+*.log
+.DS_Store
 
