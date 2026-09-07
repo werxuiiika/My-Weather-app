@@ -52,6 +52,12 @@ export default {
           resizeMode: "cover",
           backgroundColor: "#ffffff"
         }
+      ],
+      [
+        "./plugins/localized-app-name",
+        {
+          englishName: "My Weather"
+        }
       ]
     ],
     extra: {
