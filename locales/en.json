@@ -107,5 +107,9 @@
   "location_permission_message": "The app needs location access. Please enable it in settings.",
   "open_settings": "Open Settings",
   "cancel": "Cancel",
-  "cachedAt": "Saved data as of {{time}}"
+  "cachedAt": "Saved data as of {{time}}",
+  "hourlyForecast": "Hourly forecast",
+  "now": "Now",
+  "sunrise": "Sunrise",
+  "sunset": "Sunset"
 }

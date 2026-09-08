@@ -822,6 +822,54 @@ function weathercodeToType(code) {
   return 'thunder';
 }
 
+function isNightHour(isoTime) {
+  const h = parseInt(String(isoTime || '').slice(11, 13), 10);
+  if (Number.isNaN(h)) return false;
+  return h >= 21 || h < 6;
+}
+
+// Next N timeline entries (hourly forecast + sunrise/sunset events) starting from current hour.
+function getHourlyTimeline(data, count = 24) {
+  if (!data || !data.hourly || !data.hourly.time) return [];
+  const offset = typeof data.utc_offset_seconds === 'number' ? data.utc_offset_seconds : 0;
+  const now = new Date(Date.now() + new Date().getTimezoneOffset() * 60000 + offset * 1000);
+  const pad = (n) => String(n).padStart(2, '0');
+  const nowHour = `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())}T${pad(now.getHours())}`;
+  
+  let startIdx = data.hourly.time.findIndex((t) => String(t).slice(0, 13) >= nowHour);
+  if (startIdx === -1) startIdx = 0;
+  
+  const endIndex = Math.min(data.hourly.time.length, startIdx + count);
+  const startTime = data.hourly.time[startIdx];
+  const endTime = data.hourly.time[endIndex - 1] || '9999-12-31T23:59';
+
+  const items = [];
+  for (let k = startIdx; k < endIndex; k++) {
+    items.push({
+      type: 'hour',
+      time: data.hourly.time[k],
+      temp: data.hourly.temperature_2m?.[k],
+      code: data.hourly.weathercode?.[k],
+    });
+  }
+
+  if (data.daily && data.daily.sunrise && data.daily.sunset) {
+    for (let i = 0; i < data.daily.sunrise.length; i++) {
+      const sr = data.daily.sunrise[i];
+      if (sr && sr >= startTime && sr <= endTime) {
+        items.push({ type: 'sunrise', time: sr });
+      }
+      const ss = data.daily.sunset[i];
+      if (ss && ss >= startTime && ss <= endTime) {
+        items.push({ type: 'sunset', time: ss });
+      }
+    }
+  }
+
+  items.sort((a, b) => String(a.time).localeCompare(String(b.time)));
+  return items.slice(0, count);
+}
+
 const TEMP_UNIT_OPTIONS = [
   { value: 'C', labelKey: 'tempUnits.C.label', descKey: 'tempUnits.C.desc' },
   { value: 'F', labelKey: 'tempUnits.F.label', descKey: 'tempUnits.F.desc' },
@@ -1232,7 +1280,7 @@ export default function App() {
   };
   const fetchWeather = async (lat, lon) => {
     const data = await fetchJson(
-      `${BASE_URL}?latitude=${lat}&longitude=${lon}&current_weather=true&daily=weathercode,temperature_2m_max,temperature_2m_min&timezone=auto`
+      `${BASE_URL}?latitude=${lat}&longitude=${lon}&current_weather=true&hourly=temperature_2m,weathercode&daily=weathercode,temperature_2m_max,temperature_2m_min,sunrise,sunset&timezone=auto`
     );
     return data;
   };
@@ -1605,6 +1653,7 @@ export default function App() {
             <ScrollView
               style={styles.result}
               contentContainerStyle={styles.resultContent}
+              showsVerticalScrollIndicator={false}
               refreshControl={
                 <RefreshControl
                   refreshing={refreshing}
@@ -1653,8 +1702,46 @@ export default function App() {
                   </Text>
                    <Text style={styles.detailLabel}>{tr('timeOfDay')}</Text>
                 </View>
-              </View>
-               <Text style={styles.sectionTitle}>{tr('weeklyForecast')}</Text>
+               </View>
+              {weather.data.hourly && weather.data.hourly.time && (
+                <>
+                  <Text style={styles.sectionTitle}>{tr('hourlyForecast')}</Text>
+                  <ScrollView
+                    horizontal
+                    showsHorizontalScrollIndicator={false}
+                    contentContainerStyle={styles.hourlyRow}
+                  >
+                    {getHourlyTimeline(weather.data).map((item, idx) => {
+                      if (item.type === 'sunrise' || item.type === 'sunset') {
+                        const isSunrise = item.type === 'sunrise';
+                        return (
+                          <View key={item.time} style={styles.hourlyCard}>
+                            <Text style={styles.hourlyTemp} numberOfLines={1}>
+                              {tr(isSunrise ? 'sunrise' : 'sunset')}
+                            </Text>
+                            <WeatherIcon type="clear" isNight={!isSunrise} size={26} />
+                            <Text style={styles.hourlyTime}>{String(item.time).slice(11, 16)}</Text>
+                          </View>
+                        );
+                      }
+                      return (
+                        <View key={item.time} style={styles.hourlyCard}>
+                          <Text style={styles.hourlyTemp} numberOfLines={1}>
+                            {item.temp === null || item.temp === undefined ? '–' : formatTemp(item.temp, tempUnit)}
+                          </Text>
+                          <WeatherIcon
+                            type={weathercodeToType(item.code)}
+                            isNight={isNightHour(item.time)}
+                            size={26}
+                          />
+                          <Text style={styles.hourlyTime}>{idx === 0 ? tr('now') : String(item.time).slice(11, 16)}</Text>
+                        </View>
+                      );
+                    })}
+                  </ScrollView>
+                </>
+              )}
+                <Text style={styles.sectionTitle}>{tr('weeklyForecast')}</Text>
                {weather.data.daily && weather.data.daily.time && weather.data.daily.time.map((day, i) => (
                 <View key={day} style={styles.forecastRow}>
                   <Text style={styles.forecastDay}>{formatDay(day)}</Text>
@@ -2083,7 +2170,7 @@ const buildStyles = (theme, fs, insets) =>
     splashIconWrap: { marginBottom: fs.spacing },
     splashText: { color: theme.textSecondary, fontSize: fs.small },
     title: { fontSize: fs.base * 2, fontWeight: '700', color: theme.text, textAlign: 'center', marginTop: 0, marginLeft: 0 },
-    container: { flex: 1, position: 'relative', paddingHorizontal: fs.spacing * 2 },
+    container: { flex: 1, position: 'relative', paddingHorizontal: fs.spacing },
     titleRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: fs.spacing, marginTop: fs.spacing * 0.2 },
     gearButton: { marginRight: 0, marginTop: 0, padding: fs.spacing * 0.375, zIndex: 1 },
     gearIcon: { fontSize: fs.iconSize },
@@ -2129,6 +2216,10 @@ const buildStyles = (theme, fs, insets) =>
     forecastDay: { color: theme.textSecondary, fontSize: fs.base * 0.9375, flex: 1, textAlign: 'left' },
     forecastIconCell: { width: 40, alignItems: 'center' },
     forecastTemp: { color: theme.text, fontSize: fs.base * 0.9375, fontWeight: '600', width: 90, textAlign: 'right' },
+    hourlyRow: { gap: fs.spacing * 0.5, paddingBottom: fs.spacing * 0.25 },
+    hourlyCard: { backgroundColor: theme.surfaceAlt, borderRadius: 10, paddingHorizontal: fs.spacing * 0.625, paddingVertical: fs.spacing * 0.5, alignItems: 'center', gap: fs.spacing * 0.25, minWidth: fs.spacing * 3.75 },
+    hourlyTime: { color: theme.textSecondary, fontSize: fs.small * 0.95 },
+    hourlyTemp: { color: theme.text, fontSize: fs.base * 0.9375, fontWeight: '600' },
     settingsLayer: { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, zIndex: 100 },
     settingsDim: { ...StyleSheet.absoluteFillObject, backgroundColor: theme.dim },
     settingsScreen: { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: theme.background },
