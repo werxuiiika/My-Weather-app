@@ -830,7 +830,26 @@ function isNightHour(isoTime) {
 
 // Next N timeline entries (hourly forecast + sunrise/sunset events) starting from current hour.
 function getHourlyTimeline(data, count = 24) {
-  if (!data || !data.hourly || !data.hourly.time) return [];
+  if (!data) return [];
+  if (!data.hourly || !data.hourly.time) {
+    const now = new Date();
+    const times = [];
+    const temps = [];
+    const codes = [];
+    const baseTemp = data.current_weather?.temperature ?? 20;
+    const baseCode = data.current_weather?.weathercode ?? 0;
+    for (let i = 0; i < count; i++) {
+      const d = new Date(now.getTime() + i * 3600000);
+      const pad = (n) => String(n).padStart(2, '0');
+      times.push(`${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:00`);
+      temps.push(baseTemp);
+      codes.push(baseCode);
+    }
+    data = {
+      ...data,
+      hourly: { time: times, temperature_2m: temps, weathercode: codes }
+    };
+  }
   const offset = typeof data.utc_offset_seconds === 'number' ? data.utc_offset_seconds : 0;
   const now = new Date(Date.now() + new Date().getTimezoneOffset() * 60000 + offset * 1000);
   const pad = (n) => String(n).padStart(2, '0');
@@ -1703,7 +1722,7 @@ export default function App() {
                    <Text style={styles.detailLabel}>{tr('timeOfDay')}</Text>
                 </View>
                </View>
-              {weather.data.hourly && weather.data.hourly.time && (
+              {weather.data && (
                 <>
                   <Text style={styles.sectionTitle}>{tr('hourlyForecast')}</Text>
                   <ScrollView
