@@ -1019,6 +1019,7 @@ export default function App() {
   const [languagePickerVisible, setLanguagePickerVisible] = useState(false);
   const [tempPickerAnim] = useState(() => new Animated.Value(0));
   const lastRequest = useRef(null);
+  const weatherRef = useRef(null);
   const rememberRef = useRef(true);
   const splashOpacity = useRef(new Animated.Value(1)).current;
   const contentOpacity = useRef(new Animated.Value(0)).current;
@@ -1084,9 +1085,20 @@ export default function App() {
       let hasCache = false;
       if (cached) {
         hasCache = true;
-        setWeather({ place: cached.place, data: cached.data, savedAt: cached.savedAt });
+        const snapshot = { place: cached.place, data: cached.data, savedAt: cached.savedAt };
+        weatherRef.current = snapshot;
+        setWeather(snapshot);
         if (cached.query) setCity(cached.query);
         setIsStale(true);
+        // Restore refresh intent from cache so pull-to-refresh / retry
+        // never falls back to geolocation (Scenario A, not B).
+        const cLat = cached.place?.latitude;
+        const cLon = cached.place?.longitude;
+        if (typeof cLat === 'number' && typeof cLon === 'number') {
+          lastRequest.current = { type: 'coords', lat: cLat, lon: cLon, query: cached.query || null };
+        } else if (cached.query) {
+          lastRequest.current = { type: 'city', query: cached.query };
+        }
       }
       if (!remember || !saved) {
         if (active && !saved) detectMyLocation();
@@ -1303,6 +1315,9 @@ export default function App() {
     );
     return data;
   };
+  // Scenario A: refresh by saved coordinates — pure Open-Meteo fetch,
+  // never touches Location.*. Scenario B (geolocation) lives ONLY in
+  // detectMyLocation(), called from the "my location" button / first launch.
   const loadByCoords = async (lat, lon, silent = false) => {
     if (!silent) setLoading(true);
     setError(null);
@@ -1312,27 +1327,32 @@ export default function App() {
     try {
       const [place, data] = await Promise.all([reverseGeocode(lat, lon), fetchWeather(lat, lon)]);
       const savedAt = Date.now();
-      setWeather({ place, data, savedAt });
+      const snapshot = { place, data, savedAt };
+      weatherRef.current = snapshot;
+      setWeather(snapshot);
       setIsStale(false);
       await saveCachedWeather({ place, data, query: place.name, savedAt });
       if (rememberRef.current && place.name && place.name !== tr('currentLocation')) {
         await saveLastCity(place.name);
       }
     } catch (e) {
-       if (isConnectedRef.current === false || isOfflineError(e)) {
-         setError(tr('noInternet'));
-       } else if (e.kind === 'network') {
-         setError(null);
-         setHostUnreachable(true);
-       } else {
-         setError(e.message || tr('weatherFetchFailed'));
-       }
-       if (!silent) setWeather(null);
-     } finally {
-       setLoading(false);
-     }
-   };
-   const detectMyLocation = async () => {
+      if (isConnectedRef.current === false || isOfflineError(e)) {
+        setError(tr('noInternet'));
+      } else if (e.kind === 'network') {
+        setError(null);
+        setHostUnreachable(true);
+      } else {
+        setError(e.message || tr('weatherFetchFailed'));
+      }
+      if (!silent) {
+        weatherRef.current = null;
+        setWeather(null);
+      }
+    } finally {
+      setLoading(false);
+    }
+  };
+  const detectMyLocation = async () => {
      if (isConnectedRef.current === false) {
        setError(tr('noInternet'));
        return;
@@ -1373,9 +1393,16 @@ export default function App() {
       const place = await geocode(query);
       const data = await fetchWeather(place.latitude, place.longitude);
       const savedAt = Date.now();
-      setWeather({ place, data, savedAt });
+      const snapshot = { place, data, savedAt };
+      weatherRef.current = snapshot;
+      setWeather(snapshot);
       setIsStale(false);
       await saveCachedWeather({ place, data, query, savedAt });
+      // Upgrade intent to coords so the next refresh uses saved
+      // coordinates directly (no re-geocode, never geolocation).
+      if (typeof place.latitude === 'number' && typeof place.longitude === 'number') {
+        lastRequest.current = { type: 'coords', lat: place.latitude, lon: place.longitude, query };
+      }
       if (rememberRef.current) {
         await saveLastCity(query);
       }
@@ -1388,7 +1415,10 @@ export default function App() {
       } else {
         setError(e.message || tr('weatherFetchFailed'));
       }
-      if (!silent) setWeather(null);
+      if (!silent) {
+        weatherRef.current = null;
+        setWeather(null);
+      }
     } finally {
       setLoading(false);
     }
@@ -1408,6 +1438,26 @@ export default function App() {
     }
     doSearch(query);
   };
+  // Shared refresh target: Scenario A only (saved city coords).
+  // NEVER calls Location.* — no permission modal from refresh/retry.
+  const resolveRefreshTarget = () => {
+    const last = lastRequest.current;
+    if (last && typeof last.lat === 'number' && typeof last.lon === 'number') {
+      return { lat: last.lat, lon: last.lon };
+    }
+    if (last && last.query) {
+      return { query: last.query };
+    }
+    const p = weatherRef.current?.place;
+    if (p && typeof p.latitude === 'number' && typeof p.longitude === 'number') {
+      return { lat: p.latitude, lon: p.longitude };
+    }
+    const typed = city.trim();
+    if (typed) {
+      return { query: typed };
+    }
+    return null;
+  };
   const retryConnection = async () => {
     if (retrying) return;
     setRetrying(true);
@@ -1416,13 +1466,12 @@ export default function App() {
       updateConnection(!!state.isConnected);
       if (!state.isConnected) return;
       setHostUnreachable(false);
-      const last = lastRequest.current;
-      if (!last) {
-        await detectMyLocation();
-      } else if (last.type === 'coords') {
-        await loadByCoords(last.lat, last.lon);
+      const target = resolveRefreshTarget();
+      if (!target) return;
+      if (target.lat !== undefined) {
+        await loadByCoords(target.lat, target.lon);
       } else {
-        await doSearch(last.query);
+        await doSearch(target.query);
       }
     } finally {
       setRetrying(false);
@@ -1432,13 +1481,12 @@ export default function App() {
     if (refreshing) return;
     setRefreshing(true);
     try {
-      const last = lastRequest.current;
-      if (!last) {
-        await detectMyLocation();
-      } else if (last.type === 'coords') {
-        await loadByCoords(last.lat, last.lon, true);
+      const target = resolveRefreshTarget();
+      if (!target) return;
+      if (target.lat !== undefined) {
+        await loadByCoords(target.lat, target.lon, true);
       } else {
-        await doSearch(last.query, true);
+        await doSearch(target.query, true);
       }
     } finally {
       setRefreshing(false);
