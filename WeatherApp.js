@@ -828,6 +828,13 @@ function isNightHour(isoTime) {
   return h >= 21 || h < 6;
 }
 
+// True when a "country" string is actually just coordinates
+// (e.g. old cached snapshots stored "55.75,37.62" as country).
+// Such values must not be rendered next to the real coordinates.
+function isCoordsLikeText(s) {
+  return /^\s*-?\d+(\.\d+)?\s*,\s*-?\d+(\.\d+)?\s*$/.test(String(s || ''));
+}
+
 // Next N timeline entries (hourly forecast + sunrise/sunset events) starting from current hour.
 function getHourlyTimeline(data, count = 24) {
   if (!data) return [];
@@ -1304,10 +1311,10 @@ export default function App() {
      }
      return {
        name: tr('currentLocation'),
-       country: `${lat.toFixed(2)}, ${lon.toFixed(2)}`,
-      latitude: lat,
-      longitude: lon,
-    };
+       country: '',
+       latitude: lat,
+       longitude: lon,
+     };
   };
   const fetchWeather = async (lat, lon) => {
     const data = await fetchJson(
@@ -1438,6 +1445,44 @@ export default function App() {
     }
     doSearch(query);
   };
+  // Swipe/Retry refresh: fetch ONLY fresh weather data for the currently
+  // displayed place and keep its name/country untouched. This is what
+  // prevents "Дмитров" from turning into "Текущее местоположение" after
+  // a swipe — unlike loadByCoords(), it never runs reverseGeocode().
+  const refreshCurrentWeather = async (silent = false) => {
+    const cur = weatherRef.current;
+    if (!cur || !cur.place || typeof cur.place.latitude !== 'number' || typeof cur.place.longitude !== 'number') {
+      return false;
+    }
+    if (!silent) setLoading(true);
+    setError(null);
+    try {
+      const data = await fetchWeather(cur.place.latitude, cur.place.longitude);
+      const savedAt = Date.now();
+      const snapshot = { place: cur.place, data, savedAt };
+      weatherRef.current = snapshot;
+      setWeather(snapshot);
+      setIsStale(false);
+      const q = lastRequest.current?.query ?? cur.place.name;
+      if (typeof cur.place.latitude === 'number' && typeof cur.place.longitude === 'number') {
+        lastRequest.current = { type: 'coords', lat: cur.place.latitude, lon: cur.place.longitude, query: q ?? null };
+      }
+      await saveCachedWeather({ place: cur.place, data, query: q, savedAt });
+      return true;
+    } catch (e) {
+      if (isConnectedRef.current === false || isOfflineError(e)) {
+        setError(tr('noInternet'));
+      } else if (e.kind === 'network') {
+        setError(null);
+        setHostUnreachable(true);
+      } else {
+        setError(e.message || tr('weatherFetchFailed'));
+      }
+      return false;
+    } finally {
+      if (!silent) setLoading(false);
+    }
+  };
   // Shared refresh target: Scenario A only (saved city coords).
   // NEVER calls Location.* — no permission modal from refresh/retry.
   const resolveRefreshTarget = () => {
@@ -1466,6 +1511,10 @@ export default function App() {
       updateConnection(!!state.isConnected);
       if (!state.isConnected) return;
       setHostUnreachable(false);
+      // Primary path: keep the current header, only reload the data.
+      const hadPlace = !!weatherRef.current?.place;
+      if (await refreshCurrentWeather(false)) return;
+      if (hadPlace) return; // keep stale city on screen, never wipe/replace its header
       const target = resolveRefreshTarget();
       if (!target) return;
       if (target.lat !== undefined) {
@@ -1481,6 +1530,10 @@ export default function App() {
     if (refreshing) return;
     setRefreshing(true);
     try {
+      // Primary path: keep the current header, only reload the data.
+      const hadPlace = !!weatherRef.current?.place;
+      if (await refreshCurrentWeather(true)) return;
+      if (hadPlace) return; // silent swipe fail: keep city header, don't touch anything
       const target = resolveRefreshTarget();
       if (!target) return;
       if (target.lat !== undefined) {
@@ -1739,8 +1792,15 @@ export default function App() {
                 </Text>
               )}
               <Text style={styles.subLabel}>
-                {weather.place.country} · {weather.place.latitude.toFixed(2)},
-                {weather.place.longitude.toFixed(2)}
+                {(() => {
+                  const coordsLabel = `${weather.place.latitude.toFixed(2)}, ${weather.place.longitude.toFixed(2)}`;
+                  const norm = (s) => String(s || '').replace(/\s+/g, '');
+                  const showCountry =
+                    weather.place.country &&
+                    !isCoordsLikeText(weather.place.country) &&
+                    norm(weather.place.country) !== norm(coordsLabel);
+                  return `${showCountry ? `${weather.place.country} · ` : ''}${coordsLabel}`;
+                })()}
               </Text>
               {cityTime && <Text style={styles.cityTime}>{tr('localTime')} {cityTime}</Text>}
               <View style={styles.bigIconWrap}>
