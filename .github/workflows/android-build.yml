@@ -35,8 +35,10 @@ jobs:
           java-version: '17'
           cache: 'gradle'
 
-      - name: Setup Android SDK
-        uses: android-actions/setup-android@v3
+      # No "Setup Android SDK" step: ubuntu-latest runners already ship a full
+      # Android SDK (ANDROID_HOME set, licenses accepted). The
+      # android-actions/setup-android action is broken — it tries to install
+      # the obsolete 'tools' package ("Failed to find package 'tools'").
 
       - name: Prebuild Android project
         run: npx expo prebuild --platform android --clean
