@@ -6,6 +6,9 @@ import {
   Text,
   StyleSheet,
   TouchableOpacity,
+  Pressable,
+  Platform,
+  ToastAndroid,
   TextInput,
   ActivityIndicator,
   ScrollView,
@@ -20,7 +23,9 @@ import {
    StatusBar,
    Modal,
    TouchableWithoutFeedback,
- } from 'react-native';
+  } from 'react-native';
+import * as Clipboard from 'expo-clipboard';
+import * as Haptics from 'expo-haptics';
  import ScreenWrapper from './ScreenWrapper';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Svg, { Circle, Defs, G, Line, Path, RadialGradient, Rect, Stop } from 'react-native-svg';
@@ -976,6 +981,8 @@ export default function App() {
   const [hostUnreachable, setHostUnreachable] = useState(false);
   const [retrying, setRetrying] = useState(false);
   const [dismissedMsg, setDismissedMsg] = useState(null);
+  const [coordsCopied, setCoordsCopied] = useState(false);
+  const copyTimer = useRef(null);
   const [cityTime, setCityTime] = useState(null);
   const [isSplashVisible, setIsSplashVisible] = useState(true);
   const [isContentVisible, setIsContentVisible] = useState(false);
@@ -1503,6 +1510,30 @@ export default function App() {
     }
     return null;
   };
+  // Long-press on the coords subtitle: copy "lat, lon" to clipboard
+  // with light haptic feedback. Pressable doesn't steal scroll gestures,
+  // so pull-to-refresh keeps working as usual.
+  const copyCoords = async () => {
+    const p = weather?.place;
+    if (!p || typeof p.latitude !== 'number' || typeof p.longitude !== 'number') return;
+    const label = `${p.latitude.toFixed(2)}, ${p.longitude.toFixed(2)}`;
+    try {
+      await Clipboard.setStringAsync(label);
+    } catch (e) {}
+    try {
+      await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    } catch (e) {}
+    if (Platform.OS === 'android') {
+      ToastAndroid.show(tr('coordsCopied'), ToastAndroid.SHORT);
+    } else {
+      setCoordsCopied(true);
+      if (copyTimer.current) clearTimeout(copyTimer.current);
+      copyTimer.current = setTimeout(() => setCoordsCopied(false), 1500);
+    }
+  };
+  useEffect(() => () => {
+    if (copyTimer.current) clearTimeout(copyTimer.current);
+  }, []);
   const retryConnection = async () => {
     if (retrying) return;
     setRetrying(true);
@@ -1791,17 +1822,22 @@ export default function App() {
                   {tr('cachedAt', { time: formatCacheTime(weather.savedAt) })}
                 </Text>
               )}
-              <Text style={styles.subLabel}>
-                {(() => {
-                  const coordsLabel = `${weather.place.latitude.toFixed(2)}, ${weather.place.longitude.toFixed(2)}`;
-                  const norm = (s) => String(s || '').replace(/\s+/g, '');
-                  const showCountry =
-                    weather.place.country &&
-                    !isCoordsLikeText(weather.place.country) &&
-                    norm(weather.place.country) !== norm(coordsLabel);
-                  return `${showCountry ? `${weather.place.country} · ` : ''}${coordsLabel}`;
-                })()}
-              </Text>
+              <Pressable onLongPress={copyCoords} delayLongPress={500} hitSlop={8}>
+                <Text style={styles.subLabel}>
+                  {(() => {
+                    const coordsLabel = `${weather.place.latitude.toFixed(2)}, ${weather.place.longitude.toFixed(2)}`;
+                    const norm = (s) => String(s || '').replace(/\s+/g, '');
+                    const showCountry =
+                      weather.place.country &&
+                      !isCoordsLikeText(weather.place.country) &&
+                      norm(weather.place.country) !== norm(coordsLabel);
+                    return `${showCountry ? `${weather.place.country} · ` : ''}${coordsLabel}`;
+                  })()}
+                </Text>
+                {coordsCopied && Platform.OS !== 'android' && (
+                  <Text style={styles.copiedHint}>{tr('coordsCopied')}</Text>
+                )}
+              </Pressable>
               {cityTime && <Text style={styles.cityTime}>{tr('localTime')} {cityTime}</Text>}
               <View style={styles.bigIconWrap}>
                 {currentType === 'clear' ? (
@@ -2330,6 +2366,7 @@ const buildStyles = (theme, fs, insets) =>
     cityName: { fontSize: fs.large * 1.15, fontWeight: '700', color: theme.text, textAlign: 'center' },
     subLabel: { fontSize: fs.small, color: theme.textMuted, textAlign: 'center', marginTop: fs.spacing * 0.125 },
     staleLabel: { fontSize: fs.small * 0.9, color: theme.textMuted, textAlign: 'center', marginTop: fs.spacing * 0.125, fontStyle: 'italic' },
+    copiedHint: { fontSize: fs.small * 0.9, color: theme.textSecondary, textAlign: 'center', marginTop: fs.spacing * 0.125 },
     cityTime: { fontSize: fs.base, color: theme.textSecondary, textAlign: 'center', marginTop: fs.spacing * 0.25 },
     bigIconWrap: { alignItems: 'center', marginTop: fs.spacing },
     temperature: { fontSize: fs.large * 2.5, fontWeight: '300', color: theme.text, textAlign: 'center' },

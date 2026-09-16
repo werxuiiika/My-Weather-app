@@ -111,5 +111,6 @@
   "hourlyForecast": "Hourly forecast",
   "now": "Now",
   "sunrise": "Sunrise",
-  "sunset": "Sunset"
+  "sunset": "Sunset",
+  "coordsCopied": "Coordinates copied"
 }
