@@ -21,27 +21,12 @@ import { useTheme } from './ThemeContext';
 import { useFontSize } from './FontSizeContext';
 import { useTranslation } from 'react-i18next';
 import NetInfo from '@react-native-community/netinfo';
-import { geocodeCity, isOfflineError } from './geocoding';
+import { geocodeCity, isOfflineError, isRegionLike } from './geocoding';
 
 const SAVED_CITIES_KEY = 'saved_cities_list';
 const LAST_SELECTED_CITY_KEY = 'last_selected_city';
 const BASE_URL = 'https://api.open-meteo.com/v1/forecast';
 const FETCH_TIMEOUT_MS = 15000;
-
-// Resolve a localized city name from coordinates. BigDataCloud supports
-// localityLanguage (ru/en/...) and needs no API key.
-async function resolveCityName(lat, lon, lang) {
-  try {
-    const data = await fetchJson(
-      `https://api.bigdatacloud.net/data/reverse-geocode-client?latitude=${lat}&longitude=${lon}&localityLanguage=${lang || 'ru'}`,
-      10000,
-      0
-    );
-    return data.city || data.locality || data.principalSubdivision || null;
-  } catch {
-    return null;
-  }
-}
 
 // fetch with timeout + single retry. Transient TLS failures (common
 // through VPNs) usually succeed on the second attempt.
@@ -183,6 +168,7 @@ export default function CityListScreen() {
       alignItems: 'flex-end',
       justifyContent: 'center',
     },
+
     cityName: {
       fontSize: fs.large * 1.1,
       fontWeight: '800',
@@ -201,29 +187,39 @@ export default function CityListScreen() {
       alignItems: 'center',
       gap: 6,
     },
+    // Xiaomi-style temp block, right-pinned like min/max: right edges
+    // coincide, so every "°" lands exactly above the last min/max "°".
+    // Proportions match Xiaomi too: min/max is ~1/3 of the big temp, so the
+    // bottom line is as wide as (or wider than) the top one and the top
+    // digits never stick out past the bottom width.
+    cityTemp: {
+      fontSize: fs.large * 1.95,
+      fontWeight: '700',
+      color: '#FFFFFF',
+      lineHeight: fs.large * 2.15,
+      textAlign: 'right',
+      fontVariant: ['tabular-nums'],
+    },
     tempRow: {
       flexDirection: 'row',
       alignItems: 'flex-start',
     },
-    cityTemp: {
-      fontSize: fs.large * 2.2,
-      fontWeight: '700',
-      color: '#FFFFFF',
-      lineHeight: fs.large * 2.4,
-    },
+    // Separate degree mark, glued to the digit (marginLeft 1), its ring
+    // top flush with the digit cap height (small positive marginTop).
+    // Glued => can't drift away on its own.
     tempDegree: {
       fontSize: fs.large * 1.1,
       fontWeight: '700',
-      color: '#FFFFFF',
-      marginTop: -4,
+      marginTop: 4,
       marginLeft: 1,
     },
     cityMinMax: {
-      fontSize: fs.small * 0.95,
+      fontSize: fs.small * 1.25,
       color: 'rgba(255, 255, 255, 0.7)',
       marginTop: 2,
       fontWeight: '600',
       textAlign: 'right',
+      fontVariant: ['tabular-nums'],
     },
   }), [theme, fs]);
 
@@ -284,22 +280,21 @@ export default function CityListScreen() {
           continue;
         }
         try {
-          // Prefer stored coordinates: they are language-independent, so a
-          // rename works even if the old name is in another language.
+          // STRICT: a saved city's name is frozen at add time and is NEVER
+          // rewritten on refresh. Refresh uses stored coordinates only —
+          // no geocoding, no reverse-geocoding (both can return a district
+          // like "Прионежский район" or "Бор" instead of the real city).
           let lat = city.latitude;
           let lon = city.longitude;
-          let resolvedName = city.name;
           if (lat === undefined || lon === undefined) {
-            // Current language -> English -> transliterated variants.
+            // Legacy entry without coordinates: one explicit lookup.
+            // Region hits are ignored: a stored city must keep pointing
+            // at a real populated place, never at a country center.
             const hit = await geocodeCity(city.name, currentLang, fetchJson);
-            if (hit) {
+            if (hit && !isRegionLike(hit)) {
               lat = hit.latitude;
               lon = hit.longitude;
-              resolvedName = hit.name || city.name;
             }
-          } else {
-            const localized = await resolveCityName(lat, lon, currentLang);
-            if (localized) resolvedName = localized;
           }
 
           if (lat !== undefined && lon !== undefined) {
@@ -317,7 +312,7 @@ export default function CityListScreen() {
                 ...city,
                 latitude: lat,
                 longitude: lon,
-                name: resolvedName,
+                name: city.name,
                 temp: `${temp}`,
                 minMax: min !== '' && max !== '' ? `${max}° / ${min}°` : '',
                 condition: getWeatherConditionText(code),
@@ -408,6 +403,11 @@ export default function CityListScreen() {
 
       if (!hit) {
         Alert.alert(t('cities.error'), t('cities.city_not_found'));
+        setIsLoading(false);
+        return;
+      }
+      if (isRegionLike(hit)) {
+        Alert.alert(t('cities.error'), t('enterCityNotCountry'));
         setIsLoading(false);
         return;
       }

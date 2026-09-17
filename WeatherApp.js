@@ -43,7 +43,7 @@ import { SettingsContext } from './SettingsContext';
 import { useFontSize } from './FontSizeContext';
 import { useTheme } from './ThemeContext';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { geocodeCity, isOfflineError } from './geocoding';
+import { geocodeCity, isOfflineError, isRegionLike } from './geocoding';
 
 const BASE_URL = 'https://api.open-meteo.com/v1/forecast';
 const TIMEOUT_MS = 10000;
@@ -1119,9 +1119,15 @@ export default function App() {
         return;
       }
       setCity(saved);
-      // Silent background refresh when cache is already on screen,
-      // full loading state only when there is nothing to show yet.
-      doSearch(saved, hasCache);
+      // Strict rule: NEVER re-geocode on launch. If we have a cached
+      // place with coordinates, refresh data in place and keep its
+      // frozen name/country. doSearch() runs only when there is no
+      // cached place at all (legacy cache) — i.e. an explicit lookup.
+      if (weatherRef.current?.place) {
+        refreshCurrentWeather(hasCache);
+      } else {
+        doSearch(saved, hasCache);
+      }
     };
     init();
     const unsubscribe = NetInfo.addEventListener((state) => {
@@ -1300,6 +1306,9 @@ export default function App() {
     const hit = await geocodeCity(query, i18n.language || 'ru', fetchJson);
     if (!hit) {
       throw new Error(tr('cityNotFound'));
+    }
+    if (isRegionLike(hit)) {
+      throw new Error(tr('enterCityNotCountry'));
     }
     return hit;
   };

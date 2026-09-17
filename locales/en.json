@@ -112,5 +112,6 @@
   "now": "Now",
   "sunrise": "Sunrise",
   "sunset": "Sunset",
-  "coordsCopied": "Coordinates copied"
+  "coordsCopied": "Coordinates copied",
+  "enterCityNotCountry": "Please enter a specific city, not a country or region"
 }

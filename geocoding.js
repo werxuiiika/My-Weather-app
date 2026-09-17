@@ -151,41 +151,76 @@ export function buildSearchCandidates(query) {
   return candidates;
 }
 
-async function searchOnce(query, lang, fetchFn) {
+async function searchAll(query, lang, fetchFn) {
   const data = await fetchFn(
-    `${GEO_URL}?name=${encodeURIComponent(query)}&count=5&language=${lang}&format=json`
+    `${GEO_URL}?name=${encodeURIComponent(query)}&count=10&language=${lang}&format=json`
   );
-  if (data && data.results && data.results.length > 0) {
-    return data.results[0];
+  if (data && Array.isArray(data.results) && data.results.length > 0) {
+    return data.results;
   }
-  return null;
+  return [];
+}
+
+// Feature codes (GeoNames, used by Open-Meteo) that mean a real
+// populated place: PPL = populated place, PPLA* = admin division seats,
+// PPLC = capital, PPLG = seat of government.
+const CITY_FEATURE_CODES = new Set([
+  'PPL', 'PPLA', 'PPLA2', 'PPLA3', 'PPLA4', 'PPLC', 'PPLG',
+]);
+
+// True when a result is a country / administrative region rather than
+// a city (PCL* = political entity, ADM* = administrative division).
+export function isRegionLike(result) {
+  const fc = String(result?.feature_code || '').toUpperCase();
+  if (!fc) return false;
+  return fc.startsWith('PCL') || fc.startsWith('ADM') || fc === 'AREA' || fc === 'RGN' || fc === 'CONT';
+}
+
+// Pick the best CITY from a results array — never blindly results[0],
+// which may be a district, region or weather station. Prefers real
+// populated places, breaking ties by population (most populous wins).
+// Returns null when the array holds no usable city.
+function pickBestCity(results) {
+  const list = Array.isArray(results) ? results : [];
+  if (list.length === 0) return null;
+  const cities = list.filter((r) =>
+    CITY_FEATURE_CODES.has(String(r?.feature_code || '').toUpperCase())
+  );
+  const pool = cities.length > 0 ? cities : list.filter((r) => !isRegionLike(r));
+  if (pool.length === 0) return null;
+  // No feature_code info at all -> keep legacy behavior (API order).
+  if (!pool.some((r) => r && r.feature_code)) return pool[0];
+  return [...pool].sort((a, b) => (b.population || 0) - (a.population || 0))[0];
 }
 
 // Strict algorithm:
 //  1. Query with the current app language.
 //  2. If empty -> same query with language=en.
 //  3. If still empty and the query contains Cyrillic -> transliterated
-//     Latin variants with language=en, first hit wins.
-// Returns the first result object or null (caller shows "not found").
+//     Latin variants with language=en, first usable city wins.
+// Returns the best city object, a country/region object (check with
+// isRegionLike() — caller should ask for a specific city instead),
+// or null (caller shows "not found").
 export async function geocodeCity(query, lang, fetchFn) {
   const q = String(query || '').trim();
   if (!q) return null;
   const currentLang = lang || 'ru';
 
-  const first = await searchOnce(q, currentLang, fetchFn);
-  if (first) return first;
-
-  if (currentLang !== 'en') {
-    const second = await searchOnce(q, 'en', fetchFn);
-    if (second) return second;
+  const attempts = [[q, currentLang]];
+  if (currentLang !== 'en') attempts.push([q, 'en']);
+  if (/[а-яё]/i.test(q)) {
+    for (const c of buildSearchCandidates(q)) attempts.push([c, 'en']);
   }
 
-  if (/[а-яё]/i.test(q)) {
-    const candidates = buildSearchCandidates(q);
-    for (const c of candidates) {
-      const hit = await searchOnce(c, 'en', fetchFn);
-      if (hit) return hit;
+  let regionFallback = null;
+  for (const [text, lg] of attempts) {
+    const results = await searchAll(text, lg, fetchFn);
+    if (results.length === 0) continue;
+    const city = pickBestCity(results);
+    if (city) return city;
+    if (!regionFallback) {
+      regionFallback = results.find((r) => isRegionLike(r)) || null;
     }
   }
-  return null;
+  return regionFallback;
 }
