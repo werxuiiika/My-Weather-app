@@ -12,6 +12,7 @@ export const authorTheme = {
   surfaceRaised: '#232b40', border: '#262e45',
   text: '#ffffff', textSecondary: '#aab3cc', textMuted: '#7f8db0',
   accent: '#4a90d9', accent2: '#38b06b', onAccent: '#ffffff',
+  danger: '#FF453A',
   dim: 'rgba(8, 11, 20, 0.5)',
 };
 
@@ -21,6 +22,7 @@ export const graphiteTheme = {
   surfaceRaised: '#232933', border: '#2a303b',
   text: '#ffffff', textSecondary: '#a9b1bd', textMuted: '#7c8698',
   accent: '#4a90d9', accent2: '#38b06b', onAccent: '#ffffff',
+  danger: '#FF453A',
   dim: 'rgba(0, 0, 0, 0.5)',
 };
 
@@ -30,6 +32,7 @@ export const lightTheme = {
   surfaceRaised: '#ffffff', border: '#dfe6f2',
   text: '#1c2333', textSecondary: '#4d5872', textMuted: '#8590aa',
   accent: '#3573c2', accent2: '#25945a', onAccent: '#ffffff',
+  danger: '#D9342E',
   dim: 'rgba(15, 22, 40, 0.35)',
 };
 

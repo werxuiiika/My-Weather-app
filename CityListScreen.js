@@ -22,6 +22,7 @@ import { useFontSize } from './FontSizeContext';
 import { useTranslation } from 'react-i18next';
 import NetInfo from '@react-native-community/netinfo';
 import { geocodeCity, isOfflineError, isRegionLike } from './geocoding';
+import ConfirmDeleteModal from './ConfirmDeleteModal';
 
 const SAVED_CITIES_KEY = 'saved_cities_list';
 const LAST_SELECTED_CITY_KEY = 'last_selected_city';
@@ -62,6 +63,7 @@ export default function CityListScreen() {
   const [searchQuery, setSearchQuery] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
+  const [deleteTarget, setDeleteTarget] = useState(null);
 
   const styles = useMemo(() => StyleSheet.create({
     safe: { flex: 1 },
@@ -445,22 +447,19 @@ export default function CityListScreen() {
   };
 
   const handleDeleteCity = (id, name) => {
-    Alert.alert(
-      t('cities.delete_title'),
-      t('cities.delete_message', { name }),
-      [
-        { text: t('cities.cancel'), style: 'cancel' },
-        {
-          text: t('cities.delete'),
-          style: 'destructive',
-          onPress: async () => {
-            const updated = cities.filter(c => c.id !== id);
-            setCities(updated);
-            await AsyncStorage.setItem(SAVED_CITIES_KEY, JSON.stringify(updated));
-          },
-        },
-      ]
-    );
+    setDeleteTarget({ id, name });
+  };
+
+  const handleConfirmDelete = async () => {
+    if (!deleteTarget) return;
+    const updated = cities.filter(c => c.id !== deleteTarget.id);
+    setCities(updated);
+    await AsyncStorage.setItem(SAVED_CITIES_KEY, JSON.stringify(updated));
+    setDeleteTarget(null);
+  };
+
+  const handleCancelDelete = () => {
+    setDeleteTarget(null);
   };
 
   const handleSelectCity = async (cityName) => {
@@ -583,6 +582,13 @@ export default function CityListScreen() {
           }
         />
       )}
+
+      <ConfirmDeleteModal
+        visible={!!deleteTarget}
+        cityName={deleteTarget?.name}
+        onCancel={handleCancelDelete}
+        onConfirm={handleConfirmDelete}
+      />
     </ScreenWrapper>
   );
 }
