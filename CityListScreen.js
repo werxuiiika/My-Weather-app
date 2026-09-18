@@ -1,17 +1,6 @@
-import React, { useState, useEffect, useMemo } from 'react';
-import {
-  View,
-  Text,
-  StyleSheet,
-  TextInput,
-  FlatList,
-  Alert,
-  StatusBar,
-  ActivityIndicator,
-  RefreshControl,
-  Pressable,
-  TouchableOpacity,
-} from 'react-native';
+import React, { useState, useEffect, useMemo, useRef, useCallback } from 'react';
+import { View, Text, TextInput, FlatList, Alert, StatusBar, ActivityIndicator, RefreshControl, Pressable, TouchableOpacity, StyleSheet } from 'react-native';
+import { useSharedValue } from 'react-native-reanimated';
 import ScreenWrapper from './ScreenWrapper';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
@@ -23,6 +12,7 @@ import { useTranslation } from 'react-i18next';
 import NetInfo from '@react-native-community/netinfo';
 import { geocodeCity, isOfflineError, isRegionLike } from './geocoding';
 import ConfirmDeleteModal from './ConfirmDeleteModal';
+import DraggableCityCard from './DraggableCityCard';
 
 const SAVED_CITIES_KEY = 'saved_cities_list';
 const LAST_SELECTED_CITY_KEY = 'last_selected_city';
@@ -63,7 +53,24 @@ export default function CityListScreen() {
   const [searchQuery, setSearchQuery] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
+   const [isSelectionMode, setIsSelectionMode] = useState(false);
+  const [selectedCities, setSelectedCities] = useState(new Set());
   const [deleteTarget, setDeleteTarget] = useState(null);
+
+  const CARD_HEIGHT = 90;
+
+  const activeIndex = useSharedValue(-1);
+  const dragOffset = useSharedValue(0);
+  const positionsRef = useRef<Array<number>>([]);
+
+  const onReorder = useCallback(async (fromIndex, toIndex) => {
+    if (fromIndex < 1 || toIndex < 1) return;
+    const newCities = [...cities];
+    const [moved] = newCities.splice(fromIndex, 1);
+    newCities.splice(toIndex, 0, moved);
+    setCities(newCities);
+    await AsyncStorage.setItem(SAVED_CITIES_KEY, JSON.stringify(newCities));
+  }, [cities]);
 
   const styles = useMemo(() => StyleSheet.create({
     safe: { flex: 1 },
@@ -222,6 +229,40 @@ export default function CityListScreen() {
       fontWeight: '600',
       textAlign: 'right',
       fontVariant: ['tabular-nums'],
+    },
+    checkbox: {
+      width: 24,
+      height: 24,
+      borderRadius: 12,
+      borderWidth: 2,
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    batchBottomBar: {
+      position: 'absolute',
+      bottom: 0,
+      left: 0,
+      right: 0,
+      backgroundColor: theme.surface,
+      borderTopWidth: 1,
+      borderTopColor: theme.border,
+      paddingHorizontal: fs.spacing * 1.5,
+      paddingVertical: fs.spacing,
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    batchDeleteButton: {
+      width: '100%',
+      borderRadius: 16,
+      paddingVertical: fs.spacing * 0.85,
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    batchDeleteText: {
+      color: '#FFFFFF',
+      fontSize: fs.base,
+      fontWeight: '700',
     },
   }), [theme, fs]);
 
@@ -446,16 +487,85 @@ export default function CityListScreen() {
     }
   };
 
-  const handleDeleteCity = (id, name) => {
-    setDeleteTarget({ id, name });
+  const handleLongPressCity = (id, name, index) => {
+    if (index === 0) return; // protected first item
+    if (!isSelectionMode) {
+      setIsSelectionMode(true);
+      setSelectedCities(new Set([id]));
+    } else {
+      toggleSelectCity(id);
+    }
+  };
+
+  const handlePressCity = (id, name, index) => {
+    if (index === 0) {
+      handleSelectCity(name);
+      return;
+    }
+    if (isSelectionMode) {
+      toggleSelectCity(id);
+    } else {
+      handleSelectCity(name);
+    }
+  };
+
+  const moveCity = async (fromIndex, toIndex) => {
+    if (fromIndex === 0 || toIndex === 0) return; // index 0 is protected
+    if (toIndex < 1 || toIndex >= cities.length) return;
+    const newCities = [...cities];
+    const [moved] = newCities.splice(fromIndex, 1);
+    newCities.splice(toIndex, 0, moved);
+    setCities(newCities);
+    await AsyncStorage.setItem(SAVED_CITIES_KEY, JSON.stringify(newCities));
+  };
+
+  const toggleSelectCity = (id) => {
+    setSelectedCities(prev => {
+      const next = new Set(prev);
+      if (next.has(id)) {
+        next.delete(id);
+      } else {
+        next.add(id);
+      }
+      return next;
+    });
+  };
+
+  const getPluralSelectedText = (count) => {
+    if (count % 10 === 1 && count % 100 !== 11) {
+      return t('cities.selected_count_one', { count });
+    } else if ([2, 3, 4].includes(count % 10) && ![12, 13, 14].includes(count % 100)) {
+      return t('cities.selected_count_few', { count });
+    }
+    return t('cities.selected_count_many', { count });
+  };
+
+  const cancelSelectionMode = () => {
+    setIsSelectionMode(false);
+    setSelectedCities(new Set());
+  };
+
+  const handlePromptBatchDelete = () => {
+    if (selectedCities.size === 0) return;
+    setDeleteTarget({ count: selectedCities.size });
   };
 
   const handleConfirmDelete = async () => {
-    if (!deleteTarget) return;
-    const updated = cities.filter(c => c.id !== deleteTarget.id);
-    setCities(updated);
-    await AsyncStorage.setItem(SAVED_CITIES_KEY, JSON.stringify(updated));
-    setDeleteTarget(null);
+    if (isSelectionMode) {
+      if (selectedCities.size === 0) return;
+      const updated = cities.filter(c => !selectedCities.has(c.id));
+      setCities(updated);
+      await AsyncStorage.setItem(SAVED_CITIES_KEY, JSON.stringify(updated));
+      setIsSelectionMode(false);
+      setSelectedCities(new Set());
+      setDeleteTarget(null);
+    } else {
+      if (!deleteTarget) return;
+      const updated = cities.filter(c => c.id !== deleteTarget.id);
+      setCities(updated);
+      await AsyncStorage.setItem(SAVED_CITIES_KEY, JSON.stringify(updated));
+      setDeleteTarget(null);
+    }
   };
 
   const handleCancelDelete = () => {
@@ -471,62 +581,23 @@ export default function CityListScreen() {
     }
   };
 
-  const renderItem = ({ item }) => {
-    const isLight = theme.mode === 'light';
-    // Night cards are always dark -> use white text even in light theme
-    const darkCard = !!item.isNight;
-    const useDarkText = isLight && !darkCard;
-    const mainText = useDarkText ? '#1e293b' : '#FFFFFF';
-    const subText = useDarkText ? 'rgba(30, 41, 59, 0.75)' : 'rgba(255, 255, 255, 0.8)';
-    const minMaxText = useDarkText ? 'rgba(30, 41, 59, 0.7)' : 'rgba(255, 255, 255, 0.7)';
-    const cardColor = item.weathercode !== undefined
-      ? getWeatherCardColor(item.weathercode, item.isNight)
-      : (isLight ? '#b9c9d8' : '#4a6b8a');
-    const weatherIcon = item.weathercode !== undefined
-      ? getWeatherIcon(item.weathercode, item.isNight)
-      : 'cloudy';
-
+  const renderItem = ({ item, index }) => {
     return (
-      <Pressable
-        style={({ pressed }) => [
-          styles.cardContainer,
-          isLight && styles.cardContainerLight,
-          { transform: [{ scale: pressed ? 0.97 : 1 }] },
-        ]}
-        onPress={() => handleSelectCity(item.name)}
-        onLongPress={() => handleDeleteCity(item.id, item.name)}
-      >
-        <View
-          style={[styles.cardGradient, { backgroundColor: cardColor }]}
-        >
-          <View style={styles.cardBody}>
-            <View style={styles.cardLeft}>
-              <Text
-                style={[styles.cityName, { color: mainText }]}
-                numberOfLines={1}
-                ellipsizeMode="tail"
-                adjustsFontSizeToFit
-                minimumFontScale={0.65}
-              >
-                {item.name}
-              </Text>
-              <View style={styles.conditionRow}>
-                <Ionicons name={weatherIcon} size={15} color={useDarkText ? 'rgba(30, 41, 59, 0.75)' : 'rgba(255, 255, 255, 0.85)'} />
-                <Text style={[styles.cityCondition, { color: subText }]} numberOfLines={1} ellipsizeMode="tail">
-                  {item.condition || t('condition.cloudy')}
-                </Text>
-              </View>
-            </View>
-            <View style={styles.cardRight}>
-              <View style={styles.tempRow}>
-                <Text style={[styles.cityTemp, { color: mainText }]}>{item.temp || '0'}</Text>
-                <Text style={[styles.tempDegree, { color: mainText }]}>°</Text>
-              </View>
-              <Text style={[styles.cityMinMax, { color: minMaxText }]}>{item.minMax || ''}</Text>
-            </View>
-          </View>
-        </View>
-      </Pressable>
+       <DraggableCityCard
+        item={item}
+        index={index}
+        isFirst={index === 0}
+        isSelectionMode={isSelectionMode}
+        isSelected={selectedCities.has(item.id)}
+        theme={theme}
+        fs={fs}
+        t={t}
+        onSelectToggle={handlePressCity}
+        dragOffset={dragOffset}
+        activeIndex={activeIndex}
+         onReorder={onReorder}
+         itemCount={cities.length}
+       />
     );
   };
 
@@ -536,9 +607,9 @@ export default function CityListScreen() {
       <View style={[styles.header, { borderBottomColor: theme.border }]}>
         <TouchableOpacity
           style={[styles.backButton, { backgroundColor: theme.surfaceRaised }]}
-          onPress={() => navigation.goBack()}
+          onPress={() => isSelectionMode ? cancelSelectionMode() : navigation.goBack()}
         >
-          <Ionicons name="arrow-back" size={22} color={theme.text} />
+          <Ionicons name={isSelectionMode ? "close" : "arrow-back"} size={22} color={theme.text} />
         </TouchableOpacity>
         <Text
           style={[styles.headerTitle, { color: theme.text }]}
@@ -547,24 +618,33 @@ export default function CityListScreen() {
           adjustsFontSizeToFit
           minimumFontScale={0.8}
         >
-          {t('cities.title')}
+          {isSelectionMode ? getPluralSelectedText(selectedCities.size) : t('cities.title')}
         </Text>
+        {isSelectionMode && (
+          <TouchableOpacity onPress={cancelSelectionMode} style={{ paddingHorizontal: fs.spacing * 0.5 }}>
+            <Text style={{ color: theme.tint || '#3a7bd5', fontSize: fs.base, fontWeight: '600' }}>
+              {t('cities.cancel')}
+            </Text>
+          </TouchableOpacity>
+        )}
       </View>
 
       {/* Search / Add Bar */}
-      <View style={styles.searchRow}>
-        <TextInput
-          style={[styles.input, { backgroundColor: theme.surfaceRaised, color: theme.text, borderColor: theme.border }]}
-          placeholder={t('cities.add_placeholder')}
-          placeholderTextColor={theme.textMuted}
-          value={searchQuery}
-          onChangeText={setSearchQuery}
-          onSubmitEditing={handleAddCity}
-        />
-        <TouchableOpacity style={[styles.addButton, { backgroundColor: theme.tint || '#3a7bd5' }]} onPress={handleAddCity}>
-          <Ionicons name="add" size={24} color="#FFFFFF" />
-        </TouchableOpacity>
-      </View>
+      {!isSelectionMode && (
+        <View style={styles.searchRow}>
+          <TextInput
+            style={[styles.input, { backgroundColor: theme.surfaceRaised, color: theme.text, borderColor: theme.border }]}
+            placeholder={t('cities.add_placeholder')}
+            placeholderTextColor={theme.textMuted}
+            value={searchQuery}
+            onChangeText={setSearchQuery}
+            onSubmitEditing={handleAddCity}
+          />
+          <TouchableOpacity style={[styles.addButton, { backgroundColor: theme.tint || '#3a7bd5' }]} onPress={handleAddCity}>
+            <Ionicons name="add" size={24} color="#FFFFFF" />
+          </TouchableOpacity>
+        </View>
+      )}
 
       {isLoading && cities.length === 0 ? (
         <View style={styles.loaderContainer}>
@@ -583,9 +663,24 @@ export default function CityListScreen() {
         />
       )}
 
+      {isSelectionMode && selectedCities.size > 0 && (
+        <View style={styles.batchBottomBar}>
+          <TouchableOpacity
+            style={[styles.batchDeleteButton, { backgroundColor: theme.danger || '#FF453A' }]}
+            onPress={handlePromptBatchDelete}
+            activeOpacity={0.8}
+          >
+            <Text style={styles.batchDeleteText}>
+              {t('cities.delete')} ({selectedCities.size})
+            </Text>
+          </TouchableOpacity>
+        </View>
+      )}
+
       <ConfirmDeleteModal
-        visible={!!deleteTarget}
+        visible={deleteTarget !== null}
         cityName={deleteTarget?.name}
+        count={deleteTarget?.count || selectedCities.size}
         onCancel={handleCancelDelete}
         onConfirm={handleConfirmDelete}
       />

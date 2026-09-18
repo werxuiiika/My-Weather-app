@@ -96,12 +96,17 @@
     "title": "City Management",
     "add_placeholder": "Add city...",
     "delete_title": "Delete City",
+    "delete_question": "Delete city?",
     "delete_message": "Delete {{name}} from saved cities?",
     "cancel": "Cancel",
     "delete": "Delete",
     "error": "Error",
     "city_not_found": "City not found",
-    "add_failed": "Failed to add city"
+    "add_failed": "Failed to add city",
+    "selected_count_one": "{{count}} item",
+    "selected_count_few": "{{count}} items",
+    "selected_count_many": "{{count}} items",
+    "delete_multiple_question": "Delete selected cities?"
   },
   "permission_required": "Permission Required",
   "location_permission_message": "The app needs location access. Please enable it in settings.",

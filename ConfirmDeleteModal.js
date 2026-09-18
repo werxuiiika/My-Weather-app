@@ -1,10 +1,11 @@
 import React, { useMemo } from 'react';
 import { Modal, View, Text, TouchableOpacity, StyleSheet, TouchableWithoutFeedback } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from './ThemeContext';
 import { useFontSize } from './FontSizeContext';
 import { useTranslation } from 'react-i18next';
 
-export default function ConfirmDeleteModal({ visible, cityName, onCancel, onConfirm }) {
+export default function ConfirmDeleteModal({ visible, cityName, count, onCancel, onConfirm }) {
   const { theme } = useTheme();
   const fs = useFontSize();
   const { t } = useTranslation();
@@ -21,20 +22,36 @@ export default function ConfirmDeleteModal({ visible, cityName, onCancel, onConf
       width: '100%',
       maxWidth: 360,
       backgroundColor: theme.surface,
-      borderRadius: 20,
+      borderRadius: 24,
       borderWidth: 1,
       borderColor: theme.border,
-      paddingVertical: fs.spacing * 1.25,
+      paddingVertical: fs.spacing * 1.5,
       paddingHorizontal: fs.spacing * 1.5,
       alignItems: 'center',
     },
-    question: {
-      fontSize: fs.base * 1.125,
-      fontWeight: '600',
+    iconCircle: {
+      width: 48,
+      height: 48,
+      borderRadius: 24,
+      backgroundColor: (theme.danger || '#FF453A') + '1A',
+      justifyContent: 'center',
+      alignItems: 'center',
+      marginBottom: fs.spacing * 0.75,
+    },
+    headerLabel: {
+      fontSize: fs.small,
+      fontWeight: '500',
+      color: theme.textMuted,
+      textAlign: 'center',
+      marginBottom: fs.spacing * 0.35,
+    },
+    cityName: {
+      fontSize: fs.large * 1.25,
+      fontWeight: '700',
       color: theme.text,
       textAlign: 'center',
-      marginBottom: fs.spacing * 1.25,
-      lineHeight: fs.base * 1.5,
+      marginBottom: fs.spacing * 1.5,
+      lineHeight: fs.large * 1.5,
     },
     buttonRow: {
       flexDirection: 'row',
@@ -75,8 +92,14 @@ export default function ConfirmDeleteModal({ visible, cityName, onCancel, onConf
         <View style={styles.backdrop}>
           <TouchableWithoutFeedback>
             <View style={styles.card}>
-              <Text style={styles.question}>
-                {t('cities.delete_message', { name: cityName })}
+              <View style={styles.iconCircle}>
+                <Ionicons name="trash-outline" size={fs.iconSize || 24} color={theme.danger || '#FF453A'} />
+              </View>
+              <Text style={styles.headerLabel}>
+                {count > 1 ? t('cities.delete_multiple_question', 'Удалить выбранные города?') : t('cities.delete_question', 'Удалить город?')}
+              </Text>
+              <Text style={styles.cityName} numberOfLines={2}>
+                {count > 1 ? t('cities.selected_count_few', { count }) : cityName}
               </Text>
               <View style={styles.buttonRow}>
                 <TouchableOpacity

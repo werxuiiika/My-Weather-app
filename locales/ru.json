@@ -96,12 +96,17 @@
     "title": "Управление городами",
     "add_placeholder": "Добавить город...",
     "delete_title": "Удаление города",
+    "delete_question": "Удалить город?",
     "delete_message": "Удалить {{name}} из списка сохраненных?",
     "cancel": "Отмена",
     "delete": "Удалить",
     "error": "Ошибка",
     "city_not_found": "Город не найден",
-    "add_failed": "Не удалось добавить город"
+    "add_failed": "Не удалось добавить город",
+    "selected_count_one": "{{count}} объект",
+    "selected_count_few": "{{count}} объекта",
+    "selected_count_many": "{{count}} объектов",
+    "delete_multiple_question": "Удалить выбранные города?"
   },
   "permission_required": "Требуется разрешение",
   "location_permission_message": "Приложению нужен доступ к геолокации. Включите его в настройках.",
