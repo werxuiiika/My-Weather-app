@@ -29,7 +29,8 @@ export default function DraggableCityCard({
   onReorder,
   itemCount,
 }) {
-  const isDarkText = !item.isNight;
+  const safeItem = { ...item, isNight: item?.isNight ?? false };
+  const isDarkText = !safeItem.isNight;
   const mainText = isDarkText ? '#1e293b' : '#FFFFFF';
   const subText = isDarkText ? 'rgba(30, 41, 59, 0.75)' : 'rgba(255, 255, 255, 0.8)';
   const minMaxColor = isDarkText ? 'rgba(30, 41, 59, 0.7)' : 'rgba(255, 255, 255, 0.7)';
@@ -132,11 +133,11 @@ export default function DraggableCityCard({
     },
   }), [theme, fs]);
 
-  const cardColor = item.weathercode !== undefined
-    ? getItemColor(item.weathercode, item.isNight)
+  const cardColor = safeItem.weathercode !== undefined
+    ? getItemColor(safeItem.weathercode, safeItem.isNight)
     : '#4a6b8a';
-  const weatherIcon = item.weathercode !== undefined
-    ? getWeatherIcon(item.weathercode, item.isNight)
+  const weatherIcon = safeItem.weathercode !== undefined
+    ? getWeatherIcon(safeItem.weathercode, safeItem.isNight)
     : 'cloudy';
 
   const stride = CARD_HEIGHT + MARGIN;
@@ -234,7 +235,7 @@ export default function DraggableCityCard({
                   isSelected && { backgroundColor: theme.tint || '#3a7bd5', borderColor: theme.tint || '#3a7bd5' },
                 ]}
                 hitSlop={8}
-                onPress={() => onSelectToggle(item.id, index)}
+                 onPress={() => onSelectToggle(safeItem.id, index)}
               >
                 {isSelected && <Ionicons name="checkmark" size={16} color="#FFFFFF" />}
               </Pressable>
@@ -248,21 +249,21 @@ export default function DraggableCityCard({
               adjustsFontSizeToFit
               minimumFontScale={0.65}
             >
-              {item.name}
+              {safeItem.name}
             </Text>
             <View style={styles.conditionRow}>
               <Ionicons name={weatherIcon} size={15} color={isDarkText ? 'rgba(30, 41, 59, 0.75)' : 'rgba(255, 255, 255, 0.85)'} />
               <Text style={[styles.cityCondition, { color: subText }]} numberOfLines={1} ellipsizeMode="tail">
-                {item.condition || t('condition.cloudy')}
+                {safeItem.condition || t('condition.cloudy')}
               </Text>
             </View>
           </View>
           <View style={styles.cardRight}>
             <View style={styles.tempRow}>
-              <Text style={[styles.cityTemp, { color: mainText }]}>{item.temp || '0'}</Text>
-              <Text style={[styles.tempDegree, { color: mainText }]}>°</Text>
-            </View>
-            <Text style={[styles.cityMinMax, { color: minMaxColor }]}>{item.minMax || ''}</Text>
+            <Text style={[styles.cityTemp, { color: mainText }]}>{safeItem.temp || '0'}</Text>
+                <Text style={[styles.tempDegree, { color: mainText }]}>°</Text>
+              </View>
+              <Text style={[styles.cityMinMax, { color: minMaxColor }]}>{safeItem.minMax || ''}</Text>
           </View>
         </View>
       </View>
