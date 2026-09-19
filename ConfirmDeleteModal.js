@@ -25,33 +25,34 @@ export default function ConfirmDeleteModal({ visible, cityName, count, onCancel,
       borderRadius: 24,
       borderWidth: 1,
       borderColor: theme.border,
-      paddingVertical: fs.spacing * 1.5,
+      paddingVertical: fs.spacing * 1.75,
       paddingHorizontal: fs.spacing * 1.5,
       alignItems: 'center',
     },
     iconCircle: {
-      width: 48,
-      height: 48,
-      borderRadius: 24,
+      width: 52,
+      height: 52,
+      borderRadius: 26,
       backgroundColor: (theme.danger || '#FF453A') + '1A',
       justifyContent: 'center',
       alignItems: 'center',
-      marginBottom: fs.spacing * 0.75,
+      marginBottom: fs.spacing,
     },
     headerLabel: {
-      fontSize: fs.small,
+      fontSize: fs.small * 1.05,
       fontWeight: '500',
       color: theme.textMuted,
       textAlign: 'center',
-      marginBottom: fs.spacing * 0.35,
+      marginBottom: fs.spacing * 0.5,
     },
     cityName: {
-      fontSize: fs.large * 1.25,
-      fontWeight: '700',
+      fontSize: fs.large * 1.35,
+      fontWeight: '800',
       color: theme.text,
       textAlign: 'center',
-      marginBottom: fs.spacing * 1.5,
-      lineHeight: fs.large * 1.5,
+      marginBottom: fs.spacing * 1.75,
+      lineHeight: fs.large * 1.6,
+      letterSpacing: 0.3,
     },
     buttonRow: {
       flexDirection: 'row',
@@ -60,7 +61,7 @@ export default function ConfirmDeleteModal({ visible, cityName, count, onCancel,
     },
     button: {
       flex: 1,
-      paddingVertical: fs.spacing * 0.75,
+      paddingVertical: fs.spacing * 0.875,
       borderRadius: 14,
       alignItems: 'center',
       justifyContent: 'center',
@@ -96,7 +97,7 @@ export default function ConfirmDeleteModal({ visible, cityName, count, onCancel,
                 <Ionicons name="trash-outline" size={fs.iconSize || 24} color={theme.danger || '#FF453A'} />
               </View>
               <Text style={styles.headerLabel}>
-                {count > 1 ? t('cities.delete_multiple_question', 'Удалить выбранные города?') : t('cities.delete_question', 'Удалить город?')}
+                {count > 1 ? t('cities.delete_multiple_question', 'Удалить выбранные города?') : t('cities.delete_question', 'Удалить город из списка?')}
               </Text>
               <Text style={styles.cityName} numberOfLines={2}>
                 {count > 1 ? t('cities.selected_count_few', { count }) : cityName}
