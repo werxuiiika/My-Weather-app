@@ -4,6 +4,7 @@ import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { Text, View, TouchableOpacity, Animated, StatusBar, StyleSheet } from 'react-native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
+import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { useTranslation } from 'react-i18next';
 import i18n from './i18n';
 import WeatherApp from './WeatherApp';
@@ -40,10 +41,11 @@ function AppMain() {
   return (
     <LoadingContext.Provider value={{ isLoading: false, setLoading: () => {} }}>
       <Animated.View style={{ flex: 1, opacity: themeOverlayOpacity }}>
-        <FontSizeProvider>
-          <SettingsProvider>
-            <SafeAreaProvider style={{ flex: 1 }}>
-              <NavigationContainer>
+        <GestureHandlerRootView style={{ flex: 1 }}>
+          <FontSizeProvider>
+            <SettingsProvider>
+              <SafeAreaProvider style={{ flex: 1 }}>
+                <NavigationContainer>
                 <Stack.Navigator
                   screenOptions={{
                     headerShown: false,
@@ -66,6 +68,7 @@ function AppMain() {
             </SafeAreaProvider>
           </SettingsProvider>
         </FontSizeProvider>
+        </GestureHandlerRootView>
       </Animated.View>
     </LoadingContext.Provider>
   );
