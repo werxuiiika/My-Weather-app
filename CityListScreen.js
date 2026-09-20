@@ -61,7 +61,7 @@ export default function CityListScreen() {
 
   const activeIndex = useSharedValue(-1);
   const dragOffset = useSharedValue(0);
-  const positionsRef = useRef<Array<number>>([]);
+  const positionsRef = useRef([]);
 
   const onReorder = useCallback(async (fromIndex, toIndex) => {
     if (fromIndex < 1 || toIndex < 1) return;
