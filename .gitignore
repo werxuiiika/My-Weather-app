@@ -19,3 +19,6 @@ recovered_bundle.js
 *.log
 .DS_Store
 
+app-release.apk/
+*.apk
+/tmp/

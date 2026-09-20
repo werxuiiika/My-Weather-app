@@ -27,7 +27,7 @@ import { useFontSize, FONT_SIZE_LEVELS } from './FontSizeContext';
 import { THEME_MODES } from './themes';
 import { Ionicons } from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { logCrash } from '../utils/crashLogger';
+import { logCrash } from './utils/crashLogger';
 
 const REMEMBER_CITY_ENABLED_KEY = 'remember_city_enabled';
 

@@ -1,43 +1,44 @@
-import { FileSystem } from 'expo-file-system';
+import * as FileSystem from 'expo-file-system';
 
-const CATEGORIES = {
-  THEME: 'theme',
-  LANGUAGE: 'language',
-  CITIES: 'cities',
-};
-
-export function logCrash(error, errorInfo = {}, appState = {}) {
+export async function logCrash(error, errorInfo = {}, appState = {}) {
   const timestamp = Date.now();
-  const logPath = `${FileSystem.documentDirectory}logs/crash_${timestamp}.txt`;
 
   const errorDetails = [
-    `=== Crash Report ===`,
+    '=== Crash Report ===',
     `Timestamp: ${new Date().toISOString()}`,
     `Timestamp (ms): ${timestamp}`,
-    `Error Message: ${error.message || 'Unknown'}`,
-    `Stack Trace: ${error.stack || 'No stack available'}`,
-    `Component Stack: ${errorInfo.componentStack || 'No component stack'}`,
-    `--- App State Snapshot ---`,
+    `Error Message: ${error?.message || 'Unknown'}`,
+    `Stack Trace: ${error?.stack || 'No stack available'}`,
+    `Component Stack: ${errorInfo?.componentStack || 'No component stack'}`,
+    '--- App State Snapshot ---',
     `Theme: ${appState.theme || 'unknown'}`,
     `Language: ${appState.language || 'unknown'}`,
-    `Cities Count: ${appState.cities?.length || 0}`,
+    `Cities Count: ${appState.cities?.length ?? appState.citiesCount ?? 0}`,
     `Selected City: ${appState.selectedCity || 'none'}`,
-    `------------------------`,
+    '------------------------',
   ];
 
   const content = errorDetails.join('\n');
 
   try {
-    // Ensure logs directory exists
-    const logsDir = `${FileSystem.documentDirectory}logs`;
-    FileSystem.makeDirectory(logsDir, { intermediates: true });
+    const baseDir = FileSystem.documentDirectory;
+    if (!baseDir) {
+      console.error('Failed to write crash log: documentDirectory is null');
+      return null;
+    }
+    const logsDir = `${baseDir}logs`;
 
-    // Write crash report
-    FileSystem.writeAsStringAsync(logsDir + '/crash_' + timestamp + '.txt', content, {
-      encoding: 'utf-8',
-    });
+    const dirInfo = await FileSystem.getInfoAsync(logsDir);
+    if (!dirInfo.exists) {
+      await FileSystem.makeDirectoryAsync(logsDir, { intermediates: true });
+    }
+
+    const filePath = `${logsDir}/crash_${timestamp}.txt`;
+    await FileSystem.writeAsStringAsync(filePath, content);
+    return filePath;
   } catch (writeError) {
-    // If even the logger fails, at least try console output
+    // The logger itself must never throw — fall back to console output.
     console.error('Failed to write crash log:', writeError);
+    return null;
   }
 }
