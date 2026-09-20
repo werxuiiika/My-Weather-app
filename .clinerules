@@ -2,12 +2,16 @@
 
 If the user reports a crash/flytte (вылет приложения), follow these steps to diagnose:
 
-1. Check the logs directory in the project root:
-   - Look for: `logs/crash_*.txt`
-   - The most recent file will have the latest timestamp in its name.
+1. Pull the crash log from the device via adb (no root needed).
+   Primary location — app-specific external storage (world-readable with exact path):
+     adb shell ls /sdcard/Android/data/com.bladvin.myappfinal/files/WeatherAppLogs/
+     adb pull /sdcard/Android/data/com.bladvin.myappfinal/files/WeatherAppLogs/<name>.txt ./logs/
+   Fallback location — private sandbox (only readable in-app, NOT via adb on release builds):
+     /data/user/0/com.bladvin.myappfinal/files/logs/
+     (user can view/share these via Settings → "Логи ошибок" → "Поделиться")
+   Take the most recent crash_*.txt (timestamp in the name).
 
 2. Read the crash report file:
-   - Open: `cat ~/my-app-final/logs/crash_*.txt` (or open in any text editor)
    - The file contains:
      - Timestamp of the crash (ISO format)
      - Error message (`error.message`)
@@ -21,18 +25,21 @@ If the user reports a crash/flytte (вылет приложения), follow the
 3. Analyze the crash context:
    - Look at the stack trace to identify which file/component crashed
    - Check the app state snapshot for context (e.g., "crash occurred when city 'X' was selected but had null coordinates")
-   - The `logCrash` function in `utils/crashLogger.js` handles writing these reports
+   - The `logCrash` function in `utils/crashLogger.js` writes to external first, internal as fallback
 
 4. Typical crash scenarios to investigate:
    - `DraggableCityCard` drag-and-drop (fixed with GestureHandlerRootView in App.js)
    - Null/undefined city properties in `CityListScreen.js`
    - Theme/language state transitions
+   - NOTE: TypeScript generic syntax (e.g. `useRef<Array<number>>`) is INVALID in .js files —
+     Babel parses it as comparisons and throws ReferenceError at runtime. Never use it.
 
 5. After analyzing, fix the root cause in the relevant component, then rebuild and test.
 
 # Project Structure for Crash Reporting
-- `utils/crashLogger.js` - Contains `logCrash(error, errorInfo, appState)` function
+- `utils/crashLogger.js` - `logCrash()` + `getLogDirs()` (external primary, internal fallback)
 - `components/GlobalErrorBoundary.js` - Wraps app, catches render errors, calls logCrash
-- `SettingsScreen.js` - Has temporary "Test Crash" button for testing (onPress logs then throws)
+- `components/CrashLogViewer.js` - In-app viewer (Settings → "Логи ошибок"): list/view/share/clear
+- `SettingsScreen.js` - "Test Crash" button triggers a render-phase throw via state
+  (must throw during render — boundaries do NOT catch event-handler throws)
 - `App.js` - Wrapped with `<GlobalErrorBoundary>` component
-- `logs/` - Directory where crash reports are saved to device document directory

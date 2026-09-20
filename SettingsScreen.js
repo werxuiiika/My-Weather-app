@@ -27,7 +27,6 @@ import { useFontSize, FONT_SIZE_LEVELS } from './FontSizeContext';
 import { THEME_MODES } from './themes';
 import { Ionicons } from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { logCrash } from './utils/crashLogger';
 import CrashLogViewer from './components/CrashLogViewer';
 
 const REMEMBER_CITY_ENABLED_KEY = 'remember_city_enabled';
@@ -602,6 +601,15 @@ export default function SettingsScreen() {
   const [showMenuStylePicker, setShowMenuStylePicker] = useState(false);
   const [showFontSizePicker, setShowFontSizePicker] = useState(false);
   const [showLogViewer, setShowLogViewer] = useState(false);
+  const [testCrash, setTestCrash] = useState(false);
+
+  // Intentional render-phase crash for testing GlobalErrorBoundary + logCrash.
+  // Must throw during render (not in onPress): error boundaries do not catch
+  // event-handler errors, and a direct throw would kill the JS thread before
+  // the async log write finishes.
+  if (testCrash) {
+    throw new Error('Test Crash from SettingsScreen');
+  }
 
   useEffect(() => {
     (async () => {
@@ -858,7 +866,7 @@ export default function SettingsScreen() {
           </View>
           <Text style={styles.chevron}>›</Text>
         </TouchableOpacity>
-        <TouchableOpacity style={styles.card} onPress={() => { logCrash(new Error('Test Crash from SettingsScreen')); throw new Error('Test Crash'); }} activeOpacity={0.6}>
+        <TouchableOpacity style={styles.card} onPress={() => setTestCrash(true)} activeOpacity={0.6}>
           <View style={styles.iconWrap}>
             <Ionicons name="warning" size={fs.iconSize * 0.77} color={theme.text} />
           </View>

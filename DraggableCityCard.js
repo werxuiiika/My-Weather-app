@@ -52,7 +52,6 @@ export default function DraggableCityCard({
       borderRadius: 28,
       overflow: 'hidden',
       width: '100%',
-      height: '100%',
     },
     cardBody: {
       flexDirection: 'row',

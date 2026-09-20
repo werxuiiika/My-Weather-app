@@ -12,33 +12,26 @@ import {
   StyleSheet,
 } from 'react-native';
 import * as FileSystem from 'expo-file-system';
-
-async function getLogsDir() {
-  const baseDir = FileSystem.documentDirectory;
-  if (!baseDir) return null;
-  return `${baseDir}logs`;
-}
+import { getLogDirs } from '../utils/crashLogger';
 
 export async function getCrashLogFiles() {
-  try {
-    const logsDir = await getLogsDir();
-    if (!logsDir) return [];
-    const dirInfo = await FileSystem.getInfoAsync(logsDir);
-    if (!dirInfo.exists) return [];
-    const names = await FileSystem.readDirectoryAsync(logsDir);
-    const files = [];
-    for (const name of names) {
-      if (!name.endsWith('.txt')) continue;
-      try {
-        const info = await FileSystem.getInfoAsync(`${logsDir}/${name}`);
-        files.push({ name, path: `${logsDir}/${name}`, size: info.size ?? 0, mtime: info.modificationTime ?? 0 });
-      } catch (e) {}
-    }
-    files.sort((a, b) => (b.mtime || 0) - (a.mtime || 0) || (a.name < b.name ? 1 : -1));
-    return files;
-  } catch (e) {
-    return [];
+  const files = [];
+  for (const { dir: logsDir, location } of getLogDirs()) {
+    try {
+      const dirInfo = await FileSystem.getInfoAsync(logsDir);
+      if (!dirInfo.exists) continue;
+      const names = await FileSystem.readDirectoryAsync(logsDir);
+      for (const name of names) {
+        if (!name.endsWith('.txt')) continue;
+        try {
+          const info = await FileSystem.getInfoAsync(`${logsDir}/${name}`);
+          files.push({ name, path: `${logsDir}/${name}`, size: info.size ?? 0, mtime: info.modificationTime ?? 0, location });
+        } catch (e) {}
+      }
+    } catch (e) {}
   }
+  files.sort((a, b) => (b.mtime || 0) - (a.mtime || 0) || (a.name < b.name ? 1 : -1));
+  return files;
 }
 
 export default function CrashLogViewer({ visible, onClose, theme, fs }) {
@@ -102,9 +95,15 @@ export default function CrashLogViewer({ visible, onClose, theme, fs }) {
         style: 'destructive',
         onPress: async () => {
           try {
-            const logsDir = await getLogsDir();
-            if (logsDir) {
-              await FileSystem.deleteAsync(logsDir, { idempotent: true });
+            for (const { dir } of getLogDirs()) {
+              try {
+                const names = await FileSystem.readDirectoryAsync(dir);
+                for (const name of names) {
+                  if (name.endsWith('.txt')) {
+                    await FileSystem.deleteAsync(`${dir}/${name}`, { idempotent: true });
+                  }
+                }
+              } catch (e) {}
             }
           } catch (e) {}
           setFiles([]);
@@ -163,6 +162,7 @@ export default function CrashLogViewer({ visible, onClose, theme, fs }) {
                 <Text style={styles.fileName}>{file.name}</Text>
                 <Text style={styles.fileMeta}>
                   {(file.size / 1024).toFixed(1)} KB
+                  {file.location === 'external' ? ' · внешняя' : ' · внутренняя'}
                   {file.mtime ? ` · ${new Date(file.mtime * 1000).toLocaleString()}` : ''}
                 </Text>
                 <View style={styles.row}>

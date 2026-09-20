@@ -653,8 +653,9 @@ export default function CityListScreen() {
       ) : (
         <FlatList
           data={cities}
-          keyExtractor={(item) => item.id}
+          keyExtractor={(item, index) => String(item?.id ?? index)}
           renderItem={renderItem}
+          style={{ flex: 1 }}
           contentContainerStyle={styles.listContainer}
           showsVerticalScrollIndicator={false}
           refreshControl={
