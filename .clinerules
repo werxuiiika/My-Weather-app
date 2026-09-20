@@ -1,0 +1,38 @@
+# My-Weather-app Crash Report Instructions
+
+If the user reports a crash/flytte (вылет приложения), follow these steps to diagnose:
+
+1. Check the logs directory in the project root:
+   - Look for: `logs/crash_*.txt`
+   - The most recent file will have the latest timestamp in its name.
+
+2. Read the crash report file:
+   - Open: `cat ~/my-app-final/logs/crash_*.txt` (or open in any text editor)
+   - The file contains:
+     - Timestamp of the crash (ISO format)
+     - Error message (`error.message`)
+     - Full stack trace (`error.stack`)
+     - Component stack trace (`errorInfo.componentStack`)
+     - App state snapshot at crash time:
+       - Theme setting
+       - Language locale
+       - Cities count and selected city info
+
+3. Analyze the crash context:
+   - Look at the stack trace to identify which file/component crashed
+   - Check the app state snapshot for context (e.g., "crash occurred when city 'X' was selected but had null coordinates")
+   - The `logCrash` function in `utils/crashLogger.js` handles writing these reports
+
+4. Typical crash scenarios to investigate:
+   - `DraggableCityCard` drag-and-drop (fixed with GestureHandlerRootView in App.js)
+   - Null/undefined city properties in `CityListScreen.js`
+   - Theme/language state transitions
+
+5. After analyzing, fix the root cause in the relevant component, then rebuild and test.
+
+# Project Structure for Crash Reporting
+- `utils/crashLogger.js` - Contains `logCrash(error, errorInfo, appState)` function
+- `components/GlobalErrorBoundary.js` - Wraps app, catches render errors, calls logCrash
+- `SettingsScreen.js` - Has temporary "Test Crash" button for testing (onPress logs then throws)
+- `App.js` - Wrapped with `<GlobalErrorBoundary>` component
+- `logs/` - Directory where crash reports are saved to device document directory

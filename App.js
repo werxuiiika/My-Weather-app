@@ -16,6 +16,7 @@ import { FontSizeProvider, useFontSize } from './FontSizeContext';
 import { ThemeProvider, useTheme } from './ThemeContext';
 import { LoadingContext } from './LoadingContext';
 import { initI18n } from './i18n';
+import GlobalErrorBoundary from './components/GlobalErrorBoundary';
 
 const Tab = createBottomTabNavigator();
 const Stack = createNativeStackNavigator();
@@ -38,39 +39,41 @@ function AppMain() {
   const { t } = useTranslation();
   const { loaded, themeOverlayOpacity } = useTheme();
 
-  return (
-    <LoadingContext.Provider value={{ isLoading: false, setLoading: () => {} }}>
-      <Animated.View style={{ flex: 1, opacity: themeOverlayOpacity }}>
-        <GestureHandlerRootView style={{ flex: 1 }}>
-          <FontSizeProvider>
-            <SettingsProvider>
-              <SafeAreaProvider style={{ flex: 1 }}>
-                <NavigationContainer>
-                <Stack.Navigator
-                  screenOptions={{
-                    headerShown: false,
-                    animation: 'slide_from_right',
-                  }}
-                >
-                  <Stack.Screen name="Tabs" component={TabScreens} />
-                  <Stack.Screen
-                    name="Settings"
-                    component={SettingsScreen}
-                    options={{ animation: 'slide_from_right' }}
-                  />
-                  <Stack.Screen
-                    name="CityList"
-                    component={CityListScreen}
-                    options={{ animation: 'slide_from_right' }}
-                  />
-                </Stack.Navigator>
-              </NavigationContainer>
-            </SafeAreaProvider>
-          </SettingsProvider>
-        </FontSizeProvider>
-        </GestureHandlerRootView>
-      </Animated.View>
-    </LoadingContext.Provider>
+return (
+    <GlobalErrorBoundary>
+      <LoadingContext.Provider value={{ isLoading: false, setLoading: () => {} }}>
+        <Animated.View style={{ flex: 1, opacity: themeOverlayOpacity }}>
+          <GestureHandlerRootView style={{ flex: 1 }}>
+            <FontSizeProvider>
+              <SettingsProvider>
+                <SafeAreaProvider style={{ flex: 1 }}>
+                  <NavigationContainer>
+                    <Stack.Navigator
+                      screenOptions={{
+                        headerShown: false,
+                        animation: 'slide_from_right',
+                      }}
+                    >
+                      <Stack.Screen name="Tabs" component={TabScreens} />
+                      <Stack.Screen
+                        name="Settings"
+                        component={SettingsScreen}
+                        options={{ animation: 'slide_from_right' }}
+                      />
+                      <Stack.Screen
+                        name="CityList"
+                        component={CityListScreen}
+                        options={{ animation: 'slide_from_right' }}
+                      />
+                    </Stack.Navigator>
+                  </NavigationContainer>
+                </SafeAreaProvider>
+              </SettingsProvider>
+            </FontSizeProvider>
+          </GestureHandlerRootView>
+        </Animated.View>
+      </LoadingContext.Provider>
+    </GlobalErrorBoundary>
   );
 }
 
