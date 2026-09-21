@@ -7,11 +7,9 @@ import Animated, {
   withTiming,
   Easing,
   runOnJS,
+  Layout,
 } from 'react-native-reanimated';
 import { Ionicons } from '@expo/vector-icons';
-
-const CARD_HEIGHT = 90;
-const MARGIN = 16;
 
 export default function DraggableCityCard({
   item,
@@ -138,7 +136,8 @@ export default function DraggableCityCard({
     ? getWeatherIcon(safeItem.weathercode, safeItem.isNight)
     : 'cloudy';
 
-  const stride = CARD_HEIGHT + MARGIN;
+  // Real slot height: min card height + bottom margin (matches styles above).
+  const stride = fs.cardHeight * 1.375 + fs.spacing;
 
   const panGesture = useMemo(() => Gesture.Pan()
     .onStart(() => {
@@ -155,13 +154,27 @@ export default function DraggableCityCard({
       const offset = dragOffset.value;
       const targetIndex = Math.round(offset / stride);
       const newIndex = index + targetIndex;
-      if (newIndex >= 0 && newIndex < itemCount && newIndex !== index) {
-        runOnJS(onReorder)(index, newIndex);
-      }
-      dragOffset.value = withTiming(0, { duration: 250, easing: Easing.out(Easing.cubic) });
-      activeIndex.value = -1;
+      const shouldReorder =
+        newIndex >= 0 && newIndex < itemCount && newIndex !== index;
+      // Glide everything back first: the dragged card AND the shifted
+      // neighbours all follow dragOffset continuously, so keeping the active
+      // state until the animation finishes avoids any snap. Only then drop
+      // the active state and commit the swap — the Layout animation carries
+      // the final settle softly.
+      dragOffset.value = withTiming(
+        0,
+        { duration: 220, easing: Easing.out(Easing.cubic) },
+        (finished) => {
+          'worklet';
+          if (!finished) return;
+          activeIndex.value = -1;
+          if (shouldReorder) {
+            runOnJS(onReorder)(index, newIndex);
+          }
+        }
+      );
     }),
-    [index, itemCount]);
+    [index, itemCount, onReorder, stride]);
 
   const animatedStyle = useAnimatedStyle(() => {
     const active = activeIndex.value === index;
@@ -202,8 +215,12 @@ export default function DraggableCityCard({
       ],
       zIndex,
       opacity,
+      // iOS shadow…
       shadowOpacity: shadowOpacityVal,
       shadowRadius: shadowRadiusVal,
+      // …Android shadow (shadow* props are iOS-only; Android draws the card
+      // above its siblings and renders the lift shadow only via elevation).
+      elevation: active ? 20 : 8,
     };
   });
 
@@ -212,6 +229,7 @@ export default function DraggableCityCard({
   return (
     <Animated.View
       style={[styles.cardContainer, animatedStyle]}
+      layout={Layout.springify().damping(20).stiffness(200)}
     >
       <Pressable
         onPress={() => onSelectToggle(safeItem.id, safeItem.name, index)}
