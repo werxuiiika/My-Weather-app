@@ -22,3 +22,4 @@ recovered_bundle.js
 app-release.apk/
 *.apk
 /tmp/
+local_logs/
