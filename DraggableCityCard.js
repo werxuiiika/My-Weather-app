@@ -23,6 +23,7 @@ export default function DraggableCityCard({
   fs,
   t,
   onSelectToggle,
+  onLongPressCity,
   dragOffset,
   activeIndex,
   onReorder,
@@ -213,6 +214,11 @@ export default function DraggableCityCard({
     <Animated.View
       style={[styles.cardContainer, animatedStyle]}
     >
+      <Pressable
+        onPress={() => onSelectToggle(safeItem.id, safeItem.name, index)}
+        onLongPress={() => onLongPressCity?.(safeItem.id, safeItem.name, index)}
+        delayLongPress={400}
+      >
       <View
         style={[styles.cardBackground, { backgroundColor: cardColor }]}
       >
@@ -233,7 +239,7 @@ export default function DraggableCityCard({
                   isSelected && { backgroundColor: theme.tint || '#3a7bd5', borderColor: theme.tint || '#3a7bd5' },
                 ]}
                 hitSlop={8}
-                 onPress={() => onSelectToggle(safeItem.id, index)}
+                 onPress={() => onSelectToggle(safeItem.id, safeItem.name, index)}
               >
                 {isSelected && <Ionicons name="checkmark" size={16} color="#FFFFFF" />}
               </Pressable>
@@ -265,6 +271,7 @@ export default function DraggableCityCard({
           </View>
         </View>
       </View>
+      </Pressable>
     </Animated.View>
   );
 }

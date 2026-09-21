@@ -593,6 +593,7 @@ export default function CityListScreen() {
         fs={fs}
         t={t}
         onSelectToggle={handlePressCity}
+        onLongPressCity={handleLongPressCity}
         dragOffset={dragOffset}
         activeIndex={activeIndex}
          onReorder={onReorder}
