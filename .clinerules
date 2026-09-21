@@ -3,9 +3,10 @@
 If the user reports a crash/flytte (вылет приложения), follow these steps to diagnose:
 
 1. Pull the crash log from the device via adb (no root needed).
-   Primary location — app-specific external storage (world-readable with exact path):
-     adb shell ls /sdcard/Android/data/com.bladvin.myappfinal/files/WeatherAppLogs/
-     adb pull /sdcard/Android/data/com.bladvin.myappfinal/files/WeatherAppLogs/<name>.txt ./logs/
+   Primary location — public Download folder via Storage Access Framework:
+     adb shell ls /sdcard/Download/WeatherLogs/
+     adb pull /sdcard/Download/WeatherLogs ./local_logs/
+   (requires the user to tap "Подключить Загрузки" once in Settings → "Логи ошибок")
    Fallback location — private sandbox (only readable in-app, NOT via adb on release builds):
      /data/user/0/com.bladvin.myappfinal/files/logs/
      (user can view/share these via Settings → "Логи ошибок" → "Поделиться")
@@ -37,7 +38,7 @@ If the user reports a crash/flytte (вылет приложения), follow the
 5. After analyzing, fix the root cause in the relevant component, then rebuild and test.
 
 # Project Structure for Crash Reporting
-- `utils/crashLogger.js` - `logCrash()` + `getLogDirs()` (external primary, internal fallback)
+- `utils/crashLogger.js` - `logCrash()` (Download via SAF primary, sandbox fallback) + `testLogWrite()` self-test; NOTE: import from 'expo-file-system/legacy' — root-import functions throw at runtime in SDK 57, and `externalDirectory` no longer exists
 - `components/GlobalErrorBoundary.js` - Wraps app, catches render errors, calls logCrash
 - `components/CrashLogViewer.js` - In-app viewer (Settings → "Логи ошибок"): list/view/share/clear
 - `SettingsScreen.js` - "Test Crash" button triggers a render-phase throw via state
