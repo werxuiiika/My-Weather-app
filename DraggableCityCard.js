@@ -5,7 +5,6 @@ import Animated, {
   useSharedValue,
   useAnimatedStyle,
   withTiming,
-  withSpring,
   Easing,
   runOnJS,
   Layout,
@@ -23,12 +22,15 @@ export default function DraggableCityCard({
   onSelectToggle,
   onLongPressCity,
   dragOffset,
-  smoothOffset,
   activeIndex,
   onReorder,
   itemCount,
 }) {
   const safeItem = { ...item, isNight: item?.isNight ?? false };
+  // Per-card swap displacement (overlap-and-swap model): 0 at rest,
+  // exactly one slot (±stride) while the dragged card overlaps this one.
+  const slotShift = useSharedValue(0);
+  const slotTarget = useSharedValue(0);
   const isDarkText = !safeItem.isNight;
   const mainText = isDarkText ? '#1e293b' : '#FFFFFF';
   const subText = isDarkText ? 'rgba(30, 41, 59, 0.75)' : 'rgba(255, 255, 255, 0.8)';
@@ -146,15 +148,12 @@ export default function DraggableCityCard({
       'worklet';
       activeIndex.value = index;
       dragOffset.value = 0;
-      smoothOffset.value = 0;
     })
     .onUpdate((e) => {
       'worklet';
+      // The dragged card slides OVER the static neighbours — their swap is
+      // driven separately by the center-crossing rule in animatedStyle.
       dragOffset.value = e.translationY;
-      // Springy lag for the neighbours: retargeting the spring every frame
-      // makes them trail the finger like in Xiaomi's list, instead of
-      // rigidly sticking to it. The dragged card itself follows raw offset.
-      smoothOffset.value = withSpring(e.translationY, { damping: 22, stiffness: 320 });
     })
     .onEnd(() => {
       'worklet';
@@ -163,11 +162,10 @@ export default function DraggableCityCard({
       const newIndex = index + targetIndex;
       const shouldReorder =
         newIndex >= 0 && newIndex < itemCount && newIndex !== index;
-      // Glide everything back first: the dragged card AND the shifted
-      // neighbours all follow dragOffset continuously, so keeping the active
-      // state until the animation finishes avoids any snap. Only then drop
-      // the active state and commit the swap — the Layout animation carries
-      // the final settle softly.
+      // Glide the dragged card back first while the active state is kept:
+      // neighbours un-cross their thresholds one by one and ease back via
+      // their own slot animations — no snap. Only then drop the active
+      // state and commit the swap; the Layout animation settles it softly.
       dragOffset.value = withTiming(
         0,
         { duration: 220, easing: Easing.out(Easing.cubic) },
@@ -180,8 +178,6 @@ export default function DraggableCityCard({
           }
         }
       );
-      // Neighbours glide back in sync with the dragged card.
-      smoothOffset.value = withTiming(0, { duration: 220, easing: Easing.out(Easing.cubic) });
     }),
     [index, itemCount, onReorder, stride]);
 
@@ -189,7 +185,6 @@ export default function DraggableCityCard({
     const active = activeIndex.value === index;
     const draggingIdx = activeIndex.value;
     const offset = dragOffset.value;
-    const smooth = smoothOffset.value;
 
     let translateY = 0;
     let scale = 1;
@@ -208,14 +203,25 @@ export default function DraggableCityCard({
     } else if (draggingIdx >= 0 && draggingIdx !== index) {
       const activePos = draggingIdx * stride;
       const myPos = index * stride;
-      const targetPos = activePos + smooth;
-      const delta = targetPos - myPos;
-
-      if (delta > 0 && delta < stride) {
-        translateY = -stride + delta;
-      } else if (delta < 0 && delta > -stride) {
-        translateY = stride + delta;
+      // Overlap & swap: stand perfectly still until the dragged card's
+      // leading edge passes this card's center (>50% overlap), then step
+      // exactly one slot aside with a smooth timing transition.
+      let desired = 0;
+      if (myPos > activePos && offset > (myPos - activePos) - stride / 2) {
+        desired = -stride; // card below the dragged one: move up
+      } else if (myPos < activePos && offset < (myPos - activePos) + stride / 2) {
+        desired = stride; // card above the dragged one: move down
       }
+      if (slotTarget.value !== desired) {
+        slotTarget.value = desired;
+        slotShift.value = withTiming(desired, { duration: 200, easing: Easing.out(Easing.cubic) });
+      }
+      translateY = slotShift.value;
+    } else if (slotTarget.value !== 0) {
+      // No active drag — ease back to rest (covers release frames).
+      slotTarget.value = 0;
+      slotShift.value = withTiming(0, { duration: 200, easing: Easing.out(Easing.cubic) });
+      translateY = slotShift.value;
     }
 
     return {
