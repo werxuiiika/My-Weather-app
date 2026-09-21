@@ -202,7 +202,7 @@ export default function DraggableCityCard({
       // Single residual glide to rest for every card.
       dragOffset.value = withTiming(
         0,
-        { duration: 220, easing: Easing.out(Easing.quad) },
+        { duration: 220, easing: Easing.inOut(Easing.quad) },
         () => {
           'worklet';
           activeId.value = null;
@@ -275,7 +275,7 @@ export default function DraggableCityCard({
       }
       if (slotTarget.value !== desired) {
         slotTarget.value = desired;
-        slotShift.value = withTiming(desired, { duration: 200, easing: Easing.out(Easing.quad) });
+        slotShift.value = withTiming(desired, { duration: 200, easing: Easing.inOut(Easing.quad) });
         if (trace.value.length < 1500) {
           trace.value.push(['x', Date.now(), index, desired === 0 ? 0 : desired > 0 ? 1 : -1]);
         }
@@ -284,7 +284,7 @@ export default function DraggableCityCard({
     } else if (slotTarget.value !== 0) {
       // No active drag — ease back to rest (covers release frames).
       slotTarget.value = 0;
-      slotShift.value = withTiming(0, { duration: 200, easing: Easing.out(Easing.quad) });
+      slotShift.value = withTiming(0, { duration: 200, easing: Easing.inOut(Easing.quad) });
       translateY = slotShift.value;
     }
 
@@ -309,7 +309,7 @@ export default function DraggableCityCard({
   return (
     <Animated.View
       style={[styles.cardContainer, animatedStyle]}
-      layout={LinearTransition.duration(220).easing(Easing.out(Easing.quad))}
+      layout={LinearTransition.duration(220).easing(Easing.inOut(Easing.quad))}
     >
       <Pressable
         onPress={() => onSelectToggle(safeItem.id, safeItem.name, index)}
