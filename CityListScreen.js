@@ -67,6 +67,8 @@ export default function CityListScreen() {
 
   const activeIndex = useSharedValue(-1);
   const dragOffset = useSharedValue(0);
+  // Spring-lagged copy of dragOffset driving the neighbours' shift.
+  const smoothOffset = useSharedValue(0);
   const positionsRef = useRef([]);
 
   const onReorder = useCallback(async (fromIndex, toIndex) => {
@@ -666,6 +668,7 @@ export default function CityListScreen() {
         onSelectToggle={handlePressCity}
         onLongPressCity={handleLongPressCity}
         dragOffset={dragOffset}
+        smoothOffset={smoothOffset}
         activeIndex={activeIndex}
          onReorder={onReorder}
          itemCount={cities.length}

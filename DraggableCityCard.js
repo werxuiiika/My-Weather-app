@@ -5,6 +5,7 @@ import Animated, {
   useSharedValue,
   useAnimatedStyle,
   withTiming,
+  withSpring,
   Easing,
   runOnJS,
   Layout,
@@ -22,6 +23,7 @@ export default function DraggableCityCard({
   onSelectToggle,
   onLongPressCity,
   dragOffset,
+  smoothOffset,
   activeIndex,
   onReorder,
   itemCount,
@@ -144,10 +146,15 @@ export default function DraggableCityCard({
       'worklet';
       activeIndex.value = index;
       dragOffset.value = 0;
+      smoothOffset.value = 0;
     })
     .onUpdate((e) => {
       'worklet';
       dragOffset.value = e.translationY;
+      // Springy lag for the neighbours: retargeting the spring every frame
+      // makes them trail the finger like in Xiaomi's list, instead of
+      // rigidly sticking to it. The dragged card itself follows raw offset.
+      smoothOffset.value = withSpring(e.translationY, { damping: 22, stiffness: 320 });
     })
     .onEnd(() => {
       'worklet';
@@ -173,6 +180,8 @@ export default function DraggableCityCard({
           }
         }
       );
+      // Neighbours glide back in sync with the dragged card.
+      smoothOffset.value = withTiming(0, { duration: 220, easing: Easing.out(Easing.cubic) });
     }),
     [index, itemCount, onReorder, stride]);
 
@@ -180,6 +189,7 @@ export default function DraggableCityCard({
     const active = activeIndex.value === index;
     const draggingIdx = activeIndex.value;
     const offset = dragOffset.value;
+    const smooth = smoothOffset.value;
 
     let translateY = 0;
     let scale = 1;
@@ -198,7 +208,7 @@ export default function DraggableCityCard({
     } else if (draggingIdx >= 0 && draggingIdx !== index) {
       const activePos = draggingIdx * stride;
       const myPos = index * stride;
-      const targetPos = activePos + offset;
+      const targetPos = activePos + smooth;
       const delta = targetPos - myPos;
 
       if (delta > 0 && delta < stride) {
@@ -229,7 +239,7 @@ export default function DraggableCityCard({
   return (
     <Animated.View
       style={[styles.cardContainer, animatedStyle]}
-      layout={Layout.springify().damping(20).stiffness(200)}
+      layout={Layout.springify().damping(14).stiffness(200)}
     >
       <Pressable
         onPress={() => onSelectToggle(safeItem.id, safeItem.name, index)}
