@@ -67,6 +67,9 @@ export default function CityListScreen() {
 
   const activeIndex = useSharedValue(-1);
   const dragOffset = useSharedValue(0);
+  // Stable identity of the dragged card (item id survives reorder, unlike
+  // the numeric index — see DraggableCityCard).
+  const activeId = useSharedValue(null);
   const positionsRef = useRef([]);
 
   const onReorder = useCallback(async (fromIndex, toIndex) => {
@@ -675,6 +678,7 @@ export default function CityListScreen() {
         onLongPressCity={handleLongPressCity}
         dragOffset={dragOffset}
         activeIndex={activeIndex}
+        activeId={activeId}
          onReorder={onReorder}
          itemCount={cities.length}
        />

@@ -23,10 +23,13 @@ export default function DraggableCityCard({
   onLongPressCity,
   dragOffset,
   activeIndex,
+  activeId,
   onReorder,
   itemCount,
 }) {
   const safeItem = { ...item, isNight: item?.isNight ?? false };
+  // Stable per-instance identity for the active branch (see below).
+  const itemId = safeItem.id ?? String(index);
   // Per-card swap displacement (overlap-and-swap model): 0 at rest,
   // exactly one slot (±stride) while the dragged card overlaps this one.
   const slotShift = useSharedValue(0);
@@ -147,6 +150,7 @@ export default function DraggableCityCard({
     .onStart(() => {
       'worklet';
       activeIndex.value = index;
+      activeId.value = itemId;
       dragOffset.value = 0;
     })
     .onUpdate((e) => {
@@ -183,13 +187,20 @@ export default function DraggableCityCard({
           'worklet';
           if (!finished) return;
           activeIndex.value = -1;
+          activeId.value = null;
         }
       );
     }),
-    [index, itemCount, onReorder, stride]);
+    [index, itemCount, onReorder, stride, itemId]);
 
   const animatedStyle = useAnimatedStyle(() => {
-    const active = activeIndex.value === index;
+    // Branch by stable item id, NOT by numeric index: at the commit frame
+    // the data swaps (index props change) 1–3 frames before/after the shared
+    // values settle, and an index-based branch would teleport the dragged
+    // card between the active and neighbour branches for those frames —
+    // that teleport is exactly the release flicker. The id survives reorder,
+    // so the dragged card never leaves its branch mid-flight.
+    const active = activeId.value === itemId;
     const draggingIdx = activeIndex.value;
     const offset = dragOffset.value;
 
