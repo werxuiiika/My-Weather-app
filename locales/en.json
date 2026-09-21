@@ -106,7 +106,8 @@
     "selected_count_one": "{{count}} item",
     "selected_count_few": "{{count}} items",
     "selected_count_many": "{{count}} items",
-    "delete_multiple_question": "Delete selected cities?"
+    "delete_multiple_question": "Delete selected cities?",
+    "current_location": "Current location"
   },
   "permission_required": "Permission Required",
   "location_permission_message": "The app needs location access. Please enable it in settings.",

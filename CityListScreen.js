@@ -10,9 +10,11 @@ import { useTheme } from './ThemeContext';
 import { useFontSize } from './FontSizeContext';
 import { useTranslation } from 'react-i18next';
 import NetInfo from '@react-native-community/netinfo';
+import * as Location from 'expo-location';
 import { geocodeCity, isOfflineError, isRegionLike } from './geocoding';
 import ConfirmDeleteModal from './ConfirmDeleteModal';
 import DraggableCityCard from './DraggableCityCard';
+import CurrentLocationCard from './CurrentLocationCard';
 
 const SAVED_CITIES_KEY = 'saved_cities_list';
 const LAST_SELECTED_CITY_KEY = 'last_selected_city';
@@ -49,7 +51,11 @@ export default function CityListScreen() {
   const { t, i18n } = useTranslation();
   const insets = useSafeAreaInsets();
 
+  // Saved cities ONLY — the geolocation card lives in `currentLocation`
+  // and is never part of this array (not draggable, selectable or deletable).
   const [cities, setCities] = useState([]);
+  // Device geolocation weather card. null = unavailable/denied -> no card at all.
+  const [currentLocation, setCurrentLocation] = useState(null);
   const [searchQuery, setSearchQuery] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
@@ -64,7 +70,7 @@ export default function CityListScreen() {
   const positionsRef = useRef([]);
 
   const onReorder = useCallback(async (fromIndex, toIndex) => {
-    if (fromIndex < 1 || toIndex < 1) return;
+    if (fromIndex < 0 || toIndex < 0 || toIndex >= cities.length) return;
     const newCities = [...cities];
     const [moved] = newCities.splice(fromIndex, 1);
     newCities.splice(toIndex, 0, moved);
@@ -268,7 +274,30 @@ export default function CityListScreen() {
 
   useEffect(() => {
     loadSavedCitiesAndRefresh();
+    loadCurrentLocation();
   }, [i18n.language]);
+
+  // Shared open-meteo enrichment for a coordinate pair. Returns the weather
+  // fields object or null (no usable data). fetchJson errors propagate so
+  // callers can apply their own offline/circuit-breaker policy.
+  const fetchWeatherForCoords = async (lat, lon) => {
+    const weatherData = await fetchJson(
+      `${BASE_URL}?latitude=${lat}&longitude=${lon}&current_weather=true&daily=temperature_2m_max,temperature_2m_min,weathercode&timezone=auto`
+    );
+    if (!weatherData || !weatherData.current_weather) return null;
+    const temp = Math.round(weatherData.current_weather.temperature);
+    const min = weatherData.daily?.temperature_2m_min ? Math.round(weatherData.daily.temperature_2m_min[0]) : '';
+    const max = weatherData.daily?.temperature_2m_max ? Math.round(weatherData.daily.temperature_2m_max[0]) : '';
+    const code = weatherData.current_weather.weathercode;
+    const isNight = weatherData.current_weather.is_day === 0;
+    return {
+      temp: `${temp}`,
+      minMax: min !== '' && max !== '' ? `${max}° / ${min}°` : '',
+      condition: getWeatherConditionText(code),
+      weathercode: code,
+      isNight,
+    };
+  };
 
   const loadSavedCitiesAndRefresh = async () => {
     setIsLoading(true);
@@ -341,26 +370,14 @@ export default function CityListScreen() {
           }
 
           if (lat !== undefined && lon !== undefined) {
-            const weatherData = await fetchJson(
-              `${BASE_URL}?latitude=${lat}&longitude=${lon}&current_weather=true&daily=temperature_2m_max,temperature_2m_min,weathercode&timezone=auto`
-            );
-            if (weatherData && weatherData.current_weather) {
-              const temp = Math.round(weatherData.current_weather.temperature);
-              const min = weatherData.daily?.temperature_2m_min ? Math.round(weatherData.daily.temperature_2m_min[0]) : '';
-              const max = weatherData.daily?.temperature_2m_max ? Math.round(weatherData.daily.temperature_2m_max[0]) : '';
-              const code = weatherData.current_weather.weathercode;
-              const isNight = weatherData.current_weather.is_day === 0;
-
+            const enrichment = await fetchWeatherForCoords(lat, lon);
+            if (enrichment) {
               updatedList.push({
                 ...city,
                 latitude: lat,
                 longitude: lon,
                 name: city.name,
-                temp: `${temp}`,
-                minMax: min !== '' && max !== '' ? `${max}° / ${min}°` : '',
-                condition: getWeatherConditionText(code),
-                weathercode: code,
-                isNight,
+                ...enrichment,
               });
               continue;
             }
@@ -385,6 +402,66 @@ export default function CityListScreen() {
     } finally {
       setIsLoading(false);
       setRefreshing(false);
+    }
+  };
+
+  // Resolve a human-readable place name for coordinates.
+  // 1. Platform reverse-geocoder (expo-location, free, no key).
+  // 2. BigDataCloud reverse API with the app language.
+  // 3. Last resort: coordinate string (flagged, card becomes non-tappable).
+  const resolvePlaceName = async (latitude, longitude, lang) => {
+    try {
+      const places = await Location.reverseGeocodeAsync({ latitude, longitude });
+      const p = Array.isArray(places) && places.length > 0 ? places[0] : null;
+      const name = p?.city || p?.district || p?.subregion || p?.region || p?.name;
+      if (name) return { text: name, isFallback: false };
+    } catch (e) {}
+    try {
+      const data = await fetchJson(
+        `https://api.bigdatacloud.net/data/reverse-geocode-client?latitude=${latitude}&longitude=${longitude}&localityLanguage=${lang || 'ru'}`
+      );
+      const name = data?.city || data?.locality || data?.principalSubdivision || data?.countryName;
+      if (name) return { text: name, isFallback: false };
+    } catch (e) {}
+    return {
+      text: `${latitude.toFixed(2)}, ${longitude.toFixed(2)}`,
+      isFallback: true,
+    };
+  };
+
+  // GEOLOCATION STREAM (top card). Shows ONLY when coordinates were
+  // successfully resolved AND weather loaded. Any failure (denied permission,
+  // timeout, offline) -> null -> no card in the render tree at all.
+  // Runs on screen open and on pull-to-refresh, independent of the saved list.
+  const loadCurrentLocation = async () => {
+    try {
+      const { status } = await Location.requestForegroundPermissionsAsync();
+      if (status !== 'granted') {
+        setCurrentLocation(null);
+        return;
+      }
+      const position = await Promise.race([
+        Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.Balanced }),
+        new Promise((_, reject) => setTimeout(() => reject(new Error('location timeout')), 12000)),
+      ]);
+      const { latitude, longitude } = position.coords;
+      const currentLang = i18n.language || 'ru';
+      const enrichment = await fetchWeatherForCoords(latitude, longitude);
+      if (!enrichment) {
+        setCurrentLocation(null);
+        return;
+      }
+      const name = await resolvePlaceName(latitude, longitude, currentLang);
+      setCurrentLocation({
+        id: '__current_location__',
+        name: name.text,
+        latitude,
+        longitude,
+        isCoordinateFallback: name.isFallback,
+        ...enrichment,
+      });
+    } catch (e) {
+      setCurrentLocation(null);
     }
   };
 
@@ -488,7 +565,6 @@ export default function CityListScreen() {
   };
 
   const handleLongPressCity = (id, name, index) => {
-    if (index === 0) return; // protected first item
     if (!isSelectionMode) {
       setIsSelectionMode(true);
       setSelectedCities(new Set([id]));
@@ -498,10 +574,6 @@ export default function CityListScreen() {
   };
 
   const handlePressCity = (id, name, index) => {
-    if (index === 0) {
-      handleSelectCity(name);
-      return;
-    }
     if (isSelectionMode) {
       toggleSelectCity(id);
     } else {
@@ -586,7 +658,6 @@ export default function CityListScreen() {
        <DraggableCityCard
         item={item}
         index={index}
-        isFirst={index === 0}
         isSelectionMode={isSelectionMode}
         isSelected={selectedCities.has(item.id)}
         theme={theme}
@@ -659,8 +730,19 @@ export default function CityListScreen() {
           style={{ flex: 1 }}
           contentContainerStyle={styles.listContainer}
           showsVerticalScrollIndicator={false}
+          ListHeaderComponent={currentLocation ? (
+            <CurrentLocationCard
+              item={currentLocation}
+              theme={theme}
+              fs={fs}
+              t={t}
+              onPress={currentLocation.isCoordinateFallback
+                ? undefined
+                : () => handleSelectCity(currentLocation.name)}
+            />
+          ) : null}
           refreshControl={
-            <RefreshControl refreshing={refreshing} onRefresh={() => { setRefreshing(true); loadSavedCitiesAndRefresh(); }} />
+            <RefreshControl refreshing={refreshing} onRefresh={() => { setRefreshing(true); loadSavedCitiesAndRefresh(); loadCurrentLocation(); }} />
           }
         />
       )}

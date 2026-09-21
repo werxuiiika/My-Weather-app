@@ -106,7 +106,8 @@
     "selected_count_one": "{{count}} объект",
     "selected_count_few": "{{count}} объекта",
     "selected_count_many": "{{count}} объектов",
-    "delete_multiple_question": "Удалить выбранные города?"
+    "delete_multiple_question": "Удалить выбранные города?",
+    "current_location": "Текущее местоположение"
   },
   "permission_required": "Требуется разрешение",
   "location_permission_message": "Приложению нужен доступ к геолокации. Включите его в настройках.",

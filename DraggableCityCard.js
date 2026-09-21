@@ -16,7 +16,6 @@ const MARGIN = 16;
 export default function DraggableCityCard({
   item,
   index,
-  isFirst,
   isSelectionMode,
   isSelected,
   theme,
@@ -156,7 +155,7 @@ export default function DraggableCityCard({
       const offset = dragOffset.value;
       const targetIndex = Math.round(offset / stride);
       const newIndex = index + targetIndex;
-      if (newIndex >= 1 && newIndex < itemCount && newIndex !== index) {
+      if (newIndex >= 0 && newIndex < itemCount && newIndex !== index) {
         runOnJS(onReorder)(index, newIndex);
       }
       dragOffset.value = withTiming(0, { duration: 250, easing: Easing.out(Easing.cubic) });
@@ -183,7 +182,7 @@ export default function DraggableCityCard({
       opacity = 0.95;
       shadowOpacityVal = 0.4;
       shadowRadiusVal = 20;
-    } else if (draggingIdx >= 0 && draggingIdx !== index && !isFirst) {
+    } else if (draggingIdx >= 0 && draggingIdx !== index) {
       const activePos = draggingIdx * stride;
       const myPos = index * stride;
       const targetPos = activePos + offset;
@@ -208,7 +207,7 @@ export default function DraggableCityCard({
     };
   });
 
-  const canSelectItem = !isFirst && isSelectionMode;
+  const canSelectItem = isSelectionMode;
 
   return (
     <Animated.View
