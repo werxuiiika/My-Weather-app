@@ -80,6 +80,9 @@ export default function CityListScreen() {
   const activeId = useSharedValue(null);
   // Drag telemetry ring for offline jitter analysis (see utils/dragTrace).
   const trace = useSharedValue([]);
+  // 1 = finger up: neighbour thresholds are frozen, cards only ease back.
+  // Set synchronously in onStart/onEnd (zero bridge delay).
+  const released = useSharedValue(1);
   const positionsRef = useRef([]);
 
   // Mutable mirror of the list: the drag gesture object must stay identical
@@ -727,6 +730,7 @@ export default function CityListScreen() {
         endDrag={endDrag}
         commitReorder={commitReorder}
         trace={trace}
+        released={released}
          itemCount={cities.length}
        />
     );

@@ -30,6 +30,7 @@ export default function DraggableCityCard({
   commitReorder,
   itemCount,
   trace,
+  released,
 }) {
   const safeItem = { ...item, isNight: item?.isNight ?? false };
   // Stable per-instance identity for the active branch (see below).
@@ -159,6 +160,7 @@ export default function DraggableCityCard({
       activeId.value = itemId;
       dragOffset.value = 0;
       trace.value = [];
+      released.value = 0;
       runOnJS(beginDrag)(index);
     })
     .onUpdate((e) => {
@@ -169,6 +171,11 @@ export default function DraggableCityCard({
     })
     .onEnd(() => {
       'worklet';
+      // Freeze neighbour thresholds from this frame on: post-release the
+      // layouts are mid-flight (LinearTransition), so thresholds evaluated
+      // against moving targets fire spuriously on bystanders. Cards only
+      // ease back to rest from here.
+      released.value = 1;
       const offset = dragOffset.value;
       // 75% overlap rule (matches the visual swap threshold below): a full
       // slot counts once the finger carried the card three quarters in.
@@ -206,7 +213,7 @@ export default function DraggableCityCard({
         }
       );
     }),
-    [index, itemCount, stride, itemId, beginDrag, endDrag, commitReorder]);
+    [index, itemCount, stride, itemId, beginDrag, endDrag, commitReorder, released]);
 
   const animatedStyle = useAnimatedStyle(() => {
     // Branch by stable item id, NOT by numeric index: at the commit frame
@@ -244,27 +251,33 @@ export default function DraggableCityCard({
       // covers 75% of this card, but step back only when the overlap drops
       // below 50%. The deadband between the two thresholds stops the swap
       // from chattering when the finger hovers right at the boundary —
-      // that chatter is the visible jitter.
+      // that chatter is the visible jitter. Thresholds are evaluated only
+      // while the finger is down; after release (released flag) every card
+      // just eases back to rest.
       const atRest = slotTarget.value === 0;
       let desired = atRest ? 0 : slotTarget.value;
-      if (myPos > activePos) {
-        if (atRest && offset > (myPos - activePos) - stride / 4) {
-          desired = -stride; // card below the dragged one: move up
-        } else if (!atRest && offset < (myPos - activePos) - stride / 2) {
-          desired = 0;
+      if (released.value === 0) {
+        if (myPos > activePos) {
+          if (atRest && offset > (myPos - activePos) - stride / 4) {
+            desired = -stride; // card below the dragged one: move up
+          } else if (!atRest && offset < (myPos - activePos) - stride / 2) {
+            desired = 0;
+          }
+        } else if (myPos < activePos) {
+          if (atRest && offset < (myPos - activePos) + stride / 4) {
+            desired = stride; // card above the dragged one: move down
+          } else if (!atRest && offset > (myPos - activePos) + stride / 2) {
+            desired = 0;
+          }
         }
-      } else if (myPos < activePos) {
-        if (atRest && offset < (myPos - activePos) + stride / 4) {
-          desired = stride; // card above the dragged one: move down
-        } else if (!atRest && offset > (myPos - activePos) + stride / 2) {
-          desired = 0;
-        }
+      } else {
+        desired = 0;
       }
       if (slotTarget.value !== desired) {
         slotTarget.value = desired;
         slotShift.value = withTiming(desired, { duration: 200, easing: Easing.out(Easing.quad) });
         if (trace.value.length < 1500) {
-          trace.value.push(['x', Date.now(), index, desired > 0 ? 1 : -1]);
+          trace.value.push(['x', Date.now(), index, desired === 0 ? 0 : desired > 0 ? 1 : -1]);
         }
       }
       translateY = slotShift.value;
