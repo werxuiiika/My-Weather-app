@@ -24,6 +24,7 @@ export default function DraggableCityCard({
   dragOffset,
   activeIndex,
   activeId,
+  setDragging,
   onReorder,
   itemCount,
 }) {
@@ -152,6 +153,7 @@ export default function DraggableCityCard({
       activeIndex.value = index;
       activeId.value = itemId;
       dragOffset.value = 0;
+      runOnJS(setDragging)(true);
     })
     .onUpdate((e) => {
       'worklet';
@@ -185,13 +187,16 @@ export default function DraggableCityCard({
         { duration: 220, easing: Easing.out(Easing.quad) },
         (finished) => {
           'worklet';
-          if (!finished) return;
           activeIndex.value = -1;
           activeId.value = null;
+          runOnJS(setDragging)(false);
+          if (finished && shouldReorder) {
+            runOnJS(onReorder)(index, newIndex);
+          }
         }
       );
     }),
-    [index, itemCount, onReorder, stride, itemId]);
+    [index, itemCount, onReorder, stride, itemId, setDragging]);
 
   const animatedStyle = useAnimatedStyle(() => {
     // Branch by stable item id, NOT by numeric index: at the commit frame

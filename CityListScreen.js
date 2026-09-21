@@ -62,6 +62,10 @@ export default function CityListScreen() {
    const [isSelectionMode, setIsSelectionMode] = useState(false);
   const [selectedCities, setSelectedCities] = useState(new Set());
   const [deleteTarget, setDeleteTarget] = useState(null);
+  // True while a drag gesture is active — FlatList scrolling is locked for
+  // that time so the scroll view never fights the pan gesture (that fight
+  // shows up as jitter of the whole list mid-drag).
+  const [isDragging, setIsDragging] = useState(false);
 
   const CARD_HEIGHT = 90;
 
@@ -72,14 +76,24 @@ export default function CityListScreen() {
   const activeId = useSharedValue(null);
   const positionsRef = useRef([]);
 
+  // Mutable mirror of the list: the drag gesture object must stay identical
+  // across background setCities calls (weather refresh landing mid-drag),
+  // otherwise RNGH restarts the active gesture and the card jumps. A plain
+  // ref object would be serialized stale into the UI-runtime closure, so the
+  // pattern is: stable useCallback (empty deps) + ref read at call time on
+  // the JS thread — always fresh data, never a recreated gesture.
+  const citiesRef = useRef(cities);
+  citiesRef.current = cities;
+
   const onReorder = useCallback(async (fromIndex, toIndex) => {
-    if (fromIndex < 0 || toIndex < 0 || toIndex >= cities.length) return;
-    const newCities = [...cities];
+    const list = citiesRef.current;
+    if (fromIndex < 0 || toIndex < 0 || toIndex >= list.length) return;
+    const newCities = [...list];
     const [moved] = newCities.splice(fromIndex, 1);
     newCities.splice(toIndex, 0, moved);
     setCities(newCities);
     await AsyncStorage.setItem(SAVED_CITIES_KEY, JSON.stringify(newCities));
-  }, [cities]);
+  }, []);
 
   const styles = useMemo(() => StyleSheet.create({
     safe: { flex: 1 },
@@ -679,6 +693,7 @@ export default function CityListScreen() {
         dragOffset={dragOffset}
         activeIndex={activeIndex}
         activeId={activeId}
+        setDragging={setIsDragging}
          onReorder={onReorder}
          itemCount={cities.length}
        />
@@ -758,6 +773,7 @@ export default function CityListScreen() {
           keyExtractor={(item, index) => String(item?.id ?? index)}
           renderItem={renderItem}
           style={{ flex: 1 }}
+          scrollEnabled={!isDragging}
           contentContainerStyle={styles.listContainer}
           showsVerticalScrollIndicator={false}
           refreshControl={
