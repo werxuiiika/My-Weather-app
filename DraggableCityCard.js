@@ -10,7 +10,7 @@ import Animated, {
   LinearTransition,
 } from 'react-native-reanimated';
 import { Ionicons } from '@expo/vector-icons';
-import { saveDragTrace } from '../utils/dragTrace';
+import { saveDragTrace } from './utils/dragTrace';
 
 export default function DraggableCityCard({
   item,
