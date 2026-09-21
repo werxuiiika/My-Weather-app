@@ -158,15 +158,24 @@ export default function DraggableCityCard({
     .onEnd(() => {
       'worklet';
       const offset = dragOffset.value;
-      const targetIndex = Math.round(offset / stride);
-      const newIndex = index + targetIndex;
+      // 75% overlap rule (matches the visual swap threshold below): a full
+      // slot counts once the finger carried the card three quarters in.
+      const steps =
+        offset >= 0
+          ? Math.floor(offset / stride + 0.25)
+          : -Math.floor(-offset / stride + 0.25);
+      const newIndex = index + steps;
       const shouldReorder =
         newIndex >= 0 && newIndex < itemCount && newIndex !== index;
-      // Glide the dragged card back first while the active state is kept:
-      // neighbours un-cross their thresholds one by one and ease back via
-      // their own slot animations — no snap. Only then drop the active
-      // state and commit the swap; the LinearTransition settles it
-      // strictly, with no spring overshoot.
+      if (shouldReorder) {
+        // Commit FIRST so layouts update immediately: the dragged card then
+        // glides exactly once from the finger to its new slot (layout
+        // transition + residual transform easing out together). No
+        // glide-back phase, no second motion.
+        activeIndex.value = newIndex;
+        runOnJS(onReorder)(index, newIndex);
+      }
+      // Single residual glide to rest for every card.
       dragOffset.value = withTiming(
         0,
         { duration: 220, easing: Easing.out(Easing.quad) },
@@ -174,9 +183,6 @@ export default function DraggableCityCard({
           'worklet';
           if (!finished) return;
           activeIndex.value = -1;
-          if (shouldReorder) {
-            runOnJS(onReorder)(index, newIndex);
-          }
         }
       );
     }),
@@ -204,13 +210,13 @@ export default function DraggableCityCard({
     } else if (draggingIdx >= 0 && draggingIdx !== index) {
       const activePos = draggingIdx * stride;
       const myPos = index * stride;
-      // Overlap & swap: stand perfectly still until the dragged card's
-      // leading edge passes this card's center (>50% overlap), then step
-      // exactly one slot aside with a smooth timing transition.
+      // Overlap & swap: stand perfectly still until the dragged card covers
+      // 75% of this card, then step exactly one slot aside with a smooth
+      // timing transition.
       let desired = 0;
-      if (myPos > activePos && offset > (myPos - activePos) - stride / 2) {
+      if (myPos > activePos && offset > (myPos - activePos) - stride / 4) {
         desired = -stride; // card below the dragged one: move up
-      } else if (myPos < activePos && offset < (myPos - activePos) + stride / 2) {
+      } else if (myPos < activePos && offset < (myPos - activePos) + stride / 4) {
         desired = stride; // card above the dragged one: move down
       }
       if (slotTarget.value !== desired) {
