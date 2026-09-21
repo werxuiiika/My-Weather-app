@@ -7,7 +7,7 @@ import Animated, {
   withTiming,
   Easing,
   runOnJS,
-  Layout,
+  LinearTransition,
 } from 'react-native-reanimated';
 import { Ionicons } from '@expo/vector-icons';
 
@@ -165,10 +165,11 @@ export default function DraggableCityCard({
       // Glide the dragged card back first while the active state is kept:
       // neighbours un-cross their thresholds one by one and ease back via
       // their own slot animations — no snap. Only then drop the active
-      // state and commit the swap; the Layout animation settles it softly.
+      // state and commit the swap; the LinearTransition settles it
+      // strictly, with no spring overshoot.
       dragOffset.value = withTiming(
         0,
-        { duration: 220, easing: Easing.out(Easing.cubic) },
+        { duration: 220, easing: Easing.out(Easing.quad) },
         (finished) => {
           'worklet';
           if (!finished) return;
@@ -214,13 +215,13 @@ export default function DraggableCityCard({
       }
       if (slotTarget.value !== desired) {
         slotTarget.value = desired;
-        slotShift.value = withTiming(desired, { duration: 200, easing: Easing.out(Easing.cubic) });
+        slotShift.value = withTiming(desired, { duration: 200, easing: Easing.out(Easing.quad) });
       }
       translateY = slotShift.value;
     } else if (slotTarget.value !== 0) {
       // No active drag — ease back to rest (covers release frames).
       slotTarget.value = 0;
-      slotShift.value = withTiming(0, { duration: 200, easing: Easing.out(Easing.cubic) });
+      slotShift.value = withTiming(0, { duration: 200, easing: Easing.out(Easing.quad) });
       translateY = slotShift.value;
     }
 
@@ -245,7 +246,7 @@ export default function DraggableCityCard({
   return (
     <Animated.View
       style={[styles.cardContainer, animatedStyle]}
-      layout={Layout.springify().damping(14).stiffness(200)}
+      layout={LinearTransition.duration(220).easing(Easing.out(Easing.quad))}
     >
       <Pressable
         onPress={() => onSelectToggle(safeItem.id, safeItem.name, index)}
