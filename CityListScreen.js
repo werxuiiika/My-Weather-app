@@ -66,6 +66,10 @@ export default function CityListScreen() {
   // that time so the scroll view never fights the pan gesture (that fight
   // shows up as jitter of the whole list mid-drag).
   const [isDragging, setIsDragging] = useState(false);
+  // Logical slot of the dragged card. Mirrored into the activeIndex shared
+  // value via effect (see below) — never written from the gesture directly,
+  // so the base flip and the data flip always land in the same render.
+  const [dragBase, setDragBase] = useState(-1);
 
   const CARD_HEIGHT = 90;
 
@@ -96,6 +100,30 @@ export default function CityListScreen() {
     setCities(newCities);
     await AsyncStorage.setItem(SAVED_CITIES_KEY, JSON.stringify(newCities));
   }, []);
+
+  // Mirror the logical base into the shared value after every render commit.
+  // Because React batches the setCities + setDragBase calls below into one
+  // render, worklets always observe base and slots from the same generation —
+  // the 1–3 frame skew (new base + old slots) that caused the release
+  // twitch is structurally impossible.
+  useEffect(() => {
+    activeIndex.value = dragBase;
+  }, [dragBase]);
+
+  // Stable drag-lifecycle entries for the gesture (all empty-deps, so the
+  // gesture object is created once and never restarted mid-drag).
+  const beginDrag = useCallback((i) => {
+    setDragBase(i);
+    setIsDragging(true);
+  }, []);
+  const endDrag = useCallback(() => {
+    setDragBase(-1);
+    setIsDragging(false);
+  }, []);
+  const commitReorder = useCallback((fromIndex, toIndex) => {
+    onReorder(fromIndex, toIndex);
+    setDragBase(toIndex);
+  }, [onReorder]);
 
   const styles = useMemo(() => StyleSheet.create({
     safe: { flex: 1 },
@@ -695,9 +723,10 @@ export default function CityListScreen() {
         dragOffset={dragOffset}
         activeIndex={activeIndex}
         activeId={activeId}
-        setDragging={setIsDragging}
+        beginDrag={beginDrag}
+        endDrag={endDrag}
+        commitReorder={commitReorder}
         trace={trace}
-         onReorder={onReorder}
          itemCount={cities.length}
        />
     );

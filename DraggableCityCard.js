@@ -25,8 +25,9 @@ export default function DraggableCityCard({
   dragOffset,
   activeIndex,
   activeId,
-  setDragging,
-  onReorder,
+  beginDrag,
+  endDrag,
+  commitReorder,
   itemCount,
   trace,
 }) {
@@ -152,11 +153,13 @@ export default function DraggableCityCard({
   const panGesture = useMemo(() => Gesture.Pan()
     .onStart(() => {
       'worklet';
-      activeIndex.value = index;
+      // NOTE: the logical base is set via beginDrag (React state) on purpose —
+      // writing activeIndex here would desync it from the data for a few
+      // frames. The 1-frame delay is imperceptible; the skew is not.
       activeId.value = itemId;
       dragOffset.value = 0;
       trace.value = [];
-      runOnJS(setDragging)(true);
+      runOnJS(beginDrag)(index);
     })
     .onUpdate((e) => {
       'worklet';
@@ -183,29 +186,27 @@ export default function DraggableCityCard({
         // Commit FIRST so layouts update immediately: the dragged card then
         // glides exactly once from the finger to its new slot (layout
         // transition + residual transform easing out together). No
-        // glide-back phase, no second motion.
-        activeIndex.value = newIndex;
-        runOnJS(onReorder)(index, newIndex);
+        // glide-back phase, no second motion. commitReorder batches the data
+        // swap and the base flip into ONE render — atomic for worklets.
+        // NOTE: never commit here twice — a second identical splice would
+        // apply to the NEW array (adjacent swaps would flip straight back).
+        runOnJS(commitReorder)(index, newIndex);
       }
-      // Single residual glide to rest for every card. NOTE: the data swap
-      // was already committed above — committing again here would apply the
-      // same (index, newIndex) splice to the NEW array, i.e. swap a second,
-      // wrong pair (for adjacent swaps: swap straight back). One commit.
+      // Single residual glide to rest for every card.
       dragOffset.value = withTiming(
         0,
         { duration: 220, easing: Easing.out(Easing.quad) },
         () => {
           'worklet';
-          activeIndex.value = -1;
           activeId.value = null;
-          runOnJS(setDragging)(false);
+          runOnJS(endDrag)();
           const snapshot = trace.value;
           trace.value = [];
           runOnJS(saveDragTrace)(snapshot);
         }
       );
     }),
-    [index, itemCount, onReorder, stride, itemId, setDragging]);
+    [index, itemCount, stride, itemId, beginDrag, endDrag, commitReorder]);
 
   const animatedStyle = useAnimatedStyle(() => {
     // Branch by stable item id, NOT by numeric index: at the commit frame
