@@ -10,6 +10,7 @@ import Animated, {
   LinearTransition,
 } from 'react-native-reanimated';
 import { Ionicons } from '@expo/vector-icons';
+import { saveDragTrace } from '../utils/dragTrace';
 
 export default function DraggableCityCard({
   item,
@@ -27,6 +28,7 @@ export default function DraggableCityCard({
   setDragging,
   onReorder,
   itemCount,
+  trace,
 }) {
   const safeItem = { ...item, isNight: item?.isNight ?? false };
   // Stable per-instance identity for the active branch (see below).
@@ -153,6 +155,7 @@ export default function DraggableCityCard({
       activeIndex.value = index;
       activeId.value = itemId;
       dragOffset.value = 0;
+      trace.value = [];
       runOnJS(setDragging)(true);
     })
     .onUpdate((e) => {
@@ -173,6 +176,9 @@ export default function DraggableCityCard({
       const newIndex = index + steps;
       const shouldReorder =
         newIndex >= 0 && newIndex < itemCount && newIndex !== index;
+      if (trace.value.length < 1500) {
+        trace.value.push(['e', Date.now(), Math.round(offset), shouldReorder ? newIndex : -1]);
+      }
       if (shouldReorder) {
         // Commit FIRST so layouts update immediately: the dragged card then
         // glides exactly once from the finger to its new slot (layout
@@ -181,18 +187,21 @@ export default function DraggableCityCard({
         activeIndex.value = newIndex;
         runOnJS(onReorder)(index, newIndex);
       }
-      // Single residual glide to rest for every card.
+      // Single residual glide to rest for every card. NOTE: the data swap
+      // was already committed above — committing again here would apply the
+      // same (index, newIndex) splice to the NEW array, i.e. swap a second,
+      // wrong pair (for adjacent swaps: swap straight back). One commit.
       dragOffset.value = withTiming(
         0,
         { duration: 220, easing: Easing.out(Easing.quad) },
-        (finished) => {
+        () => {
           'worklet';
           activeIndex.value = -1;
           activeId.value = null;
           runOnJS(setDragging)(false);
-          if (finished && shouldReorder) {
-            runOnJS(onReorder)(index, newIndex);
-          }
+          const snapshot = trace.value;
+          trace.value = [];
+          runOnJS(saveDragTrace)(snapshot);
         }
       );
     }),
@@ -223,6 +232,10 @@ export default function DraggableCityCard({
       opacity = 0.95;
       shadowOpacityVal = 0.4;
       shadowRadiusVal = 20;
+      // Drag telemetry: one sample per frame (~60Hz) for offline analysis.
+      if (trace.value.length < 1500) {
+        trace.value.push(['s', Date.now(), Math.round(offset), 0]);
+      }
     } else if (draggingIdx >= 0 && draggingIdx !== index) {
       const activePos = draggingIdx * stride;
       const myPos = index * stride;
@@ -249,6 +262,9 @@ export default function DraggableCityCard({
       if (slotTarget.value !== desired) {
         slotTarget.value = desired;
         slotShift.value = withTiming(desired, { duration: 200, easing: Easing.out(Easing.quad) });
+        if (trace.value.length < 1500) {
+          trace.value.push(['x', Date.now(), index, desired > 0 ? 1 : -1]);
+        }
       }
       translateY = slotShift.value;
     } else if (slotTarget.value !== 0) {

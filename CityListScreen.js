@@ -74,6 +74,8 @@ export default function CityListScreen() {
   // Stable identity of the dragged card (item id survives reorder, unlike
   // the numeric index — see DraggableCityCard).
   const activeId = useSharedValue(null);
+  // Drag telemetry ring for offline jitter analysis (see utils/dragTrace).
+  const trace = useSharedValue([]);
   const positionsRef = useRef([]);
 
   // Mutable mirror of the list: the drag gesture object must stay identical
@@ -694,6 +696,7 @@ export default function CityListScreen() {
         activeIndex={activeIndex}
         activeId={activeId}
         setDragging={setIsDragging}
+        trace={trace}
          onReorder={onReorder}
          itemCount={cities.length}
        />

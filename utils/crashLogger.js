@@ -38,7 +38,7 @@ export async function listInternalLogs() {
     const names = await FileSystem.readDirectoryAsync(dir);
     const files = [];
     for (const name of names) {
-      if (!name.endsWith('.txt')) continue;
+      if (!name.endsWith('.txt') && !name.endsWith('.csv')) continue;
       try {
         const info = await FileSystem.getInfoAsync(`${dir}/${name}`);
         files.push({
@@ -136,7 +136,7 @@ export async function listDownloadLogs() {
     const files = [];
     for (const uri of uris) {
       const name = safDisplayName(uri);
-      if (!name.endsWith('.txt')) continue;
+      if (!name.endsWith('.txt') && !name.endsWith('.csv')) continue;
       files.push({ name, path: uri, size: 0, mtime: 0, location: 'download' });
     }
     files.sort((a, b) => (a.name < b.name ? 1 : -1));
