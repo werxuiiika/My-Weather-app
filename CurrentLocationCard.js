@@ -5,7 +5,7 @@ import { Ionicons } from '@expo/vector-icons';
 // Top card for the device's geolocation. Rendered ONLY when coordinates were
 // successfully resolved (location !== null). Deliberately NOT a DraggableCityCard:
 // no drag handle, no checkbox, no delete — it is not part of the saved list.
-export default function CurrentLocationCard({ item, theme, fs, t, onPress }) {
+export default function CurrentLocationCard({ item, theme, fs, t, onPress, style }) {
   const safeItem = { ...item, isNight: item?.isNight ?? false };
   const isDarkText = !safeItem.isNight;
   const mainText = isDarkText ? '#1e293b' : '#FFFFFF';
@@ -108,7 +108,7 @@ export default function CurrentLocationCard({ item, theme, fs, t, onPress }) {
     : '#4a6b8a';
 
   return (
-    <View style={styles.cardContainer}>
+    <View style={[styles.cardContainer, style]}>
       <Pressable onPress={onPress} disabled={!onPress}>
         <View style={[styles.cardBackground, { backgroundColor: cardColor }]}>
           <View style={styles.cardBody}>

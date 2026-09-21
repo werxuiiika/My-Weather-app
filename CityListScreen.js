@@ -135,6 +135,14 @@ export default function CityListScreen() {
       paddingTop: fs.spacing * 0.5,
       paddingBottom: fs.spacing * 1.75,
     },
+    // Fixed geolocation layer above the list. Android draw order is global
+    // by elevation (card itself gets 28 > dragged card's 20); iOS stacks
+    // siblings by zIndex, so 30 wins over the whole FlatList subtree.
+    locationHeader: {
+      paddingHorizontal: fs.spacing,
+      paddingTop: fs.spacing * 0.5,
+      zIndex: 30,
+    },
     cardContainer: {
       marginBottom: fs.spacing,
       borderRadius: 28,
@@ -721,6 +729,24 @@ export default function CityListScreen() {
         </View>
       )}
 
+      {/* Fixed geolocation header: lives OUTSIDE the FlatList so it never
+          scrolls, never shifts during reorder, and always draws above the
+          dragged card (higher elevation / zIndex = "слои" effect). */}
+      {currentLocation ? (
+        <View style={styles.locationHeader}>
+          <CurrentLocationCard
+            item={currentLocation}
+            theme={theme}
+            fs={fs}
+            t={t}
+            style={{ elevation: 28 }}
+            onPress={currentLocation.isCoordinateFallback
+              ? undefined
+              : () => handleSelectCity(currentLocation.name)}
+          />
+        </View>
+      ) : null}
+
       {isLoading && cities.length === 0 ? (
         <View style={styles.loaderContainer}>
           <ActivityIndicator size="large" color={theme.tint || '#3a7bd5'} />
@@ -733,17 +759,6 @@ export default function CityListScreen() {
           style={{ flex: 1 }}
           contentContainerStyle={styles.listContainer}
           showsVerticalScrollIndicator={false}
-          ListHeaderComponent={currentLocation ? (
-            <CurrentLocationCard
-              item={currentLocation}
-              theme={theme}
-              fs={fs}
-              t={t}
-              onPress={currentLocation.isCoordinateFallback
-                ? undefined
-                : () => handleSelectCity(currentLocation.name)}
-            />
-          ) : null}
           refreshControl={
             <RefreshControl refreshing={refreshing} onRefresh={() => { setRefreshing(true); loadSavedCitiesAndRefresh(); loadCurrentLocation(); }} />
           }
