@@ -221,14 +221,25 @@ export default function DraggableCityCard({
     } else if (draggingIdx >= 0 && draggingIdx !== index) {
       const activePos = draggingIdx * stride;
       const myPos = index * stride;
-      // Overlap & swap: stand perfectly still until the dragged card covers
-      // 75% of this card, then step exactly one slot aside with a smooth
-      // timing transition.
-      let desired = 0;
-      if (myPos > activePos && offset > (myPos - activePos) - stride / 4) {
-        desired = -stride; // card below the dragged one: move up
-      } else if (myPos < activePos && offset < (myPos - activePos) + stride / 4) {
-        desired = stride; // card above the dragged one: move down
+      // Overlap & swap with hysteresis: step aside once the dragged card
+      // covers 75% of this card, but step back only when the overlap drops
+      // below 50%. The deadband between the two thresholds stops the swap
+      // from chattering when the finger hovers right at the boundary —
+      // that chatter is the visible jitter.
+      const atRest = slotTarget.value === 0;
+      let desired = atRest ? 0 : slotTarget.value;
+      if (myPos > activePos) {
+        if (atRest && offset > (myPos - activePos) - stride / 4) {
+          desired = -stride; // card below the dragged one: move up
+        } else if (!atRest && offset < (myPos - activePos) - stride / 2) {
+          desired = 0;
+        }
+      } else if (myPos < activePos) {
+        if (atRest && offset < (myPos - activePos) + stride / 4) {
+          desired = stride; // card above the dragged one: move down
+        } else if (!atRest && offset > (myPos - activePos) + stride / 2) {
+          desired = 0;
+        }
       }
       if (slotTarget.value !== desired) {
         slotTarget.value = desired;
