@@ -107,6 +107,8 @@
     "selected_count_few": "{{count}} items",
     "selected_count_many": "{{count}} items",
     "delete_multiple_question": "Delete selected cities?",
+    "select_all": "Select all",
+    "deselect_all": "Deselect",
     "current_location": "Current location"
   },
   "permission_required": "Permission Required",

@@ -675,6 +675,16 @@ export default function CityListScreen() {
     setSelectedCities(new Set());
   };
 
+  const allSelected = cities.length > 0 && selectedCities.size === cities.length;
+
+  const toggleSelectAll = () => {
+    if (allSelected) {
+      setSelectedCities(new Set());
+    } else {
+      setSelectedCities(new Set(cities.map((c) => c.id)));
+    }
+  };
+
   const handlePromptBatchDelete = () => {
     if (selectedCities.size === 0) return;
     setDeleteTarget({ count: selectedCities.size });
@@ -756,9 +766,9 @@ export default function CityListScreen() {
           {isSelectionMode ? getPluralSelectedText(selectedCities.size) : t('cities.title')}
         </Text>
         {isSelectionMode && (
-          <TouchableOpacity onPress={cancelSelectionMode} style={{ paddingHorizontal: fs.spacing * 0.5 }}>
+          <TouchableOpacity onPress={toggleSelectAll} style={{ paddingHorizontal: fs.spacing * 0.5 }}>
             <Text style={{ color: theme.tint || '#3a7bd5', fontSize: fs.base, fontWeight: '600' }}>
-              {t('cities.cancel')}
+              {allSelected ? t('cities.deselect_all') : t('cities.select_all')}
             </Text>
           </TouchableOpacity>
         )}
@@ -812,9 +822,9 @@ export default function CityListScreen() {
           scrollEnabled={!isDragging}
           contentContainerStyle={styles.listContainer}
           showsVerticalScrollIndicator={false}
-          refreshControl={
+          refreshControl={!isSelectionMode ? (
             <RefreshControl refreshing={refreshing} onRefresh={() => { setRefreshing(true); loadSavedCitiesAndRefresh(); loadCurrentLocation(); }} />
-          }
+          ) : undefined}
         />
       )}
 

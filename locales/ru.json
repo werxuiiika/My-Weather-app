@@ -107,6 +107,8 @@
     "selected_count_few": "{{count}} объекта",
     "selected_count_many": "{{count}} объектов",
     "delete_multiple_question": "Удалить выбранные города?",
+    "select_all": "Выбрать все",
+    "deselect_all": "Снять выбор",
     "current_location": "Текущее местоположение"
   },
   "permission_required": "Требуется разрешение",
