@@ -623,7 +623,6 @@ export default function SettingsScreen() {
   const [showMenuStylePicker, setShowMenuStylePicker] = useState(false);
   const [showFontSizePicker, setShowFontSizePicker] = useState(false);
   const [showLogViewer, setShowLogViewer] = useState(false);
-  const [testCrash, setTestCrash] = useState(false);
 
   // Secret dev entry: 7 quick taps on the app version open the crash logs.
   // Taps spaced more than the window apart restart the count.
@@ -636,15 +635,6 @@ export default function SettingsScreen() {
   useEffect(() => () => {
     if (hintTimerRef.current) clearTimeout(hintTimerRef.current);
   }, []);
-
-  // Intentional render-phase crash for testing GlobalErrorBoundary + logCrash.
-  // Must throw during render (not in onPress): error boundaries do not catch
-  // event-handler errors, and a direct throw would kill the JS thread before
-  // the async log write finishes. Reachable only via the secret version taps
-  // (CrashLogViewer → onTestCrash), never from the visible settings UI.
-  if (testCrash) {
-    throw new Error('Test Crash from SettingsScreen');
-  }
 
   const handleVersionTap = async () => {
     try {
@@ -961,7 +951,6 @@ export default function SettingsScreen() {
         onClose={() => setShowLogViewer(false)}
         theme={theme}
         fs={fs}
-        onTestCrash={() => setTestCrash(true)}
       />
     </ScreenWrapper>
   );
