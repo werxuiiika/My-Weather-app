@@ -1,5 +1,6 @@
 import React, { useMemo } from 'react';
 import { Modal, View, Text, TouchableOpacity, StyleSheet, TouchableWithoutFeedback } from 'react-native';
+import Animated, { LinearTransition } from 'react-native-reanimated';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from './ThemeContext';
 import { useFontSize } from './FontSizeContext';
@@ -11,6 +12,10 @@ export default function ConfirmDeleteModal({ visible, cityName, count, onCancel,
   const fs = useFontSize();
   const { t } = useTranslation();
 
+  // Adaptive density: single-city dialog is minimal, multi-city gets room
+  // for the prominent count line. Height transitions animate via layout.
+  const isMulti = count > 1;
+
   const styles = useMemo(() => StyleSheet.create({
     backdrop: {
       flex: 1,
@@ -21,38 +26,38 @@ export default function ConfirmDeleteModal({ visible, cityName, count, onCancel,
     },
     card: {
       width: '100%',
-      maxWidth: 320,
+      maxWidth: isMulti ? 320 : 296,
       backgroundColor: theme.surface,
       borderRadius: 18,
       borderWidth: 1,
       borderColor: theme.border,
-      paddingVertical: fs.spacing * 0.875,
+      paddingVertical: fs.spacing * (isMulti ? 1 : 0.75),
       paddingHorizontal: fs.spacing * 1.125,
       alignItems: 'center',
     },
     iconCircle: {
-      width: 40,
-      height: 40,
-      borderRadius: 20,
+      width: isMulti ? 44 : 36,
+      height: isMulti ? 44 : 36,
+      borderRadius: isMulti ? 22 : 18,
       backgroundColor: (theme.danger || '#FF453A') + '1A',
       justifyContent: 'center',
       alignItems: 'center',
-      marginBottom: fs.spacing * 0.5,
+      marginBottom: fs.spacing * (isMulti ? 0.625 : 0.375),
     },
     headerLabel: {
-      fontSize: fs.small,
+      fontSize: fs.small * (isMulti ? 1 : 0.95),
       fontWeight: '500',
       color: theme.textMuted,
       textAlign: 'center',
       marginBottom: fs.spacing * 0.25,
     },
     cityName: {
-      fontSize: fs.large,
+      fontSize: fs.large * (isMulti ? 1.1 : 0.95),
       fontWeight: '800',
       color: theme.text,
       textAlign: 'center',
-      marginBottom: fs.spacing,
-      lineHeight: fs.large * 1.25,
+      marginBottom: fs.spacing * (isMulti ? 1.125 : 0.75),
+      lineHeight: fs.large * (isMulti ? 1.35 : 1.2),
       letterSpacing: 0.3,
     },
     buttonRow: {
@@ -71,7 +76,7 @@ export default function ConfirmDeleteModal({ visible, cityName, count, onCancel,
       fontSize: fs.base * 0.875,
       fontWeight: '600',
     },
-  }), [theme, fs]);
+  }), [theme, fs, isMulti]);
 
   const handleConfirm = () => {
     onConfirm();
@@ -93,16 +98,25 @@ export default function ConfirmDeleteModal({ visible, cityName, count, onCancel,
       <TouchableWithoutFeedback onPress={handleCancel}>
         <View style={styles.backdrop}>
           <TouchableWithoutFeedback>
-            <View style={styles.card}>
+            <Animated.View
+              style={styles.card}
+              layout={LinearTransition.duration(220)}
+            >
               <View style={styles.iconCircle}>
-                <Ionicons name="trash-outline" size={Math.round((fs.iconSize || 24) * 0.8)} color={theme.danger || '#FF453A'} />
+                <Ionicons name="trash-outline" size={Math.round((fs.iconSize || 24) * (isMulti ? 0.85 : 0.7))} color={theme.danger || '#FF453A'} />
               </View>
               <Text style={styles.headerLabel}>
-                {count > 1 ? t('cities.delete_multiple_question', 'Удалить выбранные города?') : t('cities.delete_question', 'Удалить город из списка?')}
+                {isMulti ? t('cities.delete_multiple_question', 'Удалить выбранные города?') : t('cities.delete_question', 'Удалить город из списка?')}
               </Text>
-              <Text style={styles.cityName} numberOfLines={2}>
-                {count > 1 ? getPluralSelectedText(count, t) : cityName}
-              </Text>
+              {isMulti ? (
+                <Text style={styles.cityName} numberOfLines={2}>
+                  {getPluralSelectedText(count, t)}
+                </Text>
+              ) : cityName ? (
+                <Text style={styles.cityName} numberOfLines={2}>
+                  {cityName}
+                </Text>
+              ) : null}
               <View style={styles.buttonRow}>
                 <TouchableOpacity
                   style={[styles.button, { backgroundColor: theme.surfaceAlt }]}
@@ -123,7 +137,7 @@ export default function ConfirmDeleteModal({ visible, cityName, count, onCancel,
                   </Text>
                 </TouchableOpacity>
               </View>
-            </View>
+            </Animated.View>
           </TouchableWithoutFeedback>
         </View>
       </TouchableWithoutFeedback>
