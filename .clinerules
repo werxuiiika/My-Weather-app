@@ -43,6 +43,6 @@ If the user reports a crash/flytte (вылет приложения), follow the
 - `utils/crashLogger.js` - `logCrash()` (Download via SAF primary, sandbox fallback) + `testLogWrite()` self-test; NOTE: import from 'expo-file-system/legacy' — root-import functions throw at runtime in SDK 57, and `externalDirectory` no longer exists
 - `components/GlobalErrorBoundary.js` - Wraps app, catches render errors, calls logCrash
 - `components/CrashLogViewer.js` - In-app viewer (Settings → "Логи ошибок"): list/view/share/clear
-- `SettingsScreen.js` - secret dev entry: 7 taps on the version text open the viewer
+- `SettingsScreen.js` - secret dev entry: 7 taps on the version text permanently unlock the Logs card (long-press it to hide again)
   (must throw during render — boundaries do NOT catch event-handler throws)
 - `App.js` - Wrapped with `<GlobalErrorBoundary>` component

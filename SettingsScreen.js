@@ -587,6 +587,7 @@ async function saveRememberCityEnabled(value) {
 }
 
 const CONFIRM_DELETE_ENABLED_KEY = 'confirm_delete_enabled';
+const DEV_MENU_KEY = 'dev_menu_unlocked';
 
 async function loadConfirmDeleteEnabled() {
   try {
@@ -615,6 +616,10 @@ export default function SettingsScreen() {
 
   const [rememberCity, setRememberCity] = useState(true);
   const [confirmDelete, setConfirmDelete] = useState(true);
+  // Dev menu (crash logs entry) visibility. Unlocked once via the secret
+  // version taps, persisted — no need to tap every time. Long-press the
+  // entry itself to lock it away again.
+  const [devUnlocked, setDevUnlocked] = useState(false);
   const [menuStyle, setMenuStyle] = useState(DEFAULT_MENU_STYLE);
   const [showThemePicker, setShowThemePicker] = useState(false);
   const [showLanguagePicker, setShowLanguagePicker] = useState(false);
@@ -654,6 +659,12 @@ export default function SettingsScreen() {
       try {
         await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
       } catch (e) {}
+      // Unlock the persistent dev entry (revealed next to Source code) and
+      // open the viewer right away so the unlock is confirmed visibly.
+      try {
+        await AsyncStorage.setItem(DEV_MENU_KEY, 'true');
+      } catch (e) {}
+      setDevUnlocked(true);
       setShowLogViewer(true);
       return;
     }
@@ -672,6 +683,10 @@ export default function SettingsScreen() {
       setRememberCity(remember);
       const confirm = await loadConfirmDeleteEnabled();
       setConfirmDelete(confirm);
+      try {
+        const dev = await AsyncStorage.getItem(DEV_MENU_KEY);
+        setDevUnlocked(dev === 'true');
+      } catch (e) {}
     })();
   }, []);
 
@@ -683,6 +698,16 @@ export default function SettingsScreen() {
   const toggleConfirmDelete = async (value) => {
     setConfirmDelete(value);
     await saveConfirmDeleteEnabled(value);
+  };
+
+  const handleDevLock = async () => {
+    try {
+      await AsyncStorage.removeItem(DEV_MENU_KEY);
+    } catch (e) {}
+    setDevUnlocked(false);
+    try {
+      await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
+    } catch (e) {}
   };
 
   const handleThemeSelect = async (value) => {
@@ -934,6 +959,24 @@ export default function SettingsScreen() {
             </View>
             <Text style={styles.chevron}>›</Text>
           </TouchableOpacity>
+          {devUnlocked ? (
+            <TouchableOpacity
+              style={styles.card}
+              activeOpacity={0.6}
+              onPress={() => setShowLogViewer(true)}
+              onLongPress={handleDevLock}
+              delayLongPress={800}
+            >
+              <View style={styles.iconWrap}>
+                <Ionicons name="document-text" size={fs.iconSize * 0.77} color={theme.text} />
+              </View>
+              <View style={[styles.cardTextWrap, { flex: 1, flexDirection: 'row', alignItems: 'center' }]}>
+                <Text style={[styles.cardTitle, { flex: 1, flexShrink: 1 }]} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.8}>Логи ошибок</Text>
+                <Text style={[styles.cardDesc, { marginLeft: 10, marginTop: 0, flexShrink: 0, marginRight: 8 }]} numberOfLines={1}>Просмотр и отправка</Text>
+              </View>
+              <Text style={styles.chevron}>›</Text>
+            </TouchableOpacity>
+          ) : null}
         </View>
       </ScrollView>
 
