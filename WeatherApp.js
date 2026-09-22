@@ -620,6 +620,61 @@ function ForecastFogAnimation({ size = 26 }) {
   );
 }
 
+// Slow-spinning sun overlay for small forecast icons (hourly/weekly).
+// The hero uses the showcase SunAnimation; everything else renders through
+// WeatherIcon with a static SunCore — this makes those suns rotate too.
+// One native-driven loop per icon (same cost class as the existing
+// RainLayer/SnowLayer loops), slow 30s period so lists stay calm.
+function SpinningSun({ cx = 32, cy = 32, s = 1.25, duration = 30000 }) {
+  const rotate = useRef(new Animated.Value(0)).current;
+
+  useEffect(() => {
+    const spin = Animated.loop(
+      Animated.timing(rotate, {
+        toValue: 1,
+        duration,
+        easing: Easing.linear,
+        useNativeDriver: true,
+      })
+    );
+    spin.start();
+    return () => spin.stop();
+  }, [rotate, duration]);
+
+  const rotateDeg = rotate.interpolate({
+    inputRange: [0, 1],
+    outputRange: ['0deg', '360deg'],
+  });
+
+  // SunCore spans r=18*s (+stroke) around (cx,cy) in 64-units; the overlay
+  // box is centered on the sun so rotation stays on axis.
+  const half = (19.5 * s) / 64;
+  const fx = cx / 64;
+  const fy = cy / 64;
+
+  return (
+    <Animated.View
+      pointerEvents="none"
+      style={{
+        position: 'absolute',
+        left: `${(fx - half) * 100}%`,
+        top: `${(fy - half) * 100}%`,
+        width: `${half * 2 * 100}%`,
+        height: `${half * 2 * 100}%`,
+        transform: [{ rotate: rotateDeg }],
+      }}
+    >
+      <Svg
+        width="100%"
+        height="100%"
+        viewBox={`${cx - 19.5 * s} ${cy - 19.5 * s} ${39 * s} ${39 * s}`}
+      >
+        <SunCore x={cx} y={cy} s={s} />
+      </Svg>
+    </Animated.View>
+  );
+}
+
 function WeatherIcon({ type = 'clear', isNight = false, size = 96 }) {
   if (type === 'thunder') {
     return <ThunderWeather size={size} />;
@@ -631,16 +686,21 @@ function WeatherIcon({ type = 'clear', isNight = false, size = 96 }) {
   const isSnow = type === 'snow';
   let content = null;
   let driftingCloud = null;
+  let spinningSun = null;
   if (type === 'clear') {
-    content = isNight
-      ? <MoonCrescent transform="translate(8 8) scale(2)" />
-      : <SunCore x={32} y={32} s={1.25} />;
+    if (isNight) {
+      content = <MoonCrescent transform="translate(8 8) scale(2)" />;
+    } else {
+      content = null;
+      spinningSun = { cx: 32, cy: 32, s: 1.25 };
+    }
   } else if (type === 'partly') {
-    content = isNight ? (
-      <MoonCrescent transform="translate(20 0) scale(1.5)" />
-    ) : (
-      <SunCore x={22} y={20} s={0.85} />
-    );
+    if (isNight) {
+      content = <MoonCrescent transform="translate(20 0) scale(1.5)" />;
+    } else {
+      content = null;
+      spinningSun = { cx: 22, cy: 20, s: 0.85 };
+    }
     driftingCloud = { fill: ICON_COLORS.cloudDark, offsetX: 4, offsetY: 8, s: 0.85 };
   } else if (type === 'fog') {
     content = (
@@ -666,6 +726,7 @@ function WeatherIcon({ type = 'clear', isNight = false, size = 96 }) {
       <Svg width={size} height={size} viewBox="0 0 64 64">
         {content}
       </Svg>
+      {spinningSun && <SpinningSun {...spinningSun} />}
       {driftingCloud && <DriftCloud size={size} {...driftingCloud} />}
     </View>
   );
