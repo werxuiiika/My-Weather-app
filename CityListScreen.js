@@ -15,9 +15,11 @@ import { geocodeCity, isOfflineError, isRegionLike } from './geocoding';
 import ConfirmDeleteModal from './ConfirmDeleteModal';
 import DraggableCityCard from './DraggableCityCard';
 import CurrentLocationCard from './CurrentLocationCard';
+import { getPluralSelectedText } from './utils/plural';
 
 const SAVED_CITIES_KEY = 'saved_cities_list';
 const LAST_SELECTED_CITY_KEY = 'last_selected_city';
+const CONFIRM_DELETE_KEY = 'confirm_delete_enabled';
 const BASE_URL = 'https://api.open-meteo.com/v1/forecast';
 const FETCH_TIMEOUT_MS = 15000;
 
@@ -62,6 +64,8 @@ export default function CityListScreen() {
    const [isSelectionMode, setIsSelectionMode] = useState(false);
   const [selectedCities, setSelectedCities] = useState(new Set());
   const [deleteTarget, setDeleteTarget] = useState(null);
+  // Delete-confirmation switch from Settings (default ON).
+  const [confirmDelete, setConfirmDelete] = useState(true);
   // True while a drag gesture is active — FlatList scrolling is locked for
   // that time so the scroll view never fights the pan gesture (that fight
   // shows up as jitter of the whole list mid-drag).
@@ -333,6 +337,12 @@ export default function CityListScreen() {
   useEffect(() => {
     loadSavedCitiesAndRefresh();
     loadCurrentLocation();
+    (async () => {
+      try {
+        const v = await AsyncStorage.getItem(CONFIRM_DELETE_KEY);
+        setConfirmDelete(v === null ? true : v === 'true');
+      } catch (e) {}
+    })();
   }, [i18n.language]);
 
   // Shared open-meteo enrichment for a coordinate pair. Returns the weather
@@ -661,14 +671,7 @@ export default function CityListScreen() {
     });
   };
 
-  const getPluralSelectedText = (count) => {
-    if (count % 10 === 1 && count % 100 !== 11) {
-      return t('cities.selected_count_one', { count });
-    } else if ([2, 3, 4].includes(count % 10) && ![12, 13, 14].includes(count % 100)) {
-      return t('cities.selected_count_few', { count });
-    }
-    return t('cities.selected_count_many', { count });
-  };
+
 
   const cancelSelectionMode = () => {
     setIsSelectionMode(false);
@@ -687,7 +690,12 @@ export default function CityListScreen() {
 
   const handlePromptBatchDelete = () => {
     if (selectedCities.size === 0) return;
-    setDeleteTarget({ count: selectedCities.size });
+    if (confirmDelete) {
+      setDeleteTarget({ count: selectedCities.size });
+    } else {
+      // Confirmation disabled in Settings — delete immediately.
+      handleConfirmDelete();
+    }
   };
 
   const handleConfirmDelete = async () => {
@@ -763,7 +771,7 @@ export default function CityListScreen() {
           adjustsFontSizeToFit
           minimumFontScale={0.8}
         >
-          {isSelectionMode ? getPluralSelectedText(selectedCities.size) : t('cities.title')}
+          {isSelectionMode ? getPluralSelectedText(selectedCities.size, t) : t('cities.title')}
         </Text>
         {isSelectionMode && (
           <TouchableOpacity onPress={toggleSelectAll} style={{ paddingHorizontal: fs.spacing * 0.5 }}>

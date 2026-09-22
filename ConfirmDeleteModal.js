@@ -4,6 +4,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from './ThemeContext';
 import { useFontSize } from './FontSizeContext';
 import { useTranslation } from 'react-i18next';
+import { getPluralSelectedText } from './utils/plural';
 
 export default function ConfirmDeleteModal({ visible, cityName, count, onCancel, onConfirm }) {
   const { theme } = useTheme();
@@ -100,7 +101,7 @@ export default function ConfirmDeleteModal({ visible, cityName, count, onCancel,
                 {count > 1 ? t('cities.delete_multiple_question', 'Удалить выбранные города?') : t('cities.delete_question', 'Удалить город из списка?')}
               </Text>
               <Text style={styles.cityName} numberOfLines={2}>
-                {count > 1 ? t('cities.selected_count_few', { count }) : cityName}
+                {count > 1 ? getPluralSelectedText(count, t) : cityName}
               </Text>
               <View style={styles.buttonRow}>
                 <TouchableOpacity

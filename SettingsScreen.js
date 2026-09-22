@@ -582,6 +582,23 @@ async function saveRememberCityEnabled(value) {
   } catch (e) {}
 }
 
+const CONFIRM_DELETE_ENABLED_KEY = 'confirm_delete_enabled';
+
+async function loadConfirmDeleteEnabled() {
+  try {
+    const v = await AsyncStorage.getItem(CONFIRM_DELETE_ENABLED_KEY);
+    return v === null ? true : v === 'true';
+  } catch (e) {
+    return true;
+  }
+}
+
+async function saveConfirmDeleteEnabled(value) {
+  try {
+    await AsyncStorage.setItem(CONFIRM_DELETE_ENABLED_KEY, value ? 'true' : 'false');
+  } catch (e) {}
+}
+
 export default function SettingsScreen() {
   const navigation = useNavigation();
   const { t: tr, i18n: i18nInstance } = useTranslation();
@@ -593,6 +610,7 @@ export default function SettingsScreen() {
   const insets = useSafeAreaInsets();
 
   const [rememberCity, setRememberCity] = useState(true);
+  const [confirmDelete, setConfirmDelete] = useState(true);
   const [menuStyle, setMenuStyle] = useState(DEFAULT_MENU_STYLE);
   const [showThemePicker, setShowThemePicker] = useState(false);
   const [showLanguagePicker, setShowLanguagePicker] = useState(false);
@@ -617,12 +635,19 @@ export default function SettingsScreen() {
       setMenuStyle(saved);
       const remember = await loadRememberCityEnabled();
       setRememberCity(remember);
+      const confirm = await loadConfirmDeleteEnabled();
+      setConfirmDelete(confirm);
     })();
   }, []);
 
   const toggleRemember = async (value) => {
     setRememberCity(value);
     await saveRememberCityEnabled(value);
+  };
+
+  const toggleConfirmDelete = async (value) => {
+    setConfirmDelete(value);
+    await saveConfirmDeleteEnabled(value);
   };
 
   const handleThemeSelect = async (value) => {
@@ -732,6 +757,20 @@ export default function SettingsScreen() {
               style={{ flexShrink: 0, alignSelf: 'center', marginLeft: 10 }}
               value={rememberCity}
               onValueChange={toggleRemember}
+              trackColor={{ false: theme.textMuted, true: theme.accent2 }}
+              thumbColor="#ffffff"
+              ios_backgroundColor={theme.textMuted}
+            />
+          </View>
+          <View style={styles.card}>
+            <View style={[styles.cardTextWrap, { flex: 1 }]}>
+              <Text style={styles.cardTitle}>{tr('confirmDelete')}</Text>
+              <Text style={styles.cardDesc}>{tr('confirmDeleteDesc')}</Text>
+            </View>
+            <Switch
+              style={{ flexShrink: 0, alignSelf: 'center', marginLeft: 10 }}
+              value={confirmDelete}
+              onValueChange={toggleConfirmDelete}
               trackColor={{ false: theme.textMuted, true: theme.accent2 }}
               thumbColor="#ffffff"
               ios_backgroundColor={theme.textMuted}

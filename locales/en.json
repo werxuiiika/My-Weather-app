@@ -32,6 +32,8 @@
   "menuStyle.inline": "Accordion",
   "rememberCity": "Remember city",
   "rememberCityDesc": "Automatically open the saved city on startup",
+  "confirmDelete": "Confirm deletion",
+  "confirmDeleteDesc": "Show a confirmation dialog before deleting cities",
   "interface": "Interface",
   "appTheme": "App theme",
   "units": "Units of measurement",
