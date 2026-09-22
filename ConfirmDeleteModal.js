@@ -21,54 +21,54 @@ export default function ConfirmDeleteModal({ visible, cityName, count, onCancel,
     },
     card: {
       width: '100%',
-      maxWidth: 360,
+      maxWidth: 320,
       backgroundColor: theme.surface,
-      borderRadius: 24,
+      borderRadius: 18,
       borderWidth: 1,
       borderColor: theme.border,
-      paddingVertical: fs.spacing * 1.75,
-      paddingHorizontal: fs.spacing * 1.5,
+      paddingVertical: fs.spacing * 0.875,
+      paddingHorizontal: fs.spacing * 1.125,
       alignItems: 'center',
     },
     iconCircle: {
-      width: 52,
-      height: 52,
-      borderRadius: 26,
+      width: 40,
+      height: 40,
+      borderRadius: 20,
       backgroundColor: (theme.danger || '#FF453A') + '1A',
       justifyContent: 'center',
       alignItems: 'center',
-      marginBottom: fs.spacing,
+      marginBottom: fs.spacing * 0.5,
     },
     headerLabel: {
-      fontSize: fs.small * 1.05,
+      fontSize: fs.small,
       fontWeight: '500',
       color: theme.textMuted,
       textAlign: 'center',
-      marginBottom: fs.spacing * 0.5,
+      marginBottom: fs.spacing * 0.25,
     },
     cityName: {
-      fontSize: fs.large * 1.35,
+      fontSize: fs.large,
       fontWeight: '800',
       color: theme.text,
       textAlign: 'center',
-      marginBottom: fs.spacing * 1.75,
-      lineHeight: fs.large * 1.6,
+      marginBottom: fs.spacing,
+      lineHeight: fs.large * 1.25,
       letterSpacing: 0.3,
     },
     buttonRow: {
       flexDirection: 'row',
-      gap: fs.spacing * 0.75,
+      gap: fs.spacing * 0.5,
       width: '100%',
     },
     button: {
       flex: 1,
-      paddingVertical: fs.spacing * 0.875,
-      borderRadius: 14,
+      paddingVertical: fs.spacing * 0.5,
+      borderRadius: 12,
       alignItems: 'center',
       justifyContent: 'center',
     },
     buttonText: {
-      fontSize: fs.base * 0.95,
+      fontSize: fs.base * 0.875,
       fontWeight: '600',
     },
   }), [theme, fs]);
@@ -95,7 +95,7 @@ export default function ConfirmDeleteModal({ visible, cityName, count, onCancel,
           <TouchableWithoutFeedback>
             <View style={styles.card}>
               <View style={styles.iconCircle}>
-                <Ionicons name="trash-outline" size={fs.iconSize || 24} color={theme.danger || '#FF453A'} />
+                <Ionicons name="trash-outline" size={Math.round((fs.iconSize || 24) * 0.8)} color={theme.danger || '#FF453A'} />
               </View>
               <Text style={styles.headerLabel}>
                 {count > 1 ? t('cities.delete_multiple_question', 'Удалить выбранные города?') : t('cities.delete_question', 'Удалить город из списка?')}

@@ -72,7 +72,9 @@ function buildStyles(theme, fs) {
     header: {
       flexDirection: 'row',
       alignItems: 'center',
-      paddingHorizontal: fs.spacing * 1.0,
+      // Fixed narrow gutter: at 130% font scale fs.spacing grows to ~21px
+      // and squeezes content into a center column — keep cards full-width.
+      paddingHorizontal: 12,
       paddingVertical: fs.spacing * 0.75,
       borderBottomWidth: 1,
       borderBottomColor: theme.border,
@@ -85,7 +87,7 @@ function buildStyles(theme, fs) {
     headerBtnText: { fontSize: fs.base * 1.375, color: theme.textSecondary },
     headerTitle: { fontSize: fs.large * 1.15, fontWeight: '700', color: theme.text, marginLeft: fs.spacing * 0.75 },
     body: { flex: 1 },
-    bodyContent: { paddingHorizontal: fs.spacing * 1.25, paddingTop: fs.spacing * 0.5, paddingBottom: fs.spacing * 2.125 },
+    bodyContent: { paddingHorizontal: 12, paddingTop: fs.spacing * 0.5, paddingBottom: fs.spacing * 2.125 },
     hero: { alignItems: 'center', paddingTop: fs.spacing * 0.875, paddingBottom: fs.spacing * 0.5, marginBottom: fs.spacing },
     heroIcon: {
       width: fs.iconSize * 3.8, height: fs.iconSize * 3.8, borderRadius: 26,
