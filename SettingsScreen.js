@@ -27,6 +27,7 @@ import { useFontSize, FONT_SIZE_LEVELS } from './FontSizeContext';
 import { THEME_MODES } from './themes';
 import { Ionicons } from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import * as Haptics from 'expo-haptics';
 import CrashLogViewer from './components/CrashLogViewer';
 
 const REMEMBER_CITY_ENABLED_KEY = 'remember_city_enabled';
@@ -101,6 +102,7 @@ function buildStyles(theme, fs) {
     heroTitle: { fontSize: fs.large * 1.15, fontWeight: '700', color: theme.text },
     heroAuthor: { fontSize: fs.small, color: theme.textMuted, marginTop: fs.spacing * 0.25 },
     heroVersion: { fontSize: fs.small * 0.846, color: theme.textMuted, marginTop: fs.spacing * 0.125 },
+    easterHint: { fontSize: fs.small * 0.85, color: theme.textMuted, marginTop: fs.spacing * 0.25, textAlign: 'center' },
     sectionTitle: {
       fontSize: fs.small, fontWeight: '700', color: theme.textMuted,
       letterSpacing: 0.8, marginBottom: fs.spacing * 0.625, marginTop: fs.spacing * 1.375,
@@ -623,13 +625,54 @@ export default function SettingsScreen() {
   const [showLogViewer, setShowLogViewer] = useState(false);
   const [testCrash, setTestCrash] = useState(false);
 
+  // Secret dev entry: 7 quick taps on the app version open the crash logs.
+  // Taps spaced more than the window apart restart the count.
+  // NOTE: all hooks must stay above the intentional throw below.
+  const tapCountRef = useRef(0);
+  const lastTapRef = useRef(0);
+  const hintTimerRef = useRef(null);
+  const [easterHint, setEasterHint] = useState(null);
+
+  useEffect(() => () => {
+    if (hintTimerRef.current) clearTimeout(hintTimerRef.current);
+  }, []);
+
   // Intentional render-phase crash for testing GlobalErrorBoundary + logCrash.
   // Must throw during render (not in onPress): error boundaries do not catch
   // event-handler errors, and a direct throw would kill the JS thread before
-  // the async log write finishes.
+  // the async log write finishes. Reachable only via the secret version taps
+  // (CrashLogViewer → onTestCrash), never from the visible settings UI.
   if (testCrash) {
     throw new Error('Test Crash from SettingsScreen');
   }
+
+  const handleVersionTap = async () => {
+    try {
+      await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    } catch (e) {}
+    const now = Date.now();
+    if (now - lastTapRef.current > 2000) {
+      tapCountRef.current = 1;
+    } else {
+      tapCountRef.current += 1;
+    }
+    lastTapRef.current = now;
+    const count = tapCountRef.current;
+    if (count >= 7) {
+      tapCountRef.current = 0;
+      setEasterHint(null);
+      try {
+        await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+      } catch (e) {}
+      setShowLogViewer(true);
+      return;
+    }
+    if (count >= 4) {
+      setEasterHint(`Ещё ${7 - count}…`);
+      if (hintTimerRef.current) clearTimeout(hintTimerRef.current);
+      hintTimerRef.current = setTimeout(() => setEasterHint(null), 1500);
+    }
+  };
 
   useEffect(() => {
     (async () => {
@@ -745,7 +788,12 @@ export default function SettingsScreen() {
           </View>
           <Text style={styles.heroTitle}>{tr('weather')}</Text>
           <Text style={styles.heroAuthor}>{tr('byAuthor')}</Text>
-          <Text style={styles.heroVersion}>{tr('version', { version: APP_VERSION })}</Text>
+          <Text style={styles.heroVersion} onPress={handleVersionTap}>
+            {tr('version', { version: APP_VERSION })}
+          </Text>
+          {easterHint ? (
+            <Text style={styles.easterHint}>{easterHint}</Text>
+          ) : null}
         </View>
 
         <Text style={styles.sectionTitle}>{tr('settings')}</Text>
@@ -897,26 +945,6 @@ export default function SettingsScreen() {
             <Text style={styles.chevron}>›</Text>
           </TouchableOpacity>
         </View>
-        <TouchableOpacity style={styles.card} onPress={() => setShowLogViewer(true)} activeOpacity={0.6}>
-          <View style={styles.iconWrap}>
-            <Ionicons name="document-text" size={fs.iconSize * 0.77} color={theme.text} />
-          </View>
-          <View style={[styles.cardTextWrap, { flex: 1, flexDirection: 'row', alignItems: 'center' }]}>
-            <Text style={[styles.cardTitle, { flex: 1, flexShrink: 1 }]} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.8}>Логи ошибок</Text>
-            <Text style={[styles.cardDesc, { marginLeft: 10, marginTop: 0, flexShrink: 0, marginRight: 8 }]} numberOfLines={1}>Просмотр и отправка</Text>
-          </View>
-          <Text style={styles.chevron}>›</Text>
-        </TouchableOpacity>
-        <TouchableOpacity style={styles.card} onPress={() => setTestCrash(true)} activeOpacity={0.6}>
-          <View style={styles.iconWrap}>
-            <Ionicons name="warning" size={fs.iconSize * 0.77} color={theme.text} />
-          </View>
-          <View style={[styles.cardTextWrap, { flex: 1, flexDirection: 'row', alignItems: 'center' }]}>
-            <Text style={[styles.cardTitle, { flex: 1, flexShrink: 1 }]} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.8}>Test Crash</Text>
-            <Text style={[styles.cardDesc, { marginLeft: 10, marginTop: 0, flexShrink: 0, marginRight: 8 }]} numberOfLines={1}>Test error logging</Text>
-          </View>
-          <Text style={styles.chevron}>›</Text>
-        </TouchableOpacity>
       </ScrollView>
 
       <FontSizeModal
@@ -933,6 +961,7 @@ export default function SettingsScreen() {
         onClose={() => setShowLogViewer(false)}
         theme={theme}
         fs={fs}
+        onTestCrash={() => setTestCrash(true)}
       />
     </ScreenWrapper>
   );

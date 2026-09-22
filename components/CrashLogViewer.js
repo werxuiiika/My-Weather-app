@@ -25,7 +25,7 @@ import {
 
 const { StorageAccessFramework } = FileSystem;
 
-export default function CrashLogViewer({ visible, onClose, theme, fs }) {
+export default function CrashLogViewer({ visible, onClose, theme, fs, onTestCrash }) {
   const [internalFiles, setInternalFiles] = useState([]);
   const [downloadFiles, setDownloadFiles] = useState([]);
   const [hasDownloadAccess, setHasDownloadAccess] = useState(false);
@@ -146,6 +146,19 @@ export default function CrashLogViewer({ visible, onClose, theme, fs }) {
     refresh();
   };
 
+  const confirmTestCrash = () => {
+    Alert.alert('Тестовый краш?', 'Приложение упадёт и запишет лог. Продолжить?', [
+      { text: 'Отмена', style: 'cancel' },
+      {
+        text: 'Уронить',
+        style: 'destructive',
+        onPress: () => {
+          if (onTestCrash) onTestCrash();
+        },
+      },
+    ]);
+  };
+
   const styles = StyleSheet.create({
     overlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.45)', justifyContent: 'flex-end' },
     sheet: {
@@ -264,6 +277,11 @@ export default function CrashLogViewer({ visible, onClose, theme, fs }) {
                   {hasDownloadAccess ? 'Синхронизировать в Загрузки' : 'Подключить Загрузки'}
                 </Text>
               </TouchableOpacity>
+              {onTestCrash ? (
+                <TouchableOpacity style={styles.btnGhost} onPress={confirmTestCrash}>
+                  <Text style={styles.btnDangerText}>Тест краш</Text>
+                </TouchableOpacity>
+              ) : null}
             </View>
           </ScrollView>
         )}
