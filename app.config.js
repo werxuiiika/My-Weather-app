@@ -63,7 +63,8 @@ export default {
         {
           englishName: "My Weather"
         }
-      ]
+      ],
+      "./plugins/abi-splits"
     ],
     extra: {
       eas: {
