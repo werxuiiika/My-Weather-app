@@ -22,29 +22,56 @@ import * as Location from 'expo-location';
 //     rural areas return HTTP 200 with {error:true, reason:"Not Found"}.
 //  3. BigDataCloud reverse (free, no key).
 // fetchFn is injected by the caller, same pattern as geocodeCity().
+// Never-hang guards: the platform geocoder (Google Play Services on
+// Android) can stall indefinitely when the network is broken instead of
+// rejecting — without caps a dead network turns geolocation into an
+// infinite hang rather than a fast fallback.
+const REVERSE_STEP_MS = 8000;
+const REVERSE_TOTAL_MS = 12000;
+
+function withTimeout(promise, ms) {
+  return Promise.race([
+    promise,
+    new Promise((_, reject) => setTimeout(() => reject(new Error('reverse timeout')), ms)),
+  ]);
+}
+
 export async function resolvePlaceName(latitude, longitude, lang, fetchFn) {
+  const chain = (async () => {
+    try {
+      const places = await withTimeout(
+        Location.reverseGeocodeAsync({ latitude, longitude }),
+        REVERSE_STEP_MS
+      );
+      const p = Array.isArray(places) && places.length > 0 ? places[0] : null;
+      const name = p?.city || p?.district || p?.subregion || p?.region || p?.name;
+      if (name) return { name, country: p?.country || '' };
+    } catch (e) {}
+    try {
+      const data = await fetchFn(
+        `https://geocoding-api.open-meteo.com/v1/reverse?latitude=${latitude}&longitude=${longitude}&count=1&language=${lang || 'ru'}&format=json`
+      );
+      const p = data?.results?.length > 0 ? data.results[0] : null;
+      const name = p?.name || p?.admin1;
+      if (name) return { name, country: p?.country || '' };
+    } catch (e) {}
+    try {
+      const data = await fetchFn(
+        `https://api.bigdatacloud.net/data/reverse-geocode-client?latitude=${latitude}&longitude=${longitude}&localityLanguage=${lang || 'ru'}`
+      );
+      const name = data?.city || data?.locality || data?.principalSubdivision;
+      if (name) return { name, country: data?.countryName || '' };
+    } catch (e) {}
+    return null;
+  })();
+  // Total cap: whatever stalls inside, callers get null after 12s and
+  // apply their own fallback (the orphaned chain only computes a value
+  // nobody reads — it never touches state).
   try {
-    const places = await Location.reverseGeocodeAsync({ latitude, longitude });
-    const p = Array.isArray(places) && places.length > 0 ? places[0] : null;
-    const name = p?.city || p?.district || p?.subregion || p?.region || p?.name;
-    if (name) return { name, country: p?.country || '' };
-  } catch (e) {}
-  try {
-    const data = await fetchFn(
-      `https://geocoding-api.open-meteo.com/v1/reverse?latitude=${latitude}&longitude=${longitude}&count=1&language=${lang || 'ru'}&format=json`
-    );
-    const p = data?.results?.length > 0 ? data.results[0] : null;
-    const name = p?.name || p?.admin1;
-    if (name) return { name, country: p?.country || '' };
-  } catch (e) {}
-  try {
-    const data = await fetchFn(
-      `https://api.bigdatacloud.net/data/reverse-geocode-client?latitude=${latitude}&longitude=${longitude}&localityLanguage=${lang || 'ru'}`
-    );
-    const name = data?.city || data?.locality || data?.principalSubdivision;
-    if (name) return { name, country: data?.countryName || '' };
-  } catch (e) {}
-  return null;
+    return await withTimeout(chain, REVERSE_TOTAL_MS);
+  } catch (e) {
+    return null;
+  }
 }
 
 // Shared Open-Meteo geocoding search with fallbacks.
