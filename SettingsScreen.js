@@ -29,7 +29,6 @@ import { Ionicons } from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as Haptics from 'expo-haptics';
 import CrashLogViewer from './components/CrashLogViewer';
-import NetworkDiagnostics from './components/NetworkDiagnostics';
 
 const REMEMBER_CITY_ENABLED_KEY = 'remember_city_enabled';
 
@@ -629,7 +628,6 @@ export default function SettingsScreen() {
   const [showMenuStylePicker, setShowMenuStylePicker] = useState(false);
   const [showFontSizePicker, setShowFontSizePicker] = useState(false);
   const [showLogViewer, setShowLogViewer] = useState(false);
-  const [showNetDiag, setShowNetDiag] = useState(false);
 
   // Secret dev entry: 7 quick taps on the app version open the crash logs.
   // Taps spaced more than the window apart restart the count.
@@ -961,7 +959,7 @@ export default function SettingsScreen() {
             </View>
             <Text style={styles.chevron}>›</Text>
           </TouchableOpacity>
-          <TouchableOpacity style={styles.card} activeOpacity={0.6} onPress={() => setShowNetDiag(true)}>
+          <TouchableOpacity style={styles.card} activeOpacity={0.6} onPress={() => navigation.navigate('NetDiag')}>
             <View style={styles.iconWrap}>
               <Ionicons name="pulse" size={fs.iconSize * 0.77} color={theme.text} />
             </View>
@@ -1004,12 +1002,6 @@ export default function SettingsScreen() {
       <CrashLogViewer
         visible={showLogViewer}
         onClose={() => setShowLogViewer(false)}
-        theme={theme}
-        fs={fs}
-      />
-      <NetworkDiagnostics
-        visible={showNetDiag}
-        onClose={() => setShowNetDiag(false)}
         theme={theme}
         fs={fs}
       />

@@ -11,6 +11,7 @@ import WeatherApp from './WeatherApp';
 import WeatherPhenomenonFinder, { SunTabIcon, SearchTabIcon } from './WeatherPhenomenonFinder';
 import SettingsScreen from './SettingsScreen';
 import CityListScreen from './CityListScreen';
+import NetworkDiagnosticsScreen from './NetworkDiagnosticsScreen';
 import { SettingsProvider } from './SettingsContext';
 import { FontSizeProvider, useFontSize } from './FontSizeContext';
 import { ThemeProvider, useTheme } from './ThemeContext';
@@ -63,6 +64,11 @@ return (
                       <Stack.Screen
                         name="CityList"
                         component={CityListScreen}
+                        options={{ animation: 'slide_from_right' }}
+                      />
+                      <Stack.Screen
+                        name="NetDiag"
+                        component={NetworkDiagnosticsScreen}
                         options={{ animation: 'slide_from_right' }}
                       />
                     </Stack.Navigator>

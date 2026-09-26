@@ -129,6 +129,7 @@
   "netdiagRun": "Run again",
   "netdiagRunning": "Checking…",
   "netdiagCopy": "Copy",
+  "netdiagProgress": "Checked {{done}} of {{total}}",
   "netdiagCopied": "Copied ✓",
   "netdiagClose": "Close",
   "netdiagEp_om-forecast": "Open-Meteo · forecast",
