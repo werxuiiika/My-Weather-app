@@ -136,6 +136,7 @@
   "netdiagEp_metno": "Yr.no · forecast (fallback)",
   "netdiagEp_nominatim": "Nominatim · search (fallback)",
   "netdiagEp_bigdatacloud": "BigDataCloud · geocoding",
+  "netdiagEp_seventimer": "7Timer · forecast (fallback)",
   "netdiagOk": "Reachable",
   "netdiagTimeout": "Timeout — packets don't arrive",
   "netdiagDns": "DNS fails / no network",

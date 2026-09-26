@@ -136,6 +136,7 @@
   "netdiagEp_metno": "Yr.no · прогноз (запасной)",
   "netdiagEp_nominatim": "Nominatim · поиск (запасной)",
   "netdiagEp_bigdatacloud": "BigDataCloud · геокодинг",
+  "netdiagEp_seventimer": "7Timer · прогноз (запасной)",
   "netdiagOk": "Доступен",
   "netdiagTimeout": "Таймаут — пакеты не доходят",
   "netdiagDns": "DNS не резолвит / нет сети",

@@ -62,6 +62,11 @@ const ENDPOINTS = [
     host: 'api.bigdatacloud.net',
     url: 'https://api.bigdatacloud.net/data/reverse-geocode-client?latitude=55.75&longitude=37.61&localityLanguage=en',
   },
+  {
+    id: 'seventimer',
+    host: 'www.7timer.info',
+    url: 'https://www.7timer.info/bin/api.pl?lon=37.61&lat=55.75&product=civil&output=json',
+  },
 ];
 
 async function fetchWithTimeout(url, ms, headers) {
@@ -119,20 +124,29 @@ export default function NetworkDiagnostics({ visible, onClose, theme, fs }) {
   const [running, setRunning] = useState(false);
   const [copied, setCopied] = useState(false);
   const cancelled = useRef(false);
+  // Generation guard: a cancelled/stale loop must never own the `running`
+  // flag. Previously a mid-run Close left `running` stuck true (the break
+  // skipped setRunning(false)), which disabled the Run button until the
+  // next full cycle — felt like "starts only on second tap".
+  const runId = useRef(0);
 
   const run = async () => {
+    const myId = ++runId.current;
     cancelled.current = false;
     setRunning(true);
     setResults({});
     setCopied(false);
     for (const ep of ENDPOINTS) {
-      if (cancelled.current) break;
+      if (cancelled.current || runId.current !== myId) break;
       const r = await probeEndpoint(ep);
-      if (cancelled.current) break;
+      if (cancelled.current || runId.current !== myId) break;
       setResults((prev) => ({ ...prev, [ep.id]: r }));
       await new Promise((res) => setTimeout(res, INTER_PROBE_GAP_MS));
     }
-    if (!cancelled.current) setRunning(false);
+    // Only the owning generation clears the flag: a stale loop can neither
+    // leave it stuck true (the old Close-mid-run bug) nor steal it from a
+    // newer run.
+    if (runId.current === myId) setRunning(false);
   };
 
   useEffect(() => {
@@ -225,10 +239,13 @@ export default function NetworkDiagnostics({ visible, onClose, theme, fs }) {
       fontSize: fs.base * 0.85,
       marginBottom: 12,
     },
+    // Fixed heights: probe completions must not shift the footer mid-tap
+    // (a layout jump cancels the touch and "Close doesn't work").
     row: {
       flexDirection: 'row',
       alignItems: 'center',
       paddingVertical: 9,
+      minHeight: 46,
       borderBottomWidth: 1,
       borderBottomColor: theme.border,
     },
@@ -257,6 +274,7 @@ export default function NetworkDiagnostics({ visible, onClose, theme, fs }) {
       fontWeight: '700',
       marginTop: 14,
       marginBottom: 4,
+      minHeight: 44,
     },
     footer: {
       flexDirection: 'row',
@@ -316,7 +334,7 @@ export default function NetworkDiagnostics({ visible, onClose, theme, fs }) {
             );
           })}
         </ScrollView>
-        {summary ? <Text style={styles.summary}>{summary}</Text> : null}
+        <Text style={styles.summary}>{summary ?? ' '}</Text>
         <View style={styles.footer}>
           <TouchableOpacity style={styles.btnGhost} onPress={onClose}>
             <Text style={styles.btnGhostText}>{t('netdiagClose')}</Text>
@@ -326,7 +344,11 @@ export default function NetworkDiagnostics({ visible, onClose, theme, fs }) {
               <Text style={styles.btnGhostText}>{copied ? t('netdiagCopied') : t('netdiagCopy')}</Text>
             </TouchableOpacity>
           ) : null}
-          <TouchableOpacity style={styles.btn} onPress={run} disabled={running}>
+          <TouchableOpacity
+            style={[styles.btn, running ? { opacity: 0.5 } : null]}
+            onPress={run}
+            disabled={running}
+          >
             <Text style={styles.btnText}>{running ? t('netdiagRunning') : t('netdiagRun')}</Text>
           </TouchableOpacity>
         </View>
