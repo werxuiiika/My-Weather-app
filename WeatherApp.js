@@ -43,7 +43,7 @@ import { SettingsContext } from './SettingsContext';
 import { useFontSize } from './FontSizeContext';
 import { useTheme } from './ThemeContext';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { geocodeCity, isOfflineError, isRegionLike } from './geocoding';
+import { geocodeCity, isOfflineError, isRegionLike, resolvePlaceName } from './geocoding';
 
 const BASE_URL = 'https://api.open-meteo.com/v1/forecast';
 const TIMEOUT_MS = 10000;
@@ -1373,25 +1373,18 @@ export default function App() {
     }
     return hit;
   };
+  // Name resolution with real fallbacks (native geocoder -> Open-Meteo
+  // -> BigDataCloud, see geocoding.js). Open-Meteo alone returns
+  // {error:"Not Found"} for rural coords (e.g. 56.21, 37.55), which used
+  // to leave the header stuck on "Current location".
   const reverseGeocode = async (lat, lon) => {
-    const data = await fetchJson(
-      `https://geocoding-api.open-meteo.com/v1/reverse?latitude=${lat}&longitude=${lon}&count=1&language=${i18n.language}&format=json`
-    );
-    if (data.results && data.results.length > 0) {
-      const p = data.results[0];
-      return {
-         name: p.name || p.admin1 || tr('currentLocation'),
-         country: p.country || '',
-         latitude: lat,
-         longitude: lon,
-       };
-     }
-     return {
-       name: tr('currentLocation'),
-       country: '',
-       latitude: lat,
-       longitude: lon,
-     };
+    const resolved = await resolvePlaceName(lat, lon, i18n.language, fetchJson);
+    return {
+      name: resolved?.name || tr('currentLocation'),
+      country: resolved?.country || '',
+      latitude: lat,
+      longitude: lon,
+    };
   };
   const fetchWeather = async (lat, lon) => {
     const data = await fetchJson(

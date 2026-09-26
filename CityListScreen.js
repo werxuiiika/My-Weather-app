@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo, useRef, useCallback } from 'react';
-import { View, Text, TextInput, FlatList, Alert, StatusBar, ActivityIndicator, RefreshControl, Pressable, TouchableOpacity, StyleSheet } from 'react-native';
+import { View, Text, TextInput, FlatList, Alert, StatusBar, ActivityIndicator, RefreshControl, Pressable, TouchableOpacity, StyleSheet, InteractionManager } from 'react-native';
 import { useSharedValue } from 'react-native-reanimated';
 import ScreenWrapper from './ScreenWrapper';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -11,7 +11,7 @@ import { useFontSize } from './FontSizeContext';
 import { useTranslation } from 'react-i18next';
 import NetInfo from '@react-native-community/netinfo';
 import * as Location from 'expo-location';
-import { geocodeCity, isOfflineError, isRegionLike } from './geocoding';
+import { geocodeCity, isOfflineError, isRegionLike, resolvePlaceName } from './geocoding';
 import ConfirmDeleteModal from './ConfirmDeleteModal';
 import DraggableCityCard from './DraggableCityCard';
 import CurrentLocationCard from './CurrentLocationCard';
@@ -335,14 +335,23 @@ export default function CityListScreen() {
   }), [theme, fs]);
 
   useEffect(() => {
-    loadSavedCitiesAndRefresh();
-    loadCurrentLocation();
-    (async () => {
-      try {
-        const v = await AsyncStorage.getItem(CONFIRM_DELETE_KEY);
-        setConfirmDelete(v === null ? true : v === 'true');
-      } catch (e) {}
-    })();
+    // Deferred until the push transition finishes. Both loaders do
+    // storage + network + GPS churn (and flip list -> spinner), which
+    // used to starve the enter animation and flash a bare grey field —
+    // while Settings (no mount work) always slid in smoothly. First paint
+    // is now the real themed screen (header + search + list shell);
+    // data lands a beat later. Cancelled on unmount/language switch.
+    const task = InteractionManager.runAfterInteractions(() => {
+      loadSavedCitiesAndRefresh();
+      loadCurrentLocation();
+      (async () => {
+        try {
+          const v = await AsyncStorage.getItem(CONFIRM_DELETE_KEY);
+          setConfirmDelete(v === null ? true : v === 'true');
+        } catch (e) {}
+      })();
+    });
+    return () => task.cancel();
   }, [i18n.language]);
 
   // Shared open-meteo enrichment for a coordinate pair. Returns the weather
@@ -473,30 +482,6 @@ export default function CityListScreen() {
     }
   };
 
-  // Resolve a human-readable place name for coordinates.
-  // 1. Platform reverse-geocoder (expo-location, free, no key).
-  // 2. BigDataCloud reverse API with the app language.
-  // 3. Last resort: coordinate string (flagged, card becomes non-tappable).
-  const resolvePlaceName = async (latitude, longitude, lang) => {
-    try {
-      const places = await Location.reverseGeocodeAsync({ latitude, longitude });
-      const p = Array.isArray(places) && places.length > 0 ? places[0] : null;
-      const name = p?.city || p?.district || p?.subregion || p?.region || p?.name;
-      if (name) return { text: name, isFallback: false };
-    } catch (e) {}
-    try {
-      const data = await fetchJson(
-        `https://api.bigdatacloud.net/data/reverse-geocode-client?latitude=${latitude}&longitude=${longitude}&localityLanguage=${lang || 'ru'}`
-      );
-      const name = data?.city || data?.locality || data?.principalSubdivision || data?.countryName;
-      if (name) return { text: name, isFallback: false };
-    } catch (e) {}
-    return {
-      text: `${latitude.toFixed(2)}, ${longitude.toFixed(2)}`,
-      isFallback: true,
-    };
-  };
-
   // GEOLOCATION STREAM (top card). Shows ONLY when coordinates were
   // successfully resolved AND weather loaded. Any failure (denied permission,
   // timeout, offline) -> null -> no card in the render tree at all.
@@ -519,13 +504,15 @@ export default function CityListScreen() {
         setCurrentLocation(null);
         return;
       }
-      const name = await resolvePlaceName(latitude, longitude, currentLang);
+      // Shared chain (native -> Open-Meteo -> BigDataCloud). Total miss
+      // keeps the old behavior: coordinate string, card non-tappable.
+      const resolved = await resolvePlaceName(latitude, longitude, currentLang, fetchJson);
       setCurrentLocation({
         id: '__current_location__',
-        name: name.text,
+        name: resolved?.name ?? `${latitude.toFixed(2)}, ${longitude.toFixed(2)}`,
         latitude,
         longitude,
-        isCoordinateFallback: name.isFallback,
+        isCoordinateFallback: !resolved,
         ...enrichment,
       });
     } catch (e) {

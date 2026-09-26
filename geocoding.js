@@ -8,6 +8,45 @@ export function isOfflineError(e) {
   return OFFLINE_RE.test(String(e.message || e));
 }
 
+import * as Location from 'expo-location';
+
+// Resolve a human-readable place name for coordinates. Returns
+// { name, country } or null when nothing resolves (the caller applies
+// its own fallback text: main screen uses "Current location", the city
+// list uses a coordinate string).
+//
+// Chain (first hit wins):
+//  1. Platform reverse-geocoder (expo-location, free, no key) — best
+//     local coverage, e.g. Russian districts Open-Meteo never heard of.
+//  2. Open-Meteo reverse — consistent with the search DB, but has gaps:
+//     rural areas return HTTP 200 with {error:true, reason:"Not Found"}.
+//  3. BigDataCloud reverse (free, no key).
+// fetchFn is injected by the caller, same pattern as geocodeCity().
+export async function resolvePlaceName(latitude, longitude, lang, fetchFn) {
+  try {
+    const places = await Location.reverseGeocodeAsync({ latitude, longitude });
+    const p = Array.isArray(places) && places.length > 0 ? places[0] : null;
+    const name = p?.city || p?.district || p?.subregion || p?.region || p?.name;
+    if (name) return { name, country: p?.country || '' };
+  } catch (e) {}
+  try {
+    const data = await fetchFn(
+      `https://geocoding-api.open-meteo.com/v1/reverse?latitude=${latitude}&longitude=${longitude}&count=1&language=${lang || 'ru'}&format=json`
+    );
+    const p = data?.results?.length > 0 ? data.results[0] : null;
+    const name = p?.name || p?.admin1;
+    if (name) return { name, country: p?.country || '' };
+  } catch (e) {}
+  try {
+    const data = await fetchFn(
+      `https://api.bigdatacloud.net/data/reverse-geocode-client?latitude=${latitude}&longitude=${longitude}&localityLanguage=${lang || 'ru'}`
+    );
+    const name = data?.city || data?.locality || data?.principalSubdivision;
+    if (name) return { name, country: data?.countryName || '' };
+  } catch (e) {}
+  return null;
+}
+
 // Shared Open-Meteo geocoding search with fallbacks.
 //
 // Why this exists: Open-Meteo's `language` parameter only changes the
