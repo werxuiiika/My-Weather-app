@@ -3,7 +3,6 @@ import { View, Text, FlatList, TouchableOpacity, ActivityIndicator, StyleSheet, 
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
 import { useTranslation } from 'react-i18next';
-import NetInfo from '@react-native-community/netinfo';
 import Svg, { Circle, Path } from 'react-native-svg';
 import { useFontSize } from './FontSizeContext';
 import { useTheme } from './ThemeContext';
@@ -182,13 +181,13 @@ export default function WeatherPhenomenonFinder() {
     setSearchError(null);
     setHasSearched(true);
     try {
-      const netState = await NetInfo.fetch().catch(() => null);
-      if (netState && netState.isConnected === false) {
-        setSearchError('offline');
-        setResults([]);
-        return;
-      }
+      // No NetInfo gate (it reports the VPN tunnel, not reachability).
+      // Plain fetch() below used to hang forever on blackholed routes —
+      // each request gets its own 10s abort so a dead network ends in the
+      // truthful 'offline' state instead of an endless spinner.
       const fetchPromises = CITIES.map(async (city) => {
+        const controller = new AbortController();
+        const timer = setTimeout(() => controller.abort(), 10000);
         try {
           const url =
             'https://api.open-meteo.com/v1/forecast?latitude=' +
@@ -196,8 +195,9 @@ export default function WeatherPhenomenonFinder() {
             '&longitude=' +
             city.longitude +
             '&current=weather_code,temperature_2m';
-          const res = await fetch(url);
+          const res = await fetch(url, { signal: controller.signal });
           const data = await res.json();
+          clearTimeout(timer);
           if (!data.current) {
             return { ...city, temperature: null, weathercode: null };
           }
@@ -207,6 +207,7 @@ export default function WeatherPhenomenonFinder() {
             weathercode: data.current.weather_code,
           };
         } catch (e) {
+          clearTimeout(timer);
           return { ...city, temperature: null, weathercode: null };
         }
       });

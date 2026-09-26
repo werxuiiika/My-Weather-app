@@ -9,7 +9,6 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useTheme } from './ThemeContext';
 import { useFontSize } from './FontSizeContext';
 import { useTranslation } from 'react-i18next';
-import NetInfo from '@react-native-community/netinfo';
 import * as Location from 'expo-location';
 import { geocodeCity, isOfflineError, isRegionLike, resolvePlaceName } from './geocoding';
 import ConfirmDeleteModal from './ConfirmDeleteModal';
@@ -392,18 +391,11 @@ export default function CityListScreen() {
       }
       
       const currentLang = i18n.language || 'ru';
-      // Fast-fail offline: no point burning through timeouts/retries per
-      // city, just show the stored list as-is.
+      // No NetInfo fast-fail (it reports the VPN tunnel, not reachability).
+      // The probe below is the real connectivity test: true offline fails
+      // it in 5s and shows the stored list; a lying "offline" never blocks.
       const showStored = () => setCities(list);
-      try {
-        const netState = await NetInfo.fetch();
-        if (netState && netState.isConnected === false) {
-          showStored();
-          return;
-        }
-      } catch {}
-      // NetInfo lies when a VPN interface is up but DNS is blocked, so
-      // probe the API once with a short timeout before the slow loop.
+      // Probe the API once with a short timeout before the slow loop.
       try {
         await fetchJson(
           `${BASE_URL}?latitude=0&longitude=0&current_weather=true&timezone=auto`,

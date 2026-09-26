@@ -1026,9 +1026,7 @@ export default function App() {
   const { theme, setThemeMode, themeMode, loaded: themeLoaded } = useTheme();
   const insets = useSafeAreaInsets();
   const [isConnected, setIsConnected] = useState(null);
-  const isConnectedRef = useRef(null);
   const updateConnection = (value) => {
-    isConnectedRef.current = value;
     setIsConnected(value);
   };
   const [city, setCity] = useState('');
@@ -1413,7 +1411,7 @@ export default function App() {
         await saveLastCity(place.name);
       }
     } catch (e) {
-      if (isConnectedRef.current === false || isOfflineError(e)) {
+      if (isOfflineError(e)) {
         setError(tr('noInternet'));
       } else if (e.kind === 'network') {
         setError(null);
@@ -1429,11 +1427,11 @@ export default function App() {
       setLoading(false);
     }
   };
+  // No NetInfo gate here (or anywhere): NetInfo reports the VPN tunnel
+  // state, not real reachability — with a half-dead tunnel it says
+  // "offline" while the browser fetches fine. Always attempt; the catch
+  // below classifies the real error.
   const detectMyLocation = async () => {
-     if (isConnectedRef.current === false) {
-       setError(tr('noInternet'));
-       return;
-     }
      setLocating(true);
      setError(null);
      try {
@@ -1484,7 +1482,7 @@ export default function App() {
         await saveLastCity(query);
       }
     } catch (e) {
-      if (isConnectedRef.current === false || isOfflineError(e)) {
+      if (isOfflineError(e)) {
         setError(tr('noInternet'));
       } else if (e.kind === 'network') {
         setError(null);
@@ -1540,7 +1538,7 @@ export default function App() {
       await saveCachedWeather({ place: cur.place, data, query: q, savedAt });
       return true;
     } catch (e) {
-      if (isConnectedRef.current === false || isOfflineError(e)) {
+      if (isOfflineError(e)) {
         setError(tr('noInternet'));
       } else if (e.kind === 'network') {
         setError(null);
@@ -1603,7 +1601,8 @@ export default function App() {
     try {
       const state = await NetInfo.fetch();
       updateConnection(!!state.isConnected);
-      if (!state.isConnected) return;
+      // No gate: a lying "offline" must not disable Retry — the attempt
+      // below proves reachability one way or the other.
       setHostUnreachable(false);
       // Primary path: keep the current header, only reload the data.
       const hadPlace = !!weatherRef.current?.place;
@@ -1665,7 +1664,10 @@ export default function App() {
   const skyIsNight = getSkyIsNight();
   let bannerType = null;
   let bannerMessage = null;
-  if (isConnected === false) {
+  // Advisory only: NetInfo may cry "offline" while fetches succeed
+  // (unvalidated VPN tunnel). Show it solely when there is nothing to
+  // display; otherwise the real fetch result/error speaks for itself.
+  if (isConnected === false && !weather) {
     bannerType = 'offline';
     bannerMessage = tr('noInternet');
   } else if (hostUnreachable) {
