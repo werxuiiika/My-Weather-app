@@ -130,6 +130,7 @@
   "netdiagRunning": "Проверяем…",
   "netdiagCopy": "Скопировать",
   "netdiagProgress": "Проверено {{done}} из {{total}}",
+  "reserveSource": "резервный источник",
   "netdiagCopied": "Скопировано ✓",
   "netdiagClose": "Закрыть",
   "netdiagEp_om-forecast": "Open-Meteo · прогноз",

@@ -6,6 +6,21 @@ import { useTranslation } from 'react-i18next';
 import Svg, { Circle, Path } from 'react-native-svg';
 import { useFontSize } from './FontSizeContext';
 import { useTheme } from './ThemeContext';
+import { fetchForecast } from './utils/weatherProviders';
+
+// Throwing fetch with a 10s cap for the provider layer (plain fetch would
+// hang for OS-level minutes on blackholed routes — the old endless
+// "polling 20 cities" spinner).
+async function phFetch(url) {
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), 10000);
+  try {
+    const res = await fetch(url, { signal: controller.signal });
+    return await res.json();
+  } finally {
+    clearTimeout(timer);
+  }
+}
 
 const CITIES = [
   { name: 'Москва', latitude: 55.7558, longitude: 37.6173 },
@@ -185,29 +200,31 @@ export default function WeatherPhenomenonFinder() {
       // Plain fetch() below used to hang forever on blackholed routes —
       // each request gets its own 10s abort so a dead network ends in the
       // truthful 'offline' state instead of an endless spinner.
+      // Provider layer per city: OM light `current` shape, normalized to
+      // current_weather by fetchForecast; 7Timer fallback when OM is down
+      // (shared circuit breaker skips the OM timeout after first failure).
       const fetchPromises = CITIES.map(async (city) => {
-        const controller = new AbortController();
-        const timer = setTimeout(() => controller.abort(), 10000);
         try {
-          const url =
+          const data = await fetchForecast(
+            city.latitude,
+            city.longitude,
+            phFetch,
             'https://api.open-meteo.com/v1/forecast?latitude=' +
-            city.latitude +
-            '&longitude=' +
-            city.longitude +
-            '&current=weather_code,temperature_2m';
-          const res = await fetch(url, { signal: controller.signal });
-          const data = await res.json();
-          clearTimeout(timer);
-          if (!data.current) {
+              city.latitude +
+              '&longitude=' +
+              city.longitude +
+              '&current=weather_code,temperature_2m'
+          );
+          const cw = data?.current_weather;
+          if (!cw || typeof cw.temperature !== 'number' || typeof cw.weathercode !== 'number') {
             return { ...city, temperature: null, weathercode: null };
           }
           return {
             ...city,
-            temperature: Math.round(data.current.temperature_2m),
-            weathercode: data.current.weather_code,
+            temperature: Math.round(cw.temperature),
+            weathercode: cw.weathercode,
           };
         } catch (e) {
-          clearTimeout(timer);
           return { ...city, temperature: null, weathercode: null };
         }
       });

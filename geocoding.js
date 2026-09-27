@@ -21,6 +21,7 @@ import * as Location from 'expo-location';
 //  2. Open-Meteo reverse — consistent with the search DB, but has gaps:
 //     rural areas return HTTP 200 with {error:true, reason:"Not Found"}.
 //  3. BigDataCloud reverse (free, no key).
+//  4. Nominatim reverse (same host as the search fallback).
 // fetchFn is injected by the caller, same pattern as geocodeCity().
 // Never-hang guards: the platform geocoder (Google Play Services on
 // Android) can stall indefinitely when the network is broken instead of
@@ -61,6 +62,18 @@ export async function resolvePlaceName(latitude, longitude, lang, fetchFn) {
       );
       const name = data?.city || data?.locality || data?.principalSubdivision;
       if (name) return { name, country: data?.countryName || '' };
+    } catch (e) {}
+    try {
+      // Nominatim reverse: same host as the search fallback, reachable
+      // everywhere the search is (proven by diagnostics on all networks).
+      const data = await fetchFn(
+        `https://nominatim.openstreetmap.org/reverse?lat=${latitude}&lon=${longitude}&format=json&addressdetails=1&accept-language=${lang || 'ru'}`
+      );
+      const addr = data?.address || {};
+      const name =
+        addr.city || addr.town || addr.village || addr.hamlet || addr.municipality ||
+        addr.suburb || addr.county || addr.state;
+      if (name) return { name, country: addr.country || '' };
     } catch (e) {}
     return null;
   })();

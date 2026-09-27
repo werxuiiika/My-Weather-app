@@ -43,7 +43,8 @@ import { SettingsContext } from './SettingsContext';
 import { useFontSize } from './FontSizeContext';
 import { useTheme } from './ThemeContext';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { geocodeCity, isOfflineError, isRegionLike, resolvePlaceName } from './geocoding';
+import { isOfflineError, isRegionLike, resolvePlaceName } from './geocoding';
+import { fetchForecast, searchCity } from './utils/weatherProviders';
 
 const BASE_URL = 'https://api.open-meteo.com/v1/forecast';
 const TIMEOUT_MS = 10000;
@@ -1362,7 +1363,9 @@ export default function App() {
   const geocode = async (query) => {
     // 1. Current app language -> 2. English -> 3. transliterated Latin
     // variants (shared helper, see geocoding.js). Only then "not found".
-    const hit = await geocodeCity(query, i18n.language || 'ru', fetchJson);
+    // Provider layer: OM search (transliteration included), Nominatim
+    // when OM yields nothing (same hit contract, region checks stay).
+    const hit = await searchCity(query, i18n.language || 'ru', fetchJson);
     if (!hit) {
       throw new Error(tr('cityNotFound'));
     }
@@ -1384,11 +1387,16 @@ export default function App() {
       longitude: lon,
     };
   };
+  // Canonical forecast via the provider layer: Open-Meteo full shape,
+  // automatic 7Timer fallback with the SAME shape when OM is down or
+  // blocked. Result carries `source` ('open-meteo' | '7timer').
   const fetchWeather = async (lat, lon) => {
-    const data = await fetchJson(
+    return fetchForecast(
+      lat,
+      lon,
+      fetchJson,
       `${BASE_URL}?latitude=${lat}&longitude=${lon}&current_weather=true&hourly=temperature_2m,weathercode&daily=weathercode,temperature_2m_max,temperature_2m_min,sunrise,sunset&timezone=auto`
     );
-    return data;
   };
   // Scenario A: refresh by saved coordinates — pure Open-Meteo fetch,
   // never touches Location.*. Scenario B (geolocation) lives ONLY in
@@ -1903,6 +1911,9 @@ export default function App() {
                   <Text style={styles.copiedHint}>{tr('coordsCopied')}</Text>
                 )}
               </Pressable>
+              {weather?.data?.source === '7timer' ? (
+                <Text style={[styles.cityTime, { opacity: 0.75 }]}>{tr('reserveSource')}</Text>
+              ) : null}
               {cityTime && <Text style={styles.cityTime}>{tr('localTime')} {cityTime}</Text>}
               <View style={styles.bigIconWrap}>
                 {currentType === 'clear' ? (

@@ -10,7 +10,8 @@ import { useTheme } from './ThemeContext';
 import { useFontSize } from './FontSizeContext';
 import { useTranslation } from 'react-i18next';
 import * as Location from 'expo-location';
-import { geocodeCity, isOfflineError, isRegionLike, resolvePlaceName } from './geocoding';
+import { isOfflineError, isRegionLike, resolvePlaceName } from './geocoding';
+import { fetchForecast, searchCity } from './utils/weatherProviders';
 import ConfirmDeleteModal from './ConfirmDeleteModal';
 import DraggableCityCard from './DraggableCityCard';
 import CurrentLocationCard from './CurrentLocationCard';
@@ -356,8 +357,13 @@ export default function CityListScreen() {
   // Shared open-meteo enrichment for a coordinate pair. Returns the weather
   // fields object or null (no usable data). fetchJson errors propagate so
   // callers can apply their own offline/circuit-breaker policy.
+  // Provider layer: OM slim shape, 7Timer fallback normalized to the
+  // same contract (downstream field reads unchanged).
   const fetchWeatherForCoords = async (lat, lon) => {
-    const weatherData = await fetchJson(
+    const weatherData = await fetchForecast(
+      lat,
+      lon,
+      fetchJson,
       `${BASE_URL}?latitude=${lat}&longitude=${lon}&current_weather=true&daily=temperature_2m_max,temperature_2m_min,weathercode&timezone=auto`
     );
     if (!weatherData || !weatherData.current_weather) return null;
@@ -431,7 +437,7 @@ export default function CityListScreen() {
             // Legacy entry without coordinates: one explicit lookup.
             // Region hits are ignored: a stored city must keep pointing
             // at a real populated place, never at a country center.
-            const hit = await geocodeCity(city.name, currentLang, fetchJson);
+            const hit = await searchCity(city.name, currentLang, fetchJson);
             if (hit && !isRegionLike(hit)) {
               lat = hit.latitude;
               lon = hit.longitude;
@@ -566,7 +572,7 @@ export default function CityListScreen() {
       // searchQuery is captured in cityName up front and reused for every
       // fallback step, so the retries use the exact same input.
       // 1. Current language -> 2. English -> 3. transliterated variants.
-      const hit = await geocodeCity(cityName, currentLang, fetchJson);
+      const hit = await searchCity(cityName, currentLang, fetchJson);
 
       if (!hit) {
         Alert.alert(t('cities.error'), t('cities.city_not_found'));
@@ -579,7 +585,10 @@ export default function CityListScreen() {
         return;
       }
       const { latitude, longitude, name } = hit;
-      const weatherData = await fetchJson(
+      const weatherData = await fetchForecast(
+        latitude,
+        longitude,
+        fetchJson,
         `${BASE_URL}?latitude=${latitude}&longitude=${longitude}&current_weather=true&daily=temperature_2m_max,temperature_2m_min,weathercode&timezone=auto`
       );
       const temp = weatherData?.current_weather ? Math.round(weatherData.current_weather.temperature) : 0;
