@@ -771,6 +771,7 @@ export default function CityListScreen() {
         t={t}
         onSelectToggle={handlePressCity}
         onLongPressCity={handleLongPressCity}
+        isDragging={isDragging}
         dragOffset={dragOffset}
         activeIndex={activeIndex}
         activeId={activeId}
