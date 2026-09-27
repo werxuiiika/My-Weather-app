@@ -103,18 +103,6 @@ export default function CityListScreen() {
   // the JS thread — always fresh data, never a recreated gesture.
   const citiesRef = useRef(cities);
   citiesRef.current = cities;
-  // Entrance-animation gate: timestamp of the last empty -> filled list
-  // transition (fresh open / offline restore). Rows check it at render
-  // time and animate only inside a short window after it, so scroll
-  // mounts, refreshes and selection changes never replay the stagger.
-  // A ref (not state) is deliberate: it is stamped in the same tick as
-  // setCities, so rows mount WITH the animation in a single render.
-  const listBornAt = useRef(0);
-  const stampListBorn = (nextList) => {
-    if (citiesRef.current.length === 0 && nextList.length > 0) {
-      listBornAt.current = Date.now();
-    }
-  };
 
   const onReorder = useCallback(async (fromIndex, toIndex) => {
     const list = citiesRef.current;
@@ -419,10 +407,7 @@ export default function CityListScreen() {
       // No NetInfo fast-fail (it reports the VPN tunnel, not reachability).
       // The probe below is the real connectivity test: true offline fails
       // it in 5s and shows the stored list; a lying "offline" never blocks.
-      const showStored = () => {
-        stampListBorn(list);
-        setCities(list);
-      };
+      const showStored = () => setCities(list);
       // Real connectivity test through the SAME provider layer the loop
       // uses (OM-first with 7Timer fallback, 5s per leg). Probing OM alone
       // used to misclassify a blocked OM host as "offline" and skip the
@@ -496,7 +481,6 @@ export default function CityListScreen() {
         updatedList.push(city);
       }
 
-        stampListBorn(updatedList);
         setCities(updatedList);
         await AsyncStorage.setItem(SAVED_CITIES_KEY, JSON.stringify(updatedList));
     } catch (e) {
@@ -744,23 +728,12 @@ export default function CityListScreen() {
     }
   };
 
+  // NOTE: rows intentionally carry NO entering animation. A per-row
+  // Animated wrapper destabilized the drag system on-device (re-mounts
+  // and entering/layout interplay around the draggable cards); the list
+  // entrance is animated once at the container level below instead.
   const renderItem = ({ item, index }) => {
-    // Staggered entrance, top to bottom: opacity 0->1 + translateY 10->0,
-    // 250ms ease-out, 50ms step (capped). The entering animation lives on
-    // this outer wrapper — never on the draggable card itself — so it
-    // cannot fight the gesture transforms; it completes and releases.
-    const animateIn = Date.now() - listBornAt.current < 2000;
     return (
-      <Animated.View
-        entering={
-          animateIn
-            ? FadeInUp.duration(250)
-                .delay(Math.min(index, 10) * 50)
-                .easing(Easing.out(Easing.quad))
-                .withInitialValues({ opacity: 0, transform: [{ translateY: 10 }] })
-            : undefined
-        }
-      >
        <DraggableCityCard
         item={item}
         index={index}
@@ -781,7 +754,6 @@ export default function CityListScreen() {
         released={released}
          itemCount={cities.length}
        />
-      </Animated.View>
     );
   };
 
@@ -862,18 +834,33 @@ export default function CityListScreen() {
           <ActivityIndicator size="large" color={theme.tint || '#3a7bd5'} />
         </View>
       ) : (
-        <FlatList
-          data={cities}
-          keyExtractor={(item, index) => String(item?.id ?? index)}
-          renderItem={renderItem}
+        // Single entrance animation for the whole list (fade + slight
+        // rise, 300ms ease-out). It plays on every mount of this branch —
+        // which coincides exactly with the list appearing (fresh open,
+        // spinner -> data flip, offline restore). Refreshes, scroll
+        // mounts and selection changes never remount it, so no replays.
+        // Rows themselves stay animation-free: drag physics untouched.
+        <Animated.View
+          entering={
+            FadeInUp.duration(300)
+              .easing(Easing.out(Easing.quad))
+              .withInitialValues({ opacity: 0, transform: [{ translateY: 12 }] })
+          }
           style={{ flex: 1 }}
-          scrollEnabled={!isDragging}
-          contentContainerStyle={styles.listContainer}
-          showsVerticalScrollIndicator={false}
-          refreshControl={!isSelectionMode ? (
-            <RefreshControl refreshing={refreshing} onRefresh={() => { setRefreshing(true); loadSavedCitiesAndRefresh(); loadCurrentLocation(); }} />
-          ) : undefined}
-        />
+        >
+          <FlatList
+            data={cities}
+            keyExtractor={(item, index) => String(item?.id ?? index)}
+            renderItem={renderItem}
+            style={{ flex: 1 }}
+            scrollEnabled={!isDragging}
+            contentContainerStyle={styles.listContainer}
+            showsVerticalScrollIndicator={false}
+            refreshControl={!isSelectionMode ? (
+              <RefreshControl refreshing={refreshing} onRefresh={() => { setRefreshing(true); loadSavedCitiesAndRefresh(); loadCurrentLocation(); }} />
+            ) : undefined}
+          />
+        </Animated.View>
       )}
 
       {isSelectionMode && selectedCities.size > 0 && (
