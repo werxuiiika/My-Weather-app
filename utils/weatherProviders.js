@@ -120,9 +120,6 @@ export function seventimerToForecast(st, latitude, longitude) {
   const estOffsetSec = Math.round(longitude / 15) * 3600;
   const nowShifted = Date.now() + estOffsetSec * 1000;
 
-  const hourlyTime = [];
-  const hourlyTemp = [];
-  const hourlyCode = [];
   const enriched = series.map((e) => {
     const absMs = initMs + Number(e.timepoint || 0) * 3600 * 1000 + estOffsetSec * 1000;
     let isDay = seventimerIsDay(e);
@@ -132,10 +129,29 @@ export function seventimerToForecast(st, latitude, longitude) {
     }
     return { ...e, absMs, iso: toIsoLocal(absMs), code: seventimerCode(e), isDay };
   });
-  for (const e of enriched) {
-    hourlyTime.push(e.iso);
-    hourlyTemp.push(typeof e.temp2m === 'number' ? e.temp2m : null);
-    hourlyCode.push(e.code);
+
+  // Expand 3h anchors to 1h steps (linear temp, nearest code) so the hourly
+  // strip reads exactly like the primary provider's. Values between model
+  // outputs are interpolated — standard practice, not observations.
+  const hourlyTime = [];
+  const hourlyTemp = [];
+  const hourlyCode = [];
+  const lerpTemp = (a, b, f) => {
+    if (typeof a === 'number' && typeof b === 'number') {
+      return Math.round((a + (b - a) * f) * 10) / 10;
+    }
+    return typeof a === 'number' ? a : b ?? null;
+  };
+  for (let i = 0; i < enriched.length; i++) {
+    const a = enriched[i];
+    const b = enriched[i + 1];
+    const span = b ? Math.max(1, Math.round((b.absMs - a.absMs) / 3600000)) : 1;
+    for (let h = 0; h < span; h++) {
+      const f = span === 1 ? 0 : h / span;
+      hourlyTime.push(toIsoLocal(a.absMs + h * 3600000));
+      hourlyTemp.push(lerpTemp(a.temp2m, b?.temp2m, f));
+      hourlyCode.push(f < 0.5 ? a.code : (b ? b.code : a.code));
+    }
   }
 
   // "Now": last step at or before now, else the first step.

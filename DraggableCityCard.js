@@ -361,7 +361,7 @@ export default function DraggableCityCard({
           </View>
           <View style={styles.cardRight}>
             <View style={styles.tempRow}>
-            <Text style={[styles.cityTemp, { color: mainText }]}>{safeItem.temp || '0'}</Text>
+            <Text style={[styles.cityTemp, { color: mainText }]}>{safeItem.temp || '–'}</Text>
                 <Text style={[styles.tempDegree, { color: mainText }]}>°</Text>
               </View>
               <Text style={[styles.cityMinMax, { color: minMaxColor }]}>{safeItem.minMax || ''}</Text>

@@ -401,19 +401,23 @@ export default function CityListScreen() {
       // The probe below is the real connectivity test: true offline fails
       // it in 5s and shows the stored list; a lying "offline" never blocks.
       const showStored = () => setCities(list);
-      // Probe the API once with a short timeout before the slow loop.
+      // Real connectivity test through the SAME provider layer the loop
+      // uses (OM-first with 7Timer fallback, 5s per leg). Probing OM alone
+      // used to misclassify a blocked OM host as "offline" and skip the
+      // refresh that the fallback would have fulfilled (the 0° cards bug).
+      // Only when BOTH legs are dead do we show stored data. Bonus: a
+      // failed OM leg trips the circuit breaker, so the loop below skips
+      // straight to fallback instead of burning timeouts per city.
       try {
-        await fetchJson(
-          `${BASE_URL}?latitude=0&longitude=0&current_weather=true&timezone=auto`,
-          5000,
-          0
+        await fetchForecast(
+          55.75,
+          37.61,
+          (url) => fetchJson(url, 5000, 0),
+          `${BASE_URL}?latitude=55.75&longitude=37.61&current_weather=true&timezone=auto`
         );
       } catch (e) {
-        if (isOfflineError(e)) {
-          showStored();
-          return;
-        }
-        // Transient error: fall through and let the per-city loop try.
+        showStored();
+        return;
       }
       // Sequential refresh: parallel TLS handshakes through a VPN often
       // fail with SSLHandshakeException, so go one city at a time.

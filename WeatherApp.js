@@ -1114,7 +1114,10 @@ export default function App() {
   const cityParam = route.params?.city ?? route.params?.selectedCity;
   const appliedCityParam = useRef(null);
   const { isLoading, setLoading: setAppLoading } = useContext(LoadingContext);
-  const { tempUnit, windUnit, setTempUnit, setWindUnit } = useContext(SettingsContext);
+  const { tempUnit, windUnit, setTempUnit, setWindUnit, showSourceBadge } = useContext(SettingsContext);
+
+// Display names for the live data source badge (keys = `source` field).
+const SOURCE_NAMES = { '7timer': '7Timer', 'open-meteo': 'Open-Meteo', nominatim: 'Nominatim' };
   const refreshColors =
     theme.mode === 'light' ? ['#3573c2', '#25945a'] : ['#4a90d9', '#38b06b'];
   const switchTrackOff = theme.mode === 'light' ? '#c9d3e6' : '#3a4560';
@@ -1911,8 +1914,10 @@ export default function App() {
                   <Text style={styles.copiedHint}>{tr('coordsCopied')}</Text>
                 )}
               </Pressable>
-              {weather?.data?.source === '7timer' ? (
-                <Text style={[styles.cityTime, { opacity: 0.75 }]}>{tr('reserveSource')}</Text>
+              {showSourceBadge && weather?.data?.source && weather.data.source !== 'open-meteo' ? (
+                <Text style={[styles.cityTime, { opacity: 0.75 }]}>
+                  {tr('reserveSource', { source: SOURCE_NAMES[weather.data.source] || weather.data.source })}
+                </Text>
               ) : null}
               {cityTime && <Text style={styles.cityTime}>{tr('localTime')} {cityTime}</Text>}
               <View style={styles.bigIconWrap}>

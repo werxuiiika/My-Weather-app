@@ -11,6 +11,7 @@ export const SettingsContext = createContext();
 
 const TEMP_UNIT_KEY = 'tempUnit';
 const WIND_UNIT_KEY = 'windUnit';
+const SHOW_SOURCE_KEY = 'showSourceBadge';
 const DEFAULT_TEMP_UNIT = 'C';
 const DEFAULT_WIND_UNIT = 'kmh';
 
@@ -20,20 +21,26 @@ export const WIND_UNITS = ['kmh', 'ms', 'mph', 'knots', 'beaufort'];
 export const SettingsProvider = ({ children }) => {
   const [tempUnit, setTempUnit] = useState(DEFAULT_TEMP_UNIT);
   const [windUnit, setWindUnit] = useState(DEFAULT_WIND_UNIT);
+  // Badge with the live data source on the main screen (default ON).
+  const [showSourceBadge, setShowSourceBadge] = useState(true);
   const [loaded, setLoaded] = useState(false);
 
   useEffect(() => {
     const loadSettings = async () => {
       try {
-        const [savedTemp, savedWind] = await Promise.all([
+        const [savedTemp, savedWind, savedSource] = await Promise.all([
           AsyncStorage.getItem(TEMP_UNIT_KEY),
           AsyncStorage.getItem(WIND_UNIT_KEY),
+          AsyncStorage.getItem(SHOW_SOURCE_KEY),
         ]);
         if (TEMP_UNITS.includes(savedTemp)) {
           setTempUnit(savedTemp);
         }
         if (WIND_UNITS.includes(savedWind)) {
           setWindUnit(savedWind);
+        }
+        if (savedSource !== null) {
+          setShowSourceBadge(savedSource === 'true');
         }
       } catch (e) {
       } finally {
@@ -69,6 +76,19 @@ export const SettingsProvider = ({ children }) => {
     [loaded],
   );
 
+  const persistShowSourceBadge = useCallback(
+    async (value) => {
+      setShowSourceBadge(!!value);
+      if (loaded) {
+        try {
+          await AsyncStorage.setItem(SHOW_SOURCE_KEY, value ? 'true' : 'false');
+        } catch (e) {
+        }
+      }
+    },
+    [loaded],
+  );
+
   return (
     <SettingsContext.Provider
       value={{
@@ -76,6 +96,8 @@ export const SettingsProvider = ({ children }) => {
         windUnit,
         setTempUnit: persistTempUnit,
         setWindUnit: persistWindUnit,
+        showSourceBadge,
+        setShowSourceBadge: persistShowSourceBadge,
       }}
     >
       {children}

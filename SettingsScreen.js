@@ -608,7 +608,7 @@ export default function SettingsScreen() {
   const navigation = useNavigation();
   const { t: tr, i18n: i18nInstance } = useTranslation();
   const { theme, setThemeMode, themeMode } = useTheme();
-  const { tempUnit, windUnit, setTempUnit, setWindUnit } = useSettings();
+  const { tempUnit, windUnit, setTempUnit, setWindUnit, showSourceBadge, setShowSourceBadge } = useSettings();
   const fs = useFontSize();
   const { fontScale, setFontScale } = fs;
   const styles = useMemo(() => buildStyles(theme, fs), [theme, fs]);
@@ -836,6 +836,20 @@ export default function SettingsScreen() {
               style={{ flexShrink: 0, alignSelf: 'center', marginLeft: 10 }}
               value={confirmDelete}
               onValueChange={toggleConfirmDelete}
+              trackColor={{ false: theme.textMuted, true: theme.accent2 }}
+              thumbColor="#ffffff"
+              ios_backgroundColor={theme.textMuted}
+            />
+          </View>
+          <View style={styles.card}>
+            <View style={[styles.cardTextWrap, { flex: 1 }]}>
+              <Text style={styles.cardTitle}>{tr('showSource')}</Text>
+              <Text style={styles.cardDesc}>{tr('showSourceDesc')}</Text>
+            </View>
+            <Switch
+              style={{ flexShrink: 0, alignSelf: 'center', marginLeft: 10 }}
+              value={!!showSourceBadge}
+              onValueChange={setShowSourceBadge}
               trackColor={{ false: theme.textMuted, true: theme.accent2 }}
               thumbColor="#ffffff"
               ios_backgroundColor={theme.textMuted}
