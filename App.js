@@ -1,5 +1,5 @@
 import React, { createContext, useState, useEffect, useRef } from 'react';
-import { NavigationContainer } from '@react-navigation/native';
+import { NavigationContainer, DefaultTheme } from '@react-navigation/native';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { Text, View, TouchableOpacity, Animated, StatusBar, StyleSheet } from 'react-native';
@@ -38,7 +38,15 @@ function AppContent() {
 
 function AppMain() {
   const { t } = useTranslation();
-  const { loaded, themeOverlayOpacity } = useTheme();
+  const { loaded, themeOverlayOpacity, theme } = useTheme();
+  // Any still-unpainted native surface (transition gaps, detached views)
+  // uses the app background instead of the OS grey: the flash becomes
+  // structurally impossible in every theme mode.
+  const navTheme = {
+    ...DefaultTheme,
+    dark: theme.mode !== 'light',
+    colors: { ...DefaultTheme.colors, background: theme.background, card: theme.background },
+  };
 
 return (
     <GlobalErrorBoundary>
@@ -48,8 +56,12 @@ return (
             <FontSizeProvider>
               <SettingsProvider>
                 <SafeAreaProvider style={{ flex: 1 }}>
-                  <NavigationContainer>
+                  <NavigationContainer theme={navTheme}>
                     <Stack.Navigator
+                      // Keep the outgoing screen composited during push:
+                      // a detached predecessor leaves the window background
+                      // (grey) visible on the trailing edge of slide_from_right.
+                      detachInactiveScreens={false}
                       screenOptions={{
                         headerShown: false,
                         animation: 'slide_from_right',

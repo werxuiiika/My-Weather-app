@@ -25,6 +25,7 @@
 //   so the UI can badge reserve data (and caches persist it).
 
 import { geocodeCity as omGeocodeCity, isRegionLike } from '../geocoding';
+import { sleep } from './netprobe';
 
 const OM_CIRCUIT_TTL_MS = 5 * 60 * 1000;
 
@@ -250,8 +251,16 @@ export async function fetchForecast(lat, lon, fetchFn, omUrl) {
       tripOmCircuit();
     }
   }
-  const fb = await fetchSeventimer(lat, lon, fetchFn);
-  return fb;
+  // 7Timer is a free hobby service: occasionally slower than a single
+  // timeout. One retry (warm connection, 400ms gap) cures most transient
+  // failures; if both attempts die the error propagates to the caller's
+  // offline path as before.
+  try {
+    return await fetchSeventimer(lat, lon, fetchFn);
+  } catch (e) {
+    await sleep(400);
+    return await fetchSeventimer(lat, lon, fetchFn);
+  }
 }
 
 // ---------------------------------------------------------------------------
