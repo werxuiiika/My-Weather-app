@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useMemo, useRef, useCallback } from 'react';
 import { View, Text, TextInput, FlatList, Alert, StatusBar, ActivityIndicator, RefreshControl, Pressable, TouchableOpacity, StyleSheet, InteractionManager } from 'react-native';
-import { useSharedValue } from 'react-native-reanimated';
+import Animated, { useSharedValue, FadeInUp, Easing } from 'react-native-reanimated';
 import ScreenWrapper from './ScreenWrapper';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
@@ -103,6 +103,18 @@ export default function CityListScreen() {
   // the JS thread — always fresh data, never a recreated gesture.
   const citiesRef = useRef(cities);
   citiesRef.current = cities;
+  // Entrance-animation gate: timestamp of the last empty -> filled list
+  // transition (fresh open / offline restore). Rows check it at render
+  // time and animate only inside a short window after it, so scroll
+  // mounts, refreshes and selection changes never replay the stagger.
+  // A ref (not state) is deliberate: it is stamped in the same tick as
+  // setCities, so rows mount WITH the animation in a single render.
+  const listBornAt = useRef(0);
+  const stampListBorn = (nextList) => {
+    if (citiesRef.current.length === 0 && nextList.length > 0) {
+      listBornAt.current = Date.now();
+    }
+  };
 
   const onReorder = useCallback(async (fromIndex, toIndex) => {
     const list = citiesRef.current;
@@ -407,7 +419,10 @@ export default function CityListScreen() {
       // No NetInfo fast-fail (it reports the VPN tunnel, not reachability).
       // The probe below is the real connectivity test: true offline fails
       // it in 5s and shows the stored list; a lying "offline" never blocks.
-      const showStored = () => setCities(list);
+      const showStored = () => {
+        stampListBorn(list);
+        setCities(list);
+      };
       // Real connectivity test through the SAME provider layer the loop
       // uses (OM-first with 7Timer fallback, 5s per leg). Probing OM alone
       // used to misclassify a blocked OM host as "offline" and skip the
@@ -481,8 +496,9 @@ export default function CityListScreen() {
         updatedList.push(city);
       }
 
-      setCities(updatedList);
-      await AsyncStorage.setItem(SAVED_CITIES_KEY, JSON.stringify(updatedList));
+        stampListBorn(updatedList);
+        setCities(updatedList);
+        await AsyncStorage.setItem(SAVED_CITIES_KEY, JSON.stringify(updatedList));
     } catch (e) {
       console.error(e);
     } finally {
@@ -729,7 +745,22 @@ export default function CityListScreen() {
   };
 
   const renderItem = ({ item, index }) => {
+    // Staggered entrance, top to bottom: opacity 0->1 + translateY 10->0,
+    // 250ms ease-out, 50ms step (capped). The entering animation lives on
+    // this outer wrapper — never on the draggable card itself — so it
+    // cannot fight the gesture transforms; it completes and releases.
+    const animateIn = Date.now() - listBornAt.current < 2000;
     return (
+      <Animated.View
+        entering={
+          animateIn
+            ? FadeInUp.duration(250)
+                .delay(Math.min(index, 10) * 50)
+                .easing(Easing.out(Easing.quad))
+                .withInitialValues({ opacity: 0, transform: [{ translateY: 10 }] })
+            : undefined
+        }
+      >
        <DraggableCityCard
         item={item}
         index={index}
@@ -750,6 +781,7 @@ export default function CityListScreen() {
         released={released}
          itemCount={cities.length}
        />
+      </Animated.View>
     );
   };
 
@@ -802,7 +834,14 @@ export default function CityListScreen() {
           scrolls, never shifts during reorder, and always draws above the
           dragged card (higher elevation / zIndex = "слои" effect). */}
       {currentLocation ? (
-        <View style={styles.locationHeader}>
+        <Animated.View
+          entering={
+            FadeInUp.duration(250)
+              .easing(Easing.out(Easing.quad))
+              .withInitialValues({ opacity: 0, transform: [{ translateY: 10 }] })
+          }
+          style={styles.locationHeader}
+        >
           <CurrentLocationCard
             item={currentLocation}
             theme={theme}
@@ -813,7 +852,7 @@ export default function CityListScreen() {
               ? undefined
               : () => handleSelectCity(currentLocation.name)}
           />
-        </View>
+        </Animated.View>
       ) : null}
 
       {!listMounted ? (
