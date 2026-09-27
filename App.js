@@ -5,6 +5,12 @@ import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { Text, View, TouchableOpacity, Animated, StatusBar, StyleSheet } from 'react-native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
+import { enableFreeze } from 'react-native-screens';
+
+// Freeze (don't unmount/detach) background screens: the outgoing screen
+// keeps its last frame during push, so the trailing edge of
+// slide_from_right never exposes the OS window background (grey flash).
+enableFreeze(true);
 import { useTranslation } from 'react-i18next';
 import i18n from './i18n';
 import WeatherApp from './WeatherApp';
@@ -58,13 +64,15 @@ return (
                 <SafeAreaProvider style={{ flex: 1 }}>
                   <NavigationContainer theme={navTheme}>
                     <Stack.Navigator
-                      // Keep the outgoing screen composited during push:
-                      // a detached predecessor leaves the window background
-                      // (grey) visible on the trailing edge of slide_from_right.
-                      detachInactiveScreens={false}
                       screenOptions={{
                         headerShown: false,
                         animation: 'slide_from_right',
+                        // Suspend (don't detach) the outgoing screen: it
+                        // keeps its last frame behind the entering one.
+                        // NOTE: detachInactiveScreens does not exist in the
+                        // installed native-stack (verified in node_modules) —
+                        // an unknown prop would be silently ignored.
+                        freezeOnBlur: true,
                       }}
                     >
                       <Stack.Screen name="Tabs" component={TabScreens} />

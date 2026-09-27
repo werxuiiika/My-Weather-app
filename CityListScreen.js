@@ -61,6 +61,12 @@ export default function CityListScreen() {
   const [searchQuery, setSearchQuery] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
+  // The heavy native subtree (FlatList + Reanimated cards + gestures)
+  // mounts only after the push transition: its UI-thread inflation cost
+  // during the animation window starves both screens of frames, exposing
+  // the window background as a grey strip. First paint is header + search
+  // only — same weight class as the (smooth) Settings screen.
+  const [listMounted, setListMounted] = useState(false);
    const [isSelectionMode, setIsSelectionMode] = useState(false);
   const [selectedCities, setSelectedCities] = useState(new Set());
   const [deleteTarget, setDeleteTarget] = useState(null);
@@ -342,6 +348,7 @@ export default function CityListScreen() {
     // is now the real themed screen (header + search + list shell);
     // data lands a beat later. Cancelled on unmount/language switch.
     const task = InteractionManager.runAfterInteractions(() => {
+      setListMounted(true);
       loadSavedCitiesAndRefresh();
       loadCurrentLocation();
       (async () => {
@@ -809,7 +816,9 @@ export default function CityListScreen() {
         </View>
       ) : null}
 
-      {isLoading && cities.length === 0 ? (
+      {!listMounted ? (
+        <View style={{ flex: 1 }} />
+      ) : isLoading && cities.length === 0 ? (
         <View style={styles.loaderContainer}>
           <ActivityIndicator size="large" color={theme.tint || '#3a7bd5'} />
         </View>
