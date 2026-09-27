@@ -22,7 +22,6 @@ export default function DraggableCityCard({
   t,
   onSelectToggle,
   onLongPressCity,
-  isDragging,
   dragOffset,
   activeIndex,
   activeId,
@@ -200,21 +199,12 @@ export default function DraggableCityCard({
         // apply to the NEW array (adjacent swaps would flip straight back).
         runOnJS(commitReorder)(index, newIndex);
       }
-      // Single residual glide to rest for every card: 250ms ease-out,
-      // the only post-release motion in the system.
-      // Completion is double-guarded: a cancelled glide (a newer gesture
-      // overwrote dragOffset mid-flight) reports finished=false, and a
-      // re-grabbed gesture flips released back to 0. Without both guards
-      // a rapid re-grab within the settle window nulls activeId / ends
-      // the drag mid-gesture: the card snaps to its slot under the finger,
-      // then jumps again — the fling glitch.
+      // Single residual glide to rest for every card.
       dragOffset.value = withTiming(
         0,
-        { duration: 250, easing: Easing.out(Easing.quad) },
-        (finished) => {
+        { duration: 220, easing: Easing.inOut(Easing.quad) },
+        () => {
           'worklet';
-          if (!finished) return;
-          if (released.value !== 1) return;
           activeId.value = null;
           runOnJS(endDrag)();
           const snapshot = trace.value;
@@ -285,9 +275,7 @@ export default function DraggableCityCard({
       }
       if (slotTarget.value !== desired) {
         slotTarget.value = desired;
-        // Brisk flip (150ms ease-out): a fast fling crosses a slot in
-        // ~100ms, and a 220ms flip leaves a visible hole behind it.
-        slotShift.value = withTiming(desired, { duration: 150, easing: Easing.out(Easing.quad) });
+        slotShift.value = withTiming(desired, { duration: 220, easing: Easing.inOut(Easing.quad) });
         if (trace.value.length < 1500) {
           trace.value.push(['x', Date.now(), index, desired === 0 ? 0 : desired > 0 ? 1 : -1]);
         }
@@ -296,7 +284,7 @@ export default function DraggableCityCard({
     } else if (slotTarget.value !== 0) {
       // No active drag — ease back to rest (covers release frames).
       slotTarget.value = 0;
-      slotShift.value = withTiming(0, { duration: 150, easing: Easing.out(Easing.quad) });
+      slotShift.value = withTiming(0, { duration: 220, easing: Easing.inOut(Easing.quad) });
       translateY = slotShift.value;
     }
 
@@ -318,22 +306,10 @@ export default function DraggableCityCard({
 
   const canSelectItem = isSelectionMode;
 
-  // Layout transitions run ONLY outside an active drag. During a drag,
-  // rows move purely via transform (slotShift flips); on drop the data
-  // commit snaps layouts to final slots while transforms still hold
-  // their pre-drop displacements, so every card performs exactly ONE
-  // ease-out glide home. Leaving LinearTransition on during drags made
-  // TWO systems fly the same pixels (transform + layout), and on Android
-  // layout-animated rows with elevation drop frames (cards vanish for
-  // ~100ms mid-settle) — the post-release chaos.
-  const layoutAnim = isDragging
-    ? undefined
-    : LinearTransition.duration(150).easing(Easing.out(Easing.quad));
-
   return (
     <Animated.View
       style={[styles.cardContainer, animatedStyle]}
-      layout={layoutAnim}
+      layout={LinearTransition.duration(220).easing(Easing.inOut(Easing.quad))}
     >
       <Pressable
         onPress={() => onSelectToggle(safeItem.id, safeItem.name, index)}
