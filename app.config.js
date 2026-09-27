@@ -64,7 +64,8 @@ export default {
           englishName: "My Weather"
         }
       ],
-      "./plugins/abi-splits"
+      "./plugins/abi-splits",
+      "./plugins/android-window-background"
     ],
     extra: {
       eas: {
