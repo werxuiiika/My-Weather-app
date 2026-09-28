@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo, useRef, useCallback } from 'react';
-import { View, Text, TextInput, FlatList, Alert, StatusBar, ActivityIndicator, RefreshControl, Pressable, TouchableOpacity, StyleSheet, InteractionManager } from 'react-native';
+import { View, Text, TextInput, FlatList, Alert, StatusBar, RefreshControl, Pressable, TouchableOpacity, StyleSheet, Animated } from 'react-native';
 import Animated, { useSharedValue, FadeInUp, Easing } from 'react-native-reanimated';
 import ScreenWrapper from './ScreenWrapper';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -44,6 +44,47 @@ async function fetchJson(url, timeoutMs = FETCH_TIMEOUT_MS, retries = 1) {
     }
   }
   throw lastError;
+}
+
+// Pulsing placeholder shown only when there is genuinely nothing cached
+// yet (first launch / wiped storage). Module-level identity keeps the
+// pulse loop stable across parent re-renders; renders instead of the
+// FlatList branch, so it never meets the drag system.
+function SkeletonCard({ theme, fs }) {
+  const pulse = useRef(new Animated.Value(0.35)).current;
+  useEffect(() => {
+    const loop = Animated.loop(
+      Animated.sequence([
+        Animated.timing(pulse, { toValue: 1, duration: 750, useNativeDriver: true }),
+        Animated.timing(pulse, { toValue: 0.35, duration: 750, useNativeDriver: true }),
+      ])
+    );
+    loop.start();
+    return () => loop.stop();
+  }, [pulse]);
+  const bar = { backgroundColor: theme.border, borderRadius: 8 };
+  return (
+    <Animated.View
+      style={{
+        opacity: pulse,
+        backgroundColor: theme.surfaceRaised,
+        borderRadius: 28,
+        paddingHorizontal: fs.spacing * 1.25,
+        paddingVertical: fs.spacing,
+        minHeight: fs.cardHeight * 1.375,
+        marginBottom: fs.spacing,
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+      }}
+    >
+      <View style={{ flex: 0.65 }}>
+        <View style={[bar, { width: '70%', height: fs.base * 1.1, marginBottom: 8 }]} />
+        <View style={[bar, { width: '45%', height: fs.small }]} />
+      </View>
+      <View style={[bar, { width: fs.spacing * 3, height: fs.spacing * 3, borderRadius: 16 }]} />
+    </Animated.View>
+  );
 }
 
 export default function CityListScreen() {
@@ -182,11 +223,6 @@ export default function CityListScreen() {
       alignItems: 'center',
       justifyContent: 'center',
       marginLeft: fs.spacing * 0.625,
-    },
-    loaderContainer: {
-      flex: 1,
-      justifyContent: 'center',
-      alignItems: 'center',
     },
     listContainer: {
       paddingHorizontal: fs.spacing,
@@ -341,24 +377,34 @@ export default function CityListScreen() {
   }), [theme, fs]);
 
   useEffect(() => {
-    // Deferred until the push transition finishes. Both loaders do
-    // storage + network + GPS churn (and flip list -> spinner), which
-    // used to starve the enter animation and flash a bare grey field —
-    // while Settings (no mount work) always slid in smoothly. First paint
-    // is now the real themed screen (header + search + list shell);
-    // data lands a beat later. Cancelled on unmount/language switch.
-    const task = InteractionManager.runAfterInteractions(() => {
-      setListMounted(true);
-      loadSavedCitiesAndRefresh();
-      loadCurrentLocation();
-      (async () => {
-        try {
-          const v = await AsyncStorage.getItem(CONFIRM_DELETE_KEY);
-          setConfirmDelete(v === null ? true : v === 'true');
-        } catch (e) {}
-      })();
+    // Deferred past the first frames so the push transition owns them
+    // (double requestAnimationFrame replaces the deprecated
+    // InteractionManager.runAfterInteractions — same effect, no warning).
+    // Storage read is fast, so the cached list paints almost instantly;
+    // network refresh lands in the background afterwards. Cancelled on
+    // unmount/language switch.
+    let cancelled = false;
+    let raf1 = 0;
+    let raf2 = 0;
+    raf1 = requestAnimationFrame(() => {
+      raf2 = requestAnimationFrame(() => {
+        if (cancelled) return;
+        setListMounted(true);
+        loadSavedCitiesAndRefresh();
+        loadCurrentLocation();
+        (async () => {
+          try {
+            const v = await AsyncStorage.getItem(CONFIRM_DELETE_KEY);
+            setConfirmDelete(v === null ? true : v === 'true');
+          } catch (e) {}
+        })();
+      });
     });
-    return () => task.cancel();
+    return () => {
+      cancelled = true;
+      cancelAnimationFrame(raf1);
+      cancelAnimationFrame(raf2);
+    };
   }, [i18n.language]);
 
   // Shared open-meteo enrichment for a coordinate pair. Returns the weather
@@ -389,18 +435,31 @@ export default function CityListScreen() {
   };
 
   const loadSavedCitiesAndRefresh = async () => {
-    setIsLoading(true);
     try {
       const data = await AsyncStorage.getItem(SAVED_CITIES_KEY);
       let list = [];
       if (data) {
-        list = JSON.parse(data);
+        try {
+          list = JSON.parse(data);
+        } catch (e) {
+          list = [];
+        }
       } else {
         list = [
           { id: '1', name: 'Москва' },
           { id: '2', name: 'Санкт-Петербург' },
           { id: '3', name: 'Сочи' },
         ];
+      }
+      // Optimistic paint: cached cities (with last-known weather) hit the
+      // screen instantly — no full-screen spinner. The probe + per-city
+      // refresh below runs in the background and swaps data in on arrival
+      // (same setCities path, no full reload). Skeleton only when there is
+      // genuinely nothing to show yet.
+      if (list.length > 0) {
+        setCities(list);
+      } else {
+        setIsLoading(true);
       }
       
       const currentLang = i18n.language || 'ru';
@@ -830,8 +889,10 @@ export default function CityListScreen() {
       {!listMounted ? (
         <View style={{ flex: 1 }} />
       ) : isLoading && cities.length === 0 ? (
-        <View style={styles.loaderContainer}>
-          <ActivityIndicator size="large" color={theme.tint || '#3a7bd5'} />
+        <View style={{ flex: 1, paddingHorizontal: fs.spacing, paddingTop: fs.spacing * 0.5 }}>
+          <SkeletonCard theme={theme} fs={fs} />
+          <SkeletonCard theme={theme} fs={fs} />
+          <SkeletonCard theme={theme} fs={fs} />
         </View>
       ) : (
         // Single entrance animation for the whole list (fade + slight
