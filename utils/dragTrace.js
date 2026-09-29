@@ -1,7 +1,7 @@
 import * as FileSystem from 'expo-file-system/legacy';
-import { getSafDirUri } from './crashLogger';
+import { getPublicLogDir } from './crashLogger';
+import { ensureDir } from './appStorage';
 
-const { StorageAccessFramework } = FileSystem;
 const MAX_FILES = 10;
 const PREFIX = 'drag_';
 
@@ -14,20 +14,7 @@ function toCsv(rows) {
   return lines.join('\n');
 }
 
-async function trimSaf(dirUri) {
-  try {
-    const uris = await StorageAccessFramework.readDirectoryAsync(dirUri);
-    const ours = uris.filter((u) => u.includes(PREFIX)).sort();
-    while (ours.length > MAX_FILES) {
-      const oldest = ours.shift();
-      try {
-        await StorageAccessFramework.deleteAsync(oldest);
-      } catch (e) {}
-    }
-  } catch (e) {}
-}
-
-async function trimInternal(dir) {
+async function trimPlain(dir) {
   try {
     const names = await FileSystem.readDirectoryAsync(dir);
     const ours = names.filter((n) => n.startsWith(PREFIX)).sort();
@@ -47,12 +34,13 @@ export async function saveDragTrace(rows) {
     const csv = toCsv(rows);
     const ts = Date.now();
     try {
-      const dirUri = await getSafDirUri();
-      if (dirUri) {
-        const fileUri = await StorageAccessFramework.createFileAsync(dirUri, `${PREFIX}${ts}`, 'text/csv');
-        await StorageAccessFramework.writeAsStringAsync(fileUri, csv);
-        await trimSaf(dirUri);
-        return fileUri;
+      const dir = getPublicLogDir();
+      if (dir) {
+        await ensureDir(dir);
+        const path = `${dir}${PREFIX}${ts}.csv`;
+        await FileSystem.writeAsStringAsync(path, csv);
+        await trimPlain(dir);
+        return path;
       }
     } catch (e) {}
     const base = FileSystem.documentDirectory;
@@ -64,7 +52,7 @@ export async function saveDragTrace(rows) {
     }
     const path = `${dir}/${PREFIX}${ts}.csv`;
     await FileSystem.writeAsStringAsync(path, csv);
-    await trimInternal(dir);
+    await trimPlain(dir);
     return path;
   } catch (e) {
     return null;

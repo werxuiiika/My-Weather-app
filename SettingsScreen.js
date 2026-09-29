@@ -15,6 +15,7 @@ import {
   StyleSheet,
   PanResponder,
   StatusBar,
+  Alert,
 } from 'react-native';
 import ScreenWrapper from './ScreenWrapper';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -29,6 +30,8 @@ import { Ionicons } from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as Haptics from 'expo-haptics';
 import CrashLogViewer from './components/CrashLogViewer';
+import CitiesImportModal from './components/CitiesImportModal';
+import { exportCities } from './utils/citiesBackup';
 
 const REMEMBER_CITY_ENABLED_KEY = 'remember_city_enabled';
 
@@ -628,6 +631,18 @@ export default function SettingsScreen() {
   const [showMenuStylePicker, setShowMenuStylePicker] = useState(false);
   const [showFontSizePicker, setShowFontSizePicker] = useState(false);
   const [showLogViewer, setShowLogViewer] = useState(false);
+  const [showImportModal, setShowImportModal] = useState(false);
+
+  const handleExportCities = async () => {
+    // No permission needed: the app writes into its own reserved folder
+    // (Android/data/<package>/files/MyWeatherApp/cities) — auto-created.
+    try {
+      const { count } = await exportCities();
+      Alert.alert(tr('backupExportedTitle'), tr('backupExportedMsg', { count }));
+    } catch (e) {
+      Alert.alert(tr('backupFailedTitle'), tr('backupErrorMsg'));
+    }
+  };
 
   // Secret dev entry: 7 quick taps on the app version open the crash logs.
   // Taps spaced more than the window apart restart the count.
@@ -977,9 +992,29 @@ export default function SettingsScreen() {
             <View style={styles.iconWrap}>
               <Ionicons name="pulse" size={fs.iconSize * 0.77} color={theme.text} />
             </View>
-            <View style={[styles.cardTextWrap, { flex: 1, flexDirection: 'row', alignItems: 'center' }]}>
-              <Text style={[styles.cardTitle, { flex: 1, flexShrink: 1 }]} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.8}>{tr('netdiagTitle')}</Text>
-              <Text style={[styles.cardDesc, { marginLeft: 10, marginTop: 0, flexShrink: 0, marginRight: 8 }]} numberOfLines={1}>{tr('netdiagDesc')}</Text>
+            <View style={[styles.cardTextWrap, { flex: 1 }]}>
+              <Text style={styles.cardTitle}>{tr('netdiagTitle')}</Text>
+              <Text style={styles.cardDesc}>{tr('netdiagDesc')}</Text>
+            </View>
+            <Text style={styles.chevron}>›</Text>
+          </TouchableOpacity>
+          <TouchableOpacity style={styles.card} activeOpacity={0.6} onPress={handleExportCities}>
+            <View style={styles.iconWrap}>
+              <Ionicons name="share-outline" size={fs.iconSize * 0.77} color={theme.text} />
+            </View>
+            <View style={[styles.cardTextWrap, { flex: 1 }]}>
+              <Text style={styles.cardTitle}>{tr('backupExport')}</Text>
+              <Text style={styles.cardDesc}>{tr('backupExportDesc')}</Text>
+            </View>
+            <Text style={styles.chevron}>›</Text>
+          </TouchableOpacity>
+          <TouchableOpacity style={styles.card} activeOpacity={0.6} onPress={() => setShowImportModal(true)}>
+            <View style={styles.iconWrap}>
+              <Ionicons name="download-outline" size={fs.iconSize * 0.77} color={theme.text} />
+            </View>
+            <View style={[styles.cardTextWrap, { flex: 1 }]}>
+              <Text style={styles.cardTitle}>{tr('backupImport')}</Text>
+              <Text style={styles.cardDesc}>{tr('backupImportDesc')}</Text>
             </View>
             <Text style={styles.chevron}>›</Text>
           </TouchableOpacity>
@@ -1018,6 +1053,13 @@ export default function SettingsScreen() {
         onClose={() => setShowLogViewer(false)}
         theme={theme}
         fs={fs}
+      />
+      <CitiesImportModal
+        visible={showImportModal}
+        onClose={() => setShowImportModal(false)}
+        theme={theme}
+        fs={fs}
+        onImported={(count) => Alert.alert(tr('backupImportedTitle'), tr('backupImportedMsg', { count }))}
       />
     </ScreenWrapper>
   );

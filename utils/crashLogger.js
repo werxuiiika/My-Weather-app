@@ -1,11 +1,7 @@
 import * as FileSystem from 'expo-file-system/legacy';
-import AsyncStorage from '@react-native-async-storage/async-storage';
-
-const { StorageAccessFramework } = FileSystem;
+import { getAppStorageRoot, ensureDir } from './appStorage';
 
 export const INTERNAL_LOG_FOLDER = 'logs';
-export const DOWNLOAD_FOLDER = 'WeatherLogs';
-const SAF_DIR_KEY = 'crash_logs_saf_dir_uri';
 
 // ---------------------------------------------------------------------------
 // Internal sandbox: /data/user/0/<package>/files/logs (always writable,
@@ -58,105 +54,70 @@ export async function listInternalLogs() {
 }
 
 // ---------------------------------------------------------------------------
-// Public Download/WeatherLogs via Storage Access Framework.
-// /sdcard/Download/WeatherLogs — readable via `adb pull` without root.
+// App-owned folder: <app storage>/MyWeatherApp/logs
+// (Android: /sdcard/Android/data/<package>/files/MyWeatherApp/logs).
+// No SAF, no permission prompt, nothing for the user to create — the
+// directory is auto-created on first write. Pullable via adb.
 // ---------------------------------------------------------------------------
-export async function getSafDirUri() {
-  try {
-    return (await AsyncStorage.getItem(SAF_DIR_KEY)) || null;
-  } catch (e) {
-    return null;
-  }
+export function getPublicLogDir() {
+  const root = getAppStorageRoot();
+  return root ? `${root}logs/` : null;
 }
 
-function safDisplayName(uri) {
-  try {
-    const decoded = decodeURIComponent(uri);
-    const parts = decoded.split('/');
-    return parts[parts.length - 1] || decoded;
-  } catch (e) {
-    return uri;
-  }
+export async function ensurePublicLogDir() {
+  const dir = getPublicLogDir();
+  if (!dir) throw new Error('no app storage base');
+  return ensureDir(dir);
 }
 
-// Opens the system folder picker (needs one user tap), ensures the
-// WeatherLogs subfolder, persists its URI. Returns the URI or null.
-export async function ensureDownloadAccess() {
-  try {
-    const already = await getSafDirUri();
-    if (already) {
-      try {
-        await StorageAccessFramework.readDirectoryAsync(already);
-        return already;
-      } catch (e) {
-        // Persisted permission lost — ask again below.
-      }
-    }
-    const downloadRoot = StorageAccessFramework.getUriForDirectoryInRoot('Download');
-    const perm = await StorageAccessFramework.requestDirectoryPermissionsAsync(downloadRoot);
-    if (!perm.granted) return null;
-    const grantedUri = perm.directoryUri;
-
-    // If the user picked WeatherLogs itself, use it directly.
-    if (safDisplayName(grantedUri) === DOWNLOAD_FOLDER) {
-      await AsyncStorage.setItem(SAF_DIR_KEY, grantedUri);
-      return grantedUri;
-    }
-
-    // Otherwise ensure the WeatherLogs subfolder inside the granted dir.
-    const children = await StorageAccessFramework.readDirectoryAsync(grantedUri);
-    for (const childUri of children) {
-      if (safDisplayName(childUri) === DOWNLOAD_FOLDER) {
-        await AsyncStorage.setItem(SAF_DIR_KEY, childUri);
-        return childUri;
-      }
-    }
-    const created = await StorageAccessFramework.makeDirectoryAsync(grantedUri, DOWNLOAD_FOLDER);
-    await AsyncStorage.setItem(SAF_DIR_KEY, created);
-    return created;
-  } catch (e) {
-    return null;
-  }
-}
-
-async function writeDownload(timestamp, content) {
-  const dirUri = await getSafDirUri();
-  if (!dirUri) throw new Error('No SAF directory granted yet');
-  // NOTE: fileName is passed WITHOUT extension; the system appends .txt from the MIME type.
-  const fileUri = await StorageAccessFramework.createFileAsync(dirUri, `crash_${timestamp}`, 'text/plain');
-  await StorageAccessFramework.writeAsStringAsync(fileUri, content);
-  return fileUri;
+async function writePublic(timestamp, content) {
+  const dir = await ensurePublicLogDir();
+  const filePath = `${dir}crash_${timestamp}.txt`;
+  await FileSystem.writeAsStringAsync(filePath, content);
+  return filePath;
 }
 
 export async function listDownloadLogs() {
   try {
-    const dirUri = await getSafDirUri();
-    if (!dirUri) return [];
-    const uris = await StorageAccessFramework.readDirectoryAsync(dirUri);
+    const dir = getPublicLogDir();
+    if (!dir) return [];
+    const dirInfo = await FileSystem.getInfoAsync(dir);
+    if (!dirInfo.exists) return [];
+    const names = await FileSystem.readDirectoryAsync(dir);
     const files = [];
-    for (const uri of uris) {
-      const name = safDisplayName(uri);
+    for (const name of names) {
       if (!name.endsWith('.txt') && !name.endsWith('.csv')) continue;
-      files.push({ name, path: uri, size: 0, mtime: 0, location: 'download' });
+      try {
+        const info = await FileSystem.getInfoAsync(`${dir}${name}`);
+        files.push({
+          name,
+          path: `${dir}${name}`,
+          size: info.size ?? 0,
+          mtime: info.modificationTime ?? 0,
+          location: 'download',
+        });
+      } catch (e) {
+        files.push({ name, path: `${dir}${name}`, size: 0, mtime: 0, location: 'download' });
+      }
     }
-    files.sort((a, b) => (a.name < b.name ? 1 : -1));
+    files.sort((a, b) => (b.mtime || 0) - (a.mtime || 0));
     return files;
   } catch (e) {
     return [];
   }
 }
 
-export async function readDownloadLog(uri) {
-  return StorageAccessFramework.readAsStringAsync(uri);
+export async function readDownloadLog(path) {
+  return FileSystem.readAsStringAsync(path);
 }
 
-export async function deleteDownloadLog(uri) {
-  return StorageAccessFramework.deleteAsync(uri);
+export async function deleteDownloadLog(path) {
+  return FileSystem.deleteAsync(path, { idempotent: true });
 }
 
 // ---------------------------------------------------------------------------
-// Main entry: builds the report, tries Download (adb-readable) first,
-// falls back to internal sandbox. Never throws.
+// Main entry: builds the report, tries the app folder (adb-readable) first,
+// falls back to the internal sandbox. Never throws.
 // ---------------------------------------------------------------------------
 export async function logCrash(error, errorInfo = {}, appState = {}) {
   const timestamp = Date.now();
@@ -167,7 +128,7 @@ export async function logCrash(error, errorInfo = {}, appState = {}) {
     `Timestamp (ms): ${timestamp}`,
     `Error Message: ${error?.message || 'Unknown'}`,
     `Stack Trace: ${error?.stack || 'No stack available'}`,
-    `Component Stack: ${errorInfo?.componentStack || 'No component stack'}`,
+    `Component Stack: ${errorInfo?.componentStack || 'No stack available'}`,
     '--- App State Snapshot ---',
     `Theme: ${appState.theme || 'unknown'}`,
     `Language: ${appState.language || 'unknown'}`,
@@ -180,7 +141,7 @@ export async function logCrash(error, errorInfo = {}, appState = {}) {
   let lastError = null;
 
   try {
-    const path = await writeDownload(timestamp, content);
+    const path = await writePublic(timestamp, content);
     return { path, location: 'download' };
   } catch (e) {
     lastError = e;
@@ -198,18 +159,13 @@ export async function logCrash(error, errorInfo = {}, appState = {}) {
 }
 
 // ---------------------------------------------------------------------------
-// Self-test: writes, reads back and deletes a probe file in the sandbox.
+// Self-test: writes, reads back and deletes a probe file in the app folder.
 // Used by the in-app viewer to diagnose storage problems on the spot.
 // ---------------------------------------------------------------------------
 export async function testLogWrite() {
   try {
-    const dir = getInternalLogDir();
-    if (!dir) return { ok: false, error: 'documentDirectory is null' };
-    const dirInfo = await FileSystem.getInfoAsync(dir);
-    if (!dirInfo.exists) {
-      await FileSystem.makeDirectoryAsync(dir, { intermediates: true });
-    }
-    const probe = `${dir}/selftest_probe.txt`;
+    const dir = await ensurePublicLogDir();
+    const probe = `${dir}selftest_probe.txt`;
     await FileSystem.writeAsStringAsync(probe, 'ok');
     const back = await FileSystem.readAsStringAsync(probe);
     await FileSystem.deleteAsync(probe, { idempotent: true });

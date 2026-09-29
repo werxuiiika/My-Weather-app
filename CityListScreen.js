@@ -1,10 +1,11 @@
 import React, { useState, useEffect, useMemo, useRef, useCallback } from 'react';
-import { View, Text, TextInput, FlatList, Alert, StatusBar, RefreshControl, Pressable, TouchableOpacity, StyleSheet, Animated } from 'react-native';
+import { View, Text, TextInput, FlatList, Alert, StatusBar, RefreshControl, Pressable, TouchableOpacity, StyleSheet, Animated as RNAnimated } from 'react-native';
 import Animated, { useSharedValue, FadeInUp, Easing } from 'react-native-reanimated';
 import ScreenWrapper from './ScreenWrapper';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
-import { useNavigation } from '@react-navigation/native';
+import { useNavigation, useFocusEffect } from '@react-navigation/native';
+import { CITIES_CHANGED_KEY } from './utils/citiesBackup';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useTheme } from './ThemeContext';
 import { useFontSize } from './FontSizeContext';
@@ -51,12 +52,15 @@ async function fetchJson(url, timeoutMs = FETCH_TIMEOUT_MS, retries = 1) {
 // pulse loop stable across parent re-renders; renders instead of the
 // FlatList branch, so it never meets the drag system.
 function SkeletonCard({ theme, fs }) {
-  const pulse = useRef(new Animated.Value(0.35)).current;
+  // RNAnimated (react-native), NOT Reanimated's Animated: a plain
+  // opacity pulse needs no worklets. Aliased import — the Reanimated
+  // default import above owns the bare `Animated` name.
+  const pulse = useRef(new RNAnimated.Value(0.35)).current;
   useEffect(() => {
-    const loop = Animated.loop(
-      Animated.sequence([
-        Animated.timing(pulse, { toValue: 1, duration: 750, useNativeDriver: true }),
-        Animated.timing(pulse, { toValue: 0.35, duration: 750, useNativeDriver: true }),
+    const loop = RNAnimated.loop(
+      RNAnimated.sequence([
+        RNAnimated.timing(pulse, { toValue: 1, duration: 750, useNativeDriver: true }),
+        RNAnimated.timing(pulse, { toValue: 0.35, duration: 750, useNativeDriver: true }),
       ])
     );
     loop.start();
@@ -64,7 +68,7 @@ function SkeletonCard({ theme, fs }) {
   }, [pulse]);
   const bar = { backgroundColor: theme.border, borderRadius: 8 };
   return (
-    <Animated.View
+    <RNAnimated.View
       style={{
         opacity: pulse,
         backgroundColor: theme.surfaceRaised,
@@ -83,7 +87,7 @@ function SkeletonCard({ theme, fs }) {
         <View style={[bar, { width: '45%', height: fs.small }]} />
       </View>
       <View style={[bar, { width: fs.spacing * 3, height: fs.spacing * 3, borderRadius: 16 }]} />
-    </Animated.View>
+    </RNAnimated.View>
   );
 }
 
@@ -406,6 +410,23 @@ export default function CityListScreen() {
       cancelAnimationFrame(raf2);
     };
   }, [i18n.language]);
+
+  // Import happened in Settings (list replaced on disk): reload once on
+  // return. Runs in the background over the visible cached list, so no
+  // spinner flash. Flag consumed here, set in citiesBackup.importCities.
+  useFocusEffect(
+    useCallback(() => {
+      (async () => {
+        try {
+          const dirty = await AsyncStorage.getItem(CITIES_CHANGED_KEY);
+          if (dirty === '1') {
+            await AsyncStorage.removeItem(CITIES_CHANGED_KEY);
+            loadSavedCitiesAndRefresh();
+          }
+        } catch (e) {}
+      })();
+    }, [])
+  );
 
   // Shared open-meteo enrichment for a coordinate pair. Returns the weather
   // fields object or null (no usable data). fetchJson errors propagate so

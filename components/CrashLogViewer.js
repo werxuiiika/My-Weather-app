@@ -17,18 +17,14 @@ import {
   listDownloadLogs,
   readDownloadLog,
   deleteDownloadLog,
-  ensureDownloadAccess,
-  getSafDirUri,
   getInternalLogDir,
+  getPublicLogDir,
   testLogWrite,
 } from '../utils/crashLogger';
-
-const { StorageAccessFramework } = FileSystem;
 
 export default function CrashLogViewer({ visible, onClose, theme, fs }) {
   const [internalFiles, setInternalFiles] = useState([]);
   const [downloadFiles, setDownloadFiles] = useState([]);
-  const [hasDownloadAccess, setHasDownloadAccess] = useState(false);
   const [loading, setLoading] = useState(false);
   const [expandedKey, setExpandedKey] = useState(null);
   const [contents, setContents] = useState({});
@@ -38,14 +34,9 @@ export default function CrashLogViewer({ visible, onClose, theme, fs }) {
   const refresh = useCallback(async () => {
     setLoading(true);
     try {
-      const [internal, download, safUri] = await Promise.all([
-        listInternalLogs(),
-        listDownloadLogs(),
-        getSafDirUri(),
-      ]);
+      const [internal, download] = await Promise.all([listInternalLogs(), listDownloadLogs()]);
       setInternalFiles(internal);
       setDownloadFiles(download);
-      setHasDownloadAccess(!!safUri);
     } finally {
       setLoading(false);
     }
@@ -101,24 +92,6 @@ export default function CrashLogViewer({ visible, onClose, theme, fs }) {
     const result = await testLogWrite();
     setSelfTest(result);
     if (result.ok) refresh();
-  };
-
-  const setupDownload = async () => {
-    const uri = await ensureDownloadAccess();
-    if (uri) {
-      // Copy existing internal logs to Download so nothing is lost.
-      try {
-        for (const f of internalFiles) {
-          const text = await FileSystem.readAsStringAsync(f.path);
-          const base = f.name.replace(/\.txt$/, '');
-          const dest = await StorageAccessFramework.createFileAsync(uri, base, 'text/plain');
-          await StorageAccessFramework.writeAsStringAsync(dest, text);
-        }
-      } catch (e) {}
-      refresh();
-    } else {
-      Alert.alert('Нет доступа', 'Не удалось получить доступ к папке Загрузки.');
-    }
   };
 
   const clearInternal = () => {
@@ -185,8 +158,8 @@ export default function CrashLogViewer({ visible, onClose, theme, fs }) {
         <Text style={styles.fileName}>{file.name}</Text>
         <Text style={styles.fileMeta}>
           {file.size ? `${(file.size / 1024).toFixed(1)} KB · ` : ''}
-          {file.location === 'download' ? 'Загрузки' : 'Внутренние'}
-          {file.mtime ? ` · ${new Date(file.mtime * 1000).toLocaleString()}` : ''}
+          {file.location === 'download' ? 'Папка приложения' : 'Внутренние'}
+          {file.mtime ? ` · ${new Date(file.mtime > 1e12 ? file.mtime : file.mtime * 1000).toLocaleString()}` : ''}
         </Text>
         <View style={styles.row}>
           <TouchableOpacity style={styles.btnGhost} onPress={() => toggleExpand(file)}>
@@ -214,7 +187,7 @@ export default function CrashLogViewer({ visible, onClose, theme, fs }) {
   };
 
   return (
-    <Modal transparent visible animationType="slide" statusBarTranslucent onRequestClose={onClose}>
+    <Modal transparent visible animationType="fade" statusBarTranslucent navigationBarTranslucent onRequestClose={onClose}>
       <TouchableWithoutFeedback onPress={onClose}>
         <View style={styles.overlay} />
       </TouchableWithoutFeedback>
@@ -233,13 +206,9 @@ export default function CrashLogViewer({ visible, onClose, theme, fs }) {
           <ActivityIndicator size="large" color={theme.accent} style={{ marginVertical: 24 }} />
         ) : (
           <ScrollView style={styles.list}>
-            <Text style={styles.sectionTitle}>ЗАГРУЗКИ / WeatherLogs (доступны через adb)</Text>
+            <Text style={styles.sectionTitle}>ПАПКА ПРИЛОЖЕНИЯ / MyWeatherApp/logs (доступны через adb)</Text>
             {downloadFiles.length === 0 ? (
-              <Text style={styles.empty}>
-                {hasDownloadAccess
-                  ? 'В Загрузках логов пока нет'
-                  : 'Папка Загрузки не подключена — нажмите «Подключить Загрузки» ниже'}
-              </Text>
+              <Text style={styles.empty}>В папке приложения логов пока нет</Text>
             ) : (
               downloadFiles.map(renderFile)
             )}
@@ -250,6 +219,9 @@ export default function CrashLogViewer({ visible, onClose, theme, fs }) {
               internalFiles.map(renderFile)
             )}
             <Text style={styles.sectionTitle}>ДИАГНОСТИКА</Text>
+            <Text style={[styles.fileMeta, { paddingHorizontal: 0, marginBottom: 2 }]}>
+              Папка приложения: {getPublicLogDir() || 'недоступна'}
+            </Text>
             <Text style={[styles.fileMeta, { paddingHorizontal: 0, marginBottom: 8 }]}>
               Внутренняя папка: {getInternalLogDir() || 'недоступна'}
             </Text>
@@ -257,11 +229,6 @@ export default function CrashLogViewer({ visible, onClose, theme, fs }) {
               <TouchableOpacity style={styles.btnGhost} onPress={runSelfTest} disabled={selfTest?.running}>
                 <Text style={styles.btnGhostText}>
                   {selfTest?.running ? 'Проверка…' : 'Тест записи'}
-                </Text>
-              </TouchableOpacity>
-              <TouchableOpacity style={styles.btn} onPress={setupDownload}>
-                <Text style={styles.btnText}>
-                  {hasDownloadAccess ? 'Синхронизировать в Загрузки' : 'Подключить Загрузки'}
                 </Text>
               </TouchableOpacity>
             </View>
