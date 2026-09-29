@@ -1,0 +1,41 @@
+name: Update README version history
+
+# Fully automatic: whenever a release is published, its notes become the new
+# open entry in README's "История версий" and the previous entry collapses.
+# No agent needed. Release-note convention (see scripts/readme-history.js):
+#   "## X.Y.Z — «Кодовое имя»" title, flat "- " bullets, optional
+#   "### 📦 Сборка" tail (dropped — APK links live on the release page).
+on:
+  release:
+    types: [published]
+
+permissions:
+  contents: write
+
+jobs:
+  readme:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout main
+        uses: actions/checkout@v4
+        with:
+          ref: main
+
+      - name: Sync README history from release notes
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: ${{ github.event.release.tag_name }}
+        run: |
+          gh release view "$TAG" --json body -q .body > /tmp/release-body.txt
+          node scripts/readme-history.js "$TAG" /tmp/release-body.txt README.md
+
+      - name: Commit back if changed
+        env:
+          TAG: ${{ github.event.release.tag_name }}
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add README.md
+          git diff --cached --quiet && echo "no README change" && exit 0
+          git commit -m "docs: README history ← $TAG"
+          git push
