@@ -31,7 +31,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as Haptics from 'expo-haptics';
 import CrashLogViewer from './components/CrashLogViewer';
 import CitiesImportModal from './components/CitiesImportModal';
-import { exportCities } from './utils/citiesBackup';
+import CustomAlert, { useCustomAlert } from './components/CustomAlert';
 
 const REMEMBER_CITY_ENABLED_KEY = 'remember_city_enabled';
 
@@ -156,6 +156,61 @@ function BottomSheet({ visible, onClose, title, options, selectedValue, onSelect
   const translateY = useRef(new Animated.Value(0)).current;
   const opacity = useRef(new Animated.Value(0)).current;
   const screenHeight = Dimensions.get('window').height;
+  const onCloseRef = useRef(onClose);
+  onCloseRef.current = onClose;
+
+  // Swipe-down to dismiss, tracked with raw touch events (same approach as
+  // the backup sheet): onTouchMove bubbles from any header child uniformly,
+  // taps pass through untouched so option rows keep working. Unmount first,
+  // no translateY reset here — the open effect below re-arms it.
+  const drag = useRef({ id: null, y0: 0, moved: false, vy: 0, lastY: 0, lastT: 0 }).current;
+  const headerTouchStart = (e) => {
+    const t = e.nativeEvent;
+    if (drag.id !== null) return;
+    drag.id = t.identifier;
+    drag.y0 = t.pageY;
+    drag.lastY = t.pageY;
+    drag.lastT = t.timestamp;
+    drag.moved = false;
+    drag.vy = 0;
+  };
+  const headerTouchMove = (e) => {
+    const t = e.nativeEvent;
+    if (t.identifier !== drag.id) return;
+    const dy = t.pageY - drag.y0;
+    if (!drag.moved) {
+      if (dy < 6) return;
+      drag.moved = true;
+    }
+    if (t.pageY > drag.y0) translateY.setValue(t.pageY - drag.y0);
+    drag.vy = (t.pageY - drag.lastY) / Math.max(1, t.timestamp - drag.lastT);
+    drag.lastY = t.pageY;
+    drag.lastT = t.timestamp;
+  };
+  const headerTouchEnd = (e) => {
+    const t = e.nativeEvent;
+    if (t.identifier !== drag.id) return;
+    drag.id = null;
+    if (!drag.moved) return; // plain tap — rows handle it
+    drag.moved = false;
+    const dy = Math.max(0, t.pageY - drag.y0);
+    const vy = drag.vy || 0;
+    drag.vy = 0;
+    if (dy > 110 || vy > 0.7) {
+      Animated.timing(translateY, {
+        toValue: screenHeight,
+        duration: 200,
+        easing: Easing.in(Easing.cubic),
+        useNativeDriver: true,
+      }).start(() => onCloseRef.current());
+    } else {
+      Animated.spring(translateY, {
+        toValue: 0,
+        friction: 22,
+        useNativeDriver: true,
+      }).start();
+    }
+  };
 
   useEffect(() => {
     if (visible) {
@@ -198,8 +253,15 @@ function BottomSheet({ visible, onClose, title, options, selectedValue, onSelect
           paddingBottom: insets.bottom + 12,
         }}
       >
-        <View style={{ width: 48, height: 6, borderRadius: 3, backgroundColor: theme.border, alignSelf: 'center', marginTop: 10, marginBottom: 12 }} />
-        <Text style={{ fontSize: 15, fontWeight: '600', color: theme.textMuted, textAlign: 'center', marginBottom: 14 }}>{title}</Text>
+        <View
+          onTouchStart={headerTouchStart}
+          onTouchMove={headerTouchMove}
+          onTouchEnd={headerTouchEnd}
+          onTouchCancel={headerTouchEnd}
+        >
+          <View style={{ width: 48, height: 6, borderRadius: 3, backgroundColor: theme.border, alignSelf: 'center', marginTop: 10, marginBottom: 12 }} />
+          <Text style={{ fontSize: 15, fontWeight: '600', color: theme.textMuted, textAlign: 'center', marginBottom: 14 }}>{title}</Text>
+        </View>
         {options.map((opt) => (
           <TouchableOpacity
             key={opt.value}
@@ -632,17 +694,9 @@ export default function SettingsScreen() {
   const [showFontSizePicker, setShowFontSizePicker] = useState(false);
   const [showLogViewer, setShowLogViewer] = useState(false);
   const [showImportModal, setShowImportModal] = useState(false);
+  const { alert, showAlert, hideAlert } = useCustomAlert();
 
-  const handleExportCities = async () => {
-    // No permission needed: the app writes into its own reserved folder
-    // (Android/data/<package>/files/MyWeatherApp/cities) — auto-created.
-    try {
-      const { count } = await exportCities();
-      Alert.alert(tr('backupExportedTitle'), tr('backupExportedMsg', { count }));
-    } catch (e) {
-      Alert.alert(tr('backupFailedTitle'), tr('backupErrorMsg'));
-    }
-  };
+
 
   // Secret dev entry: 7 quick taps on the app version open the crash logs.
   // Taps spaced more than the window apart restart the count.
@@ -998,26 +1052,38 @@ export default function SettingsScreen() {
             </View>
             <Text style={styles.chevron}>›</Text>
           </TouchableOpacity>
-          <TouchableOpacity style={styles.card} activeOpacity={0.6} onPress={handleExportCities}>
+          <TouchableOpacity
+            style={styles.card}
+            activeOpacity={0.6}
+            onPress={() => setShowImportModal(menuStyle === 'inline' ? !showImportModal : true)}
+          >
             <View style={styles.iconWrap}>
-              <Ionicons name="share-outline" size={fs.iconSize * 0.77} color={theme.text} />
+              <Ionicons name="save-outline" size={fs.iconSize * 0.77} color={theme.text} />
             </View>
             <View style={[styles.cardTextWrap, { flex: 1 }]}>
-              <Text style={styles.cardTitle}>{tr('backupExport')}</Text>
-              <Text style={styles.cardDesc}>{tr('backupExportDesc')}</Text>
+              <Text style={styles.cardTitle}>{tr('backupTitle')}</Text>
+              <Text style={styles.cardDesc}>{tr('backupDesc')}</Text>
             </View>
-            <Text style={styles.chevron}>›</Text>
+            <Text style={styles.chevron}>{showImportModal && menuStyle === 'inline' ? '▲' : '›'}</Text>
           </TouchableOpacity>
-          <TouchableOpacity style={styles.card} activeOpacity={0.6} onPress={() => setShowImportModal(true)}>
-            <View style={styles.iconWrap}>
-              <Ionicons name="download-outline" size={fs.iconSize * 0.77} color={theme.text} />
-            </View>
-            <View style={[styles.cardTextWrap, { flex: 1 }]}>
-              <Text style={styles.cardTitle}>{tr('backupImport')}</Text>
-              <Text style={styles.cardDesc}>{tr('backupImportDesc')}</Text>
-            </View>
-            <Text style={styles.chevron}>›</Text>
-          </TouchableOpacity>
+          {menuStyle === 'inline' && (
+            <CitiesImportModal
+              visible={showImportModal}
+              onClose={() => setShowImportModal(false)}
+              theme={theme}
+              fs={fs}
+              onImported={(count) =>
+                showAlert({
+                  toast: true,
+                  title: tr('backupImportedTitle'),
+                  message: tr('backupImportedCount', { count }),
+                })
+              }
+              showAlert={showAlert}
+              hideAlert={hideAlert}
+              menuStyle="inline"
+            />
+          )}
           {devUnlocked ? (
             <TouchableOpacity
               style={styles.card}
@@ -1054,13 +1120,25 @@ export default function SettingsScreen() {
         theme={theme}
         fs={fs}
       />
-      <CitiesImportModal
-        visible={showImportModal}
-        onClose={() => setShowImportModal(false)}
-        theme={theme}
-        fs={fs}
-        onImported={(count) => Alert.alert(tr('backupImportedTitle'), tr('backupImportedMsg', { count }))}
-      />
+      {menuStyle !== 'inline' && (
+        <CitiesImportModal
+          visible={showImportModal}
+          onClose={() => setShowImportModal(false)}
+          theme={theme}
+          fs={fs}
+          onImported={(count) =>
+            showAlert({
+              toast: true,
+              title: tr('backupImportedTitle'),
+              message: tr('backupImportedCount', { count }),
+            })
+          }
+          showAlert={showAlert}
+          hideAlert={hideAlert}
+          menuStyle={menuStyle}
+        />
+      )}
+      <CustomAlert state={alert} onDismiss={hideAlert} theme={theme} fs={fs} />
     </ScreenWrapper>
   );
 }

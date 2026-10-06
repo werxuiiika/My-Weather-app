@@ -9,7 +9,7 @@ export const THEME_MODES = [
 export const authorTheme = {
   key: 'author', mode: 'dark',
   background: '#1c2333', surface: '#2a3248', surfaceAlt: '#202840',
-  surfaceRaised: '#232b40', border: '#262e45',
+  surfaceRaised: '#232b40', sheet: '#343c58', border: '#262e45',
   text: '#ffffff', textSecondary: '#aab3cc', textMuted: '#7f8db0',
   accent: '#4a90d9', accent2: '#38b06b', onAccent: '#ffffff',
   danger: '#FF453A',
@@ -19,7 +19,7 @@ export const authorTheme = {
 export const graphiteTheme = {
   key: 'dark', mode: 'dark',
   background: '#14171d', surface: '#1f242c', surfaceAlt: '#1a1f27',
-  surfaceRaised: '#232933', border: '#2a303b',
+  surfaceRaised: '#232933', sheet: '#2a303a', border: '#2a303b',
   text: '#ffffff', textSecondary: '#a9b1bd', textMuted: '#7c8698',
   accent: '#4a90d9', accent2: '#38b06b', onAccent: '#ffffff',
   danger: '#FF453A',
@@ -29,7 +29,7 @@ export const graphiteTheme = {
 export const lightTheme = {
   key: 'light', mode: 'light',
   background: '#f2f5fb', surface: '#ffffff', surfaceAlt: '#e9eef8',
-  surfaceRaised: '#ffffff', border: '#dfe6f2',
+  surfaceRaised: '#ffffff', sheet: '#ffffff', border: '#dfe6f2',
   text: '#1c2333', textSecondary: '#4d5872', textMuted: '#8590aa',
   accent: '#3573c2', accent2: '#25945a', onAccent: '#ffffff',
   danger: '#D9342E',
