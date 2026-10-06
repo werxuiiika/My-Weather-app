@@ -50,6 +50,7 @@
   "splashText": "Determining weather…",
   "language": "Language",
   "fontSize": "Font size",
+  "fontSizeDesc": "Text scale",
   "smallFont": "Small",
   "largeFont": "Large",
   "russian": "Русский",

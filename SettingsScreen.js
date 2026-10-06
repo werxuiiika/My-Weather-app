@@ -983,10 +983,11 @@ export default function SettingsScreen() {
             <View style={styles.iconWrap}>
               <Ionicons name="text" size={fs.iconSize * 0.77} color={theme.textSecondary} />
             </View>
-            <View style={[styles.cardTextWrap, { flex: 1, flexDirection: 'row', alignItems: 'center' }]}>
-              <Text style={[styles.cardTitle, { flex: 1, flexShrink: 1 }]} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.8}>{tr('fontSize')}</Text>
-              <Text style={[styles.cardDesc, { marginLeft: 10, marginTop: 0, flexShrink: 0, marginRight: 8 }]} numberOfLines={1}>{`${Math.round(fontScale * 100)}%`}</Text>
+            <View style={[styles.cardTextWrap, { flex: 1 }]}>
+              <Text style={styles.cardTitle}>{tr('fontSize')}</Text>
+              <Text style={styles.cardDesc}>{tr('fontSizeDesc')}</Text>
             </View>
+            <Text style={[styles.cardDesc, { marginRight: 8 }]}>{`${Math.round(fontScale * 100)}%`}</Text>
             <Text style={styles.chevron}>›</Text>
           </TouchableOpacity>
         </View>

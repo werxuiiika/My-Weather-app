@@ -50,6 +50,7 @@
   "splashText": "Определяем погоду...",
   "language": "Язык",
   "fontSize": "Размер шрифта",
+  "fontSizeDesc": "Масштаб текста",
   "smallFont": "Маленький",
   "largeFont": "Большой",
   "russian": "Русский",
