@@ -64,6 +64,11 @@ jobs:
       - name: Create GitHub Release
         if: startsWith(github.ref, 'refs/tags/v')
         uses: softprops/action-gh-release@v2
+        # PAT (not GITHUB_TOKEN): releases created with GITHUB_TOKEN do not
+        # trigger downstream workflows, which would silently break the
+        # readme-history sync. Falls back to GITHUB_TOKEN if unset.
+        env:
+          GITHUB_TOKEN: ${{ secrets.RELEASE_PAT || github.token }}
         with:
           files: MyWeather-${{ github.ref_name }}-*.apk
           generate_release_notes: true

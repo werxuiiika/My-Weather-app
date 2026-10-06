@@ -6,8 +6,16 @@ name: Update README version history
 #   "## X.Y.Z — «Кодовое имя»" title, flat "- " bullets, optional
 #   "### 📦 Сборка" tail (dropped — APK links live on the release page).
 on:
+  # published: release created by CI (auto-generated notes first pass).
+  # edited: changelog finalized by hand afterwards (final pass, overwrites).
+  # workflow_dispatch: manual backfill for a tag.
   release:
-    types: [published]
+    types: [published, edited]
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: 'Release tag to sync from (e.g. v1.0.22)'
+        required: true
 
 permissions:
   contents: write
@@ -24,7 +32,7 @@ jobs:
       - name: Sync README history from release notes
         env:
           GH_TOKEN: ${{ github.token }}
-          TAG: ${{ github.event.release.tag_name }}
+          TAG: ${{ inputs.tag || github.event.release.tag_name }}
         run: |
           gh release view "$TAG" --json body -q .body > /tmp/release-body.txt
           node scripts/readme-history.js "$TAG" /tmp/release-body.txt README.md
