@@ -113,7 +113,9 @@
     "delete_multiple_question": "Удалить выбранные города?",
     "select_all": "Выбрать все",
     "deselect_all": "Снять выбор",
-    "current_location": "Текущее местоположение"
+    "current_location": "Текущее местоположение",
+    "saved_cities": "Сохранённые города",
+    "empty_list": "Нет добавленных городов"
   },
   "permission_required": "Требуется разрешение",
   "location_permission_message": "Приложению нужен доступ к геолокации. Включите его в настройках.",

@@ -113,7 +113,9 @@
     "delete_multiple_question": "Delete selected cities?",
     "select_all": "Select all",
     "deselect_all": "Deselect",
-    "current_location": "Current location"
+    "current_location": "Current location",
+    "saved_cities": "Saved cities",
+    "empty_list": "No saved cities yet"
   },
   "permission_required": "Permission Required",
   "location_permission_message": "The app needs location access. Please enable it in settings.",

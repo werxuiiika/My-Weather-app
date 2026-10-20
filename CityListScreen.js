@@ -241,6 +241,26 @@ export default function CityListScreen() {
       paddingTop: fs.spacing * 0.5,
       zIndex: 30,
     },
+    // Section titles («Текущее местоположение», «Сохранённые города»).
+    // Чистые стили, на драг не влияют.
+    sectionHeader: {
+      paddingHorizontal: 4,
+      paddingTop: fs.spacing,
+      paddingBottom: fs.spacing * 0.5,
+    },
+    sectionHeaderText: {
+      fontSize: fs.small,
+      fontWeight: '600',
+      color: theme.textMuted,
+      textTransform: 'uppercase',
+      letterSpacing: 0.5,
+    },
+    emptyListText: {
+      fontSize: fs.base,
+      color: theme.textMuted,
+      textAlign: 'center',
+      marginTop: fs.spacing * 1.5,
+    },
     cardContainer: {
       marginBottom: fs.spacing,
       borderRadius: 28,
@@ -894,6 +914,9 @@ export default function CityListScreen() {
           }
           style={styles.locationHeader}
         >
+          <View style={styles.sectionHeader}>
+            <Text style={styles.sectionHeaderText}>{t('cities.current_location')}</Text>
+          </View>
           <CurrentLocationCard
             item={currentLocation}
             theme={theme}
@@ -934,6 +957,14 @@ export default function CityListScreen() {
             data={cities}
             keyExtractor={(item, index) => String(item?.id ?? index)}
             renderItem={renderItem}
+            ListHeaderComponent={
+              <View style={styles.sectionHeader}>
+                <Text style={styles.sectionHeaderText}>{t('cities.saved_cities')}</Text>
+              </View>
+            }
+            ListEmptyComponent={
+              <Text style={styles.emptyListText}>{t('cities.empty_list')}</Text>
+            }
             style={{ flex: 1 }}
             scrollEnabled={!isDragging}
             contentContainerStyle={styles.listContainer}
